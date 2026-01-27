@@ -14,7 +14,7 @@
 <div id="startScreen">
   <div class="start-content">
     <div class="start-placeholder" role="img" aria-label="Titelbild der Cashfisch-Unterwasserwelt"></div>
-    <button id="btnStartGame" class="btn primary start-btn">▶ Start Game</button>
+    <button id="btnStartGame" class="btn primary start-btn" aria-label="Start Game">▶ Start Game</button>
   </div>
 </div>
 
@@ -59,6 +59,18 @@
 <!-- CUTSCENE -->
 <div id="cutWrap" style="display:none">
   <canvas id="cutCanvas" width="1200" height="675" class="frame"></canvas>
+  <aside id="cutInfo" class="cut-info" aria-label="Spielbeschreibung">
+    <div class="cut-info-title">Spielsteuerung</div>
+    <div class="cut-info-body">
+      <ul>
+        <li>Bewegung: WASD</li>
+        <li>Angriff: Linke Maustaste — halten für Dauerfeuer</li>
+        <li>Ab Level 2: Schild auf E</li>
+        <li>Ab Level 3: Korallenbegleiter auf R</li>
+        <li>Ab Level 4: Ultimate auf T (1 Aktivierung)</li>
+      </ul>
+    </div>
+  </aside>
   <div class="hud">
     <button id="cutNext" class="btn">▶ Weiter</button>
   </div>
@@ -71,7 +83,7 @@
 
 <script src="./src/error-display.js"></script>
 
-<script type="module" src="./src/game.js"></script>
+<script type="module" src="./src/game.js?v=20260114"></script>
 
 <script>
 "use strict";
@@ -109,14 +121,16 @@
   playerSprite.src = "./src/Player.png";
   const narratorSprite = new Image();
   narratorSprite.src = "./src/narrator.png";
+  const backgroundLevelOneSprite = new Image();
+  backgroundLevelOneSprite.src = "./src/Backgroundlvlone.png";
 
   function spriteReady(img){
     return !!(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
   }
 
   const narrator = {
-    x: 230,
-    y: 210,
+    x: 290,
+    y: 230,
     dir: 1,
     t: 0,
     color:'#9ed0ff',
@@ -130,8 +144,8 @@
     glowRadius: 78
   };
   const player   = {
-    x: 730,
-    y: 225,
+    x: 790,
+    y: 245,
     dir:-1,
     t: 0,
     color:'#77ffcc',
@@ -235,6 +249,17 @@
     ctx.fillRect(0,0,width,height);
     ctx.restore();
 
+    if (spriteReady(backgroundLevelOneSprite)) {
+      const scale = Math.max(width / backgroundLevelOneSprite.naturalWidth, height / backgroundLevelOneSprite.naturalHeight);
+      const drawW = backgroundLevelOneSprite.naturalWidth * scale;
+      const drawH = backgroundLevelOneSprite.naturalHeight * scale;
+      const overflowX = drawW - width;
+      const overflowY = drawH - height;
+      const drawX = overflowX > 0 ? -overflowX * 0.15 : 0;
+      const drawY = overflowY > 0 ? -overflowY * 0.45 : 0;
+      ctx.drawImage(backgroundLevelOneSprite, drawX, drawY, drawW, drawH);
+    }
+
     ctx.save();
     const glow = ctx.createRadialGradient(width*0.5,height*0.1,0,width*0.5,height*0.1,height*0.9);
     glow.addColorStop(0,'rgba(110,170,220,0.32)');
@@ -330,6 +355,7 @@
   }
 
   const script=[
+    {speaker:"Erzähler", text:"Spielsteuerung:\n• Bewegung: WASD\n• Angriff: Linke Maustaste (halten = Dauerfeuer)\n• Ab Level 2: Schild auf E\n• Ab Level 3: Korallenbegleiter auf R\n• Ab Level 4: Ultimate auf T (1 Aktivierung)"},
     {speaker:"Erzähler", text:"Tief unter der Oberfläche schuften Fische in engen Stollen – Diamanten für den gierigen Cashfisch."},
     {speaker:"Erzähler", text:"Er hortet jeden Glitzerstein. Für die anderen bleibt: nichts."},
     {speaker:"Spieler (murmelt)", text:"Jetzt muss ich schon wieder im Stollen arbeiten..."},
@@ -355,9 +381,9 @@
         document.removeEventListener('pointerdown', pointerAdvance);
         document.removeEventListener('keydown', keyAdvance);
         nextBtn.removeEventListener('click', onAdvance);
-        if (typeof window.cashResetGame === 'function') window.cashResetGame();
         if (typeof window.bootGame === 'function') window.bootGame();
-        else setTimeout(()=>{ if(typeof window.bootGame==='function') window.bootGame(); }, 50);
+        if (typeof window.cashBeginGame === 'function') window.cashBeginGame();
+        else if (typeof window.cashResetGame === 'function') window.cashResetGame();
       }catch(err){
         const g=document.getElementById('globalErr'); if(g){ g.textContent='Boot-Fehler: '+err.message; g.style.display='block'; }
       }
@@ -421,8 +447,8 @@
 
     if(showIcons>0){
       const gridSize = 50;
-      const iconX = cvs.width*0.5 - gridSize*1.3;
-      const iconY = cvs.height*0.44 + gridSize*1.4;
+      const iconX = cvs.width*0.5 - gridSize*1.3 + 60;
+      const iconY = cvs.height*0.44 + gridSize*1.4 + 20;
       const auraRadius = 160;
       const glowAlpha = Math.min(0.75, showIcons*0.85);
       ctx.save();

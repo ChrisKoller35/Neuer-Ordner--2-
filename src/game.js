@@ -1,5 +1,8 @@
 "use strict";
 
+let canvas = null;
+let ctx = null;
+
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const clamp01 = value => clamp(value, 0, 1);
@@ -26,19 +29,77 @@ const KEY_TSUNAMI = new Set(["t", "T"]);
 const CODE_TSUNAMI = new Set(["KeyT"]);
 const FOE_BASE_SCORE = 5;
 
+
 const SHIELD_DURATION = 3000;
+const LEVEL2_FLOOR_OFFSET = 275;
+const LEVEL3_FLOOR_OFFSET = 120;
+const LEVEL4_FLOOR_OFFSET = 320;
+const LEVEL3_FLOOR_MIN_VISIBLE = 60;
+const LEVEL3_FLOOR_COLLISION_RATIO = 1;
+const LEVEL3_FLOOR_COLLISION_PAD = 0;
+function getLevel2FloorTop() {
+	if (typeof canvas === "undefined" || !canvas) return null;
+	if (!LEVEL2_FLOOR_SPRITE) return null;
+	if (!spriteReady(LEVEL2_FLOOR_SPRITE)) return null;
+	const scale = canvas.width / LEVEL2_FLOOR_SPRITE.naturalWidth;
+	const drawH = LEVEL2_FLOOR_SPRITE.naturalHeight * scale;
+	return canvas.height - drawH + LEVEL2_FLOOR_OFFSET;
+}
+function getLevel3FloorTop() {
+	if (typeof canvas === "undefined" || !canvas) return null;
+	if (!LEVEL3_FLOOR_SPRITE) return null;
+	if (!spriteReady(LEVEL3_FLOOR_SPRITE)) return null;
+	const scale = canvas.width / LEVEL3_FLOOR_SPRITE.naturalWidth;
+	const drawH = LEVEL3_FLOOR_SPRITE.naturalHeight * scale;
+	const floorTop = canvas.height - drawH + LEVEL3_FLOOR_OFFSET;
+	const minTop = canvas.height - Math.min(drawH, LEVEL3_FLOOR_MIN_VISIBLE);
+	return clamp(floorTop, 0, minTop);
+}
+function getLevel4FloorTop() {
+	if (typeof canvas === "undefined" || !canvas) return null;
+	if (!LEVEL4_FLOOR_SPRITE) return null;
+	if (!spriteReady(LEVEL4_FLOOR_SPRITE)) return null;
+	const scale = canvas.width / LEVEL4_FLOOR_SPRITE.naturalWidth;
+	const drawH = LEVEL4_FLOOR_SPRITE.naturalHeight * scale;
+	return canvas.height - drawH + LEVEL4_FLOOR_OFFSET;
+}
+function getLevel3GroundLine() {
+	const floorTop = getLevel3FloorTop();
+	if (floorTop == null) return null;
+	const scale = canvas.width / LEVEL3_FLOOR_SPRITE.naturalWidth;
+	const drawH = LEVEL3_FLOOR_SPRITE.naturalHeight * scale;
+	const target = floorTop + drawH * LEVEL3_FLOOR_COLLISION_RATIO;
+	const maxLine = canvas.height - LEVEL3_FLOOR_COLLISION_PAD;
+	return clamp(target, floorTop, maxLine);
+}
 const SHIELD_COOLDOWN = 9000;
 const USE_CLASSIC_OKTOPUS_PROJECTILE = true; // Toggle to compare new blowdart prototype with classic sprite
+const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallback
 
 function loadSprite(relativePath) {
 	const img = new Image();
-	img.src = new URL(relativePath, import.meta.url).href;
+	let fallbackApplied = false;
+	const primaryPath = USE_WEBP_ASSETS ? relativePath.replace(/\.png$/i, ".webp") : relativePath;
+	const primarySrc = new URL(primaryPath, import.meta.url).href;
+	img.addEventListener("error", () => {
+		if (fallbackApplied) return;
+		fallbackApplied = true;
+		const normalized = relativePath.startsWith("./") ? relativePath.slice(2) : relativePath;
+		const fallbackPath = USE_WEBP_ASSETS ? normalized.replace(/\.png$/i, ".png") : normalized;
+		img.src = new URL(`./src/${fallbackPath}`, document.baseURI).href;
+	});
+	img.src = primarySrc;
 	return img;
 }
 
 function spriteReady(img) {
 	return !!(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
 }
+
+
+const LEVEL2_FLOOR_SPRITE = loadSprite("./Bodenlava.png");
+const LEVEL3_FLOOR_SPRITE = loadSprite("./Boden.png");
+const LEVEL4_FLOOR_SPRITE = loadSprite("./Bodengold.png");
 
 const SPRITES = {
 	player: loadSprite("./Player.png"),
@@ -53,6 +114,7 @@ const SPRITES = {
 	oktopus: loadSprite("./Oktopus.png"),
 	oktopusProjectile: loadSprite("./Oktopuspfeil.png"),
 	cashfish: loadSprite("./Cashfish.png"),
+	coverRock: loadSprite("./Fels.png"),
 	symbolSchluessel: loadSprite("./Schlüsselsymbol.png"),
 	symbolGeldschein: loadSprite("./Geldscheinsymbol.png"),
 	symbolYacht: loadSprite("./Yachtsymbol.png"),
@@ -62,6 +124,8 @@ const SPRITES = {
 };
 let processedHealSprite = null;
 let pickupHideTimer = null;
+// Cache scaled alpha masks so cover rock collisions align to the sprite silhouette.
+const coverRockMaskCache = new Map();
 
 const SYMBOL_DATA = {
 	pferd: {
@@ -105,6 +169,61 @@ function getHealSprite() {
 	}
 	return processedHealSprite && spriteReady(SPRITES.heal) ? processedHealSprite : SPRITES.heal;
 }
+
+function getCoverRockCollisionMask(sprite, width, height) {
+		if (!spriteReady(sprite)) return null;
+		const key = `${sprite.src || "cover"}:${width.toFixed(3)}x${height.toFixed(3)}`;
+		if (coverRockMaskCache.has(key)) return coverRockMaskCache.get(key);
+		const drawW = Math.max(1, Math.round(width));
+		const drawH = Math.max(1, Math.round(height));
+		const canvas = document.createElement("canvas");
+		canvas.width = drawW;
+		canvas.height = drawH;
+		const ctx = canvas.getContext("2d", { willReadFrequently: true });
+		ctx.drawImage(sprite, 0, 0, drawW, drawH);
+		const imageData = ctx.getImageData(0, 0, drawW, drawH);
+		const { data } = imageData;
+		const mask = new Uint8Array(drawW * drawH);
+		let minX = drawW;
+		let minY = drawH;
+		let maxX = -1;
+		let maxY = -1;
+		for (let y = 0; y < drawH; y++) {
+			const rowOffset = y * drawW;
+			for (let x = 0; x < drawW; x++) {
+				const pixelIndex = (rowOffset + x) * 4;
+				const alpha = data[pixelIndex + 3];
+				if (alpha > 32) {
+					mask[rowOffset + x] = 1;
+					if (x < minX) minX = x;
+					if (x > maxX) maxX = x;
+					if (y < minY) minY = y;
+					if (y > maxY) maxY = y;
+				}
+			}
+		}
+		if (maxX < minX || maxY < minY) {
+			minX = 0;
+			minY = 0;
+			maxX = drawW - 1;
+			maxY = drawH - 1;
+		}
+		const info = {
+			width: drawW,
+			height: drawH,
+			data: mask,
+			worldWidth: width,
+			worldHeight: height,
+			scaleX: drawW / Math.max(width, 1e-6),
+			scaleY: drawH / Math.max(height, 1e-6),
+			minOffsetX: (minX / drawW) * width - width * 0.5,
+			maxOffsetX: ((maxX + 1) / drawW) * width - width * 0.5,
+			minOffsetY: (minY / drawH) * height - height * 0.5,
+			maxOffsetY: ((maxY + 1) / drawH) * height - height * 0.5
+		};
+		coverRockMaskCache.set(key, info);
+		return info;
+	}
 
 function drawPlayerFallback(ctx, x, y, opts = {}) {
 	const scale = opts.scale == null ? 1 : opts.scale;
@@ -792,9 +911,9 @@ function bootGame() {
 	if (bootGame.initialized) return;
 	bootGame.initialized = true;
 
-	const canvas = document.getElementById("game");
+	canvas = document.getElementById("game");
 	if (!canvas) throw new Error("Canvas 'game' not found");
-	const ctx = canvas.getContext("2d");
+	ctx = canvas.getContext("2d");
 
 	const hudScore = document.getElementById("score");
 	const hudCoins = document.getElementById("coins");
@@ -815,7 +934,7 @@ function bootGame() {
 	const pickupMsg = document.getElementById("pickupMsg");
 
 	const keys = new Set();
-	const pointer = { down: false };
+	const pointer = { down: false, shoot: false };
 	let controlsArmed = false;
 	const DEBUG_SHORTCUTS = true;
 
@@ -841,6 +960,12 @@ function bootGame() {
 			dir: 1,
 			invulnFor: 0,
 			shotCooldown: 0,
+			energyMax: 100,
+			energy: 100,
+			energyCost: 35,
+			energyRegenRate: 0.04,
+			energyRegenDelay: 1200,
+			energyRegenTimer: 0,
 			perfumeSlowTimer: 0,
 			shieldUnlocked: false,
 			shieldActive: false,
@@ -939,6 +1064,8 @@ function bootGame() {
 		foeArrows: [],
 		unlockBossScore: 50,
 		bubbles: [],
+		coverRocks: [],
+		coverRockSpawned: false,
 		levelIndex: 0,
 		levelConfig: null,
 		foeSpawnInterval: { min: 1400, max: 2100 }
@@ -1000,7 +1127,11 @@ function bootGame() {
 			foe.laneShiftTimer = opts.laneShiftTimer == null ? 2400 + Math.random() * 600 : opts.laneShiftTimer;
 			foe.laneShiftCooldown = opts.laneShiftCooldown == null ? 2400 + Math.random() * 600 : opts.laneShiftCooldown;
 		} else if (type === "ritterfisch") {
+			const minAnchorY = canvas.height * 0.26;
+			const maxAnchorY = canvas.height * 0.76;
 			foe.anchorX = opts.anchorX == null ? canvas.width * (0.66 + Math.random() * 0.05) : opts.anchorX;
+			const rawAnchorY = opts.anchorY == null ? baseY + (Math.random() - 0.5) * canvas.height * 0.12 : opts.anchorY;
+			foe.anchorY = clamp(rawAnchorY, minAnchorY, maxAnchorY);
 			foe.patrolRange = opts.patrolRange == null ? 18 + Math.random() * 10 : opts.patrolRange;
 			foe.chargeCooldown = opts.chargeCooldown == null ? 3200 + Math.random() * 600 : opts.chargeCooldown;
 			foe.chargeTimer = opts.chargeTimer == null ? 1400 + Math.random() * 600 : opts.chargeTimer;
@@ -1199,6 +1330,76 @@ function bootGame() {
 		updateHUD();
 	}
 
+	function spawnCoverRock(opts = {}) {
+		const sprite = SPRITES.coverRock;
+		const scale = opts.scale == null ? 0.52 : opts.scale;
+		const spriteWidth = spriteReady(sprite) ? sprite.naturalWidth : 540;
+		const spriteHeight = spriteReady(sprite) ? sprite.naturalHeight : 420;
+		const width = (opts.width == null ? spriteWidth : opts.width) * scale;
+		const height = (opts.height == null ? spriteHeight : opts.height) * scale;
+		const radiusX = (opts.radiusX == null ? width * 0.45 : opts.radiusX);
+		const radiusY = (opts.radiusY == null ? height * 0.4 : opts.radiusY);
+		const padX = opts.padX == null ? 0 : opts.padX;
+		const padY = opts.padY == null ? 0 : opts.padY;
+		const padLeft = opts.padLeft == null ? null : opts.padLeft;
+		const padRight = opts.padRight == null ? null : opts.padRight;
+		const padTop = opts.padTop == null ? null : opts.padTop;
+		const padBottom = opts.padBottom == null ? null : opts.padBottom;
+		let groundLine = opts.groundLine == null ? canvas.height - 12 : opts.groundLine;
+		if (opts.groundLine == null && state.levelIndex === 2) {
+			const levelGround = getLevel3GroundLine();
+			if (levelGround != null) groundLine = levelGround;
+		}
+		const minY = canvas.height * 0.22;
+		const maxY = Math.max(minY, groundLine - radiusY);
+		const targetY = clamp(groundLine - radiusY, minY, maxY);
+		const rock = {
+			x: clamp(opts.x == null ? canvas.width * 0.5 : opts.x, canvas.width * 0.24, canvas.width * 0.76),
+			y: opts.startY == null ? -height : opts.startY,
+			radiusX,
+			radiusY,
+			width,
+			height,
+			scale,
+			padX,
+			padY,
+			padLeft,
+			padRight,
+			padTop,
+			padBottom,
+			collisionOffsetX: opts.collisionOffsetX == null ? 0 : opts.collisionOffsetX,
+			collisionOffsetY: opts.collisionOffsetY == null ? 0 : opts.collisionOffsetY,
+			vy: 0,
+			gravity: opts.gravity == null ? 0.0011 : opts.gravity,
+			maxFallSpeed: opts.maxFallSpeed == null ? 0.68 : opts.maxFallSpeed,
+			delay: opts.delay == null ? 620 : Math.max(0, opts.delay),
+			groundLine,
+			targetY,
+			landed: false,
+			impactTimer: 0,
+			damageCooldown: 0,
+			hitPulse: 0
+		};
+		if (spriteReady(sprite)) {
+			rock.collisionMask = getCoverRockCollisionMask(sprite, width, height);
+		}
+		state.coverRocks.push(rock);
+		return rock;
+	}
+
+	function maybeSpawnLevelThreeCoverRock() {
+		if (state.coverRockSpawned) return;
+		if ((state.level || 1) !== 3) return;
+		if (state.pendingSymbolAdvance) return;
+		const threshold = (state.unlockBossScore || 0) * 0.5;
+		if (state.levelScore < threshold) return;
+		state.coverRockSpawned = true;
+		const rock = spawnCoverRock({ x: canvas.width * 0.5 });
+		if (rock) {
+			triggerEventFlash("cover", { text: "Felsbrocken fällt!", duration: 1100, opacity: 0.75 });
+		}
+	}
+
 	function triggerEventFlash(kind, opts = {}) {
 		const now = performance.now();
 		const duration = opts.duration == null ? 1600 : opts.duration;
@@ -1339,6 +1540,19 @@ function bootGame() {
 				shadowRadius: 52,
 				shadowOffsetX: 14,
 				shadowOffsetY: 56,
+				entryTargetX: canvas.width * 0.8,
+				horizontalMin: canvas.width * 0.8,
+				horizontalMax: canvas.width * 0.8,
+				horizontalTracking: 0,
+				horizontalOscAmp: 0,
+				horizontalForwardBias: 0,
+				horizontalEdgePad: 0,
+				verticalMin: canvas.height * 0.0,
+				verticalMax: canvas.height * 0.9,
+				verticalTracking: 0.0036,
+				verticalOffset: -canvas.height * 0.1,
+				verticalOscAmp: canvas.height * 0.4,
+				verticalOscSpeed: 0.0024,
 				wakeCooldown: 3200,
 				broadsideCooldown: 2500,
 				wakeCount: 4,
@@ -1537,6 +1751,9 @@ function bootGame() {
 		state.boss.verticalMin = bossCfg.verticalMin == null ? canvas.height * 0.24 : bossCfg.verticalMin;
 		state.boss.verticalMax = bossCfg.verticalMax == null ? canvas.height * 0.68 : bossCfg.verticalMax;
 		state.boss.verticalOffset = bossCfg.verticalOffset == null ? -canvas.height * 0.12 : bossCfg.verticalOffset;
+		state.boss.verticalOscAmp = bossCfg.verticalOscAmp == null ? 0 : bossCfg.verticalOscAmp;
+		state.boss.verticalOscSpeed = bossCfg.verticalOscSpeed == null ? 0 : bossCfg.verticalOscSpeed;
+		state.boss.verticalOscPhase = bossCfg.verticalOscPhase == null ? Math.random() * TAU : bossCfg.verticalOscPhase;
 		state.boss.horizontalTracking = bossCfg.horizontalTracking == null ? 0.0024 : bossCfg.horizontalTracking;
 		state.boss.horizontalMin = bossCfg.horizontalMin == null ? canvas.width * 0.52 : bossCfg.horizontalMin;
 		state.boss.horizontalMax = bossCfg.horizontalMax == null ? canvas.width * 0.9 : bossCfg.horizontalMax;
@@ -1548,6 +1765,8 @@ function bootGame() {
 		state.boss.horizontalForwardBias = bossCfg.horizontalForwardBias == null ? canvas.width * 0.1 : bossCfg.horizontalForwardBias;
 		state.boss.horizontalEdgePad = bossCfg.horizontalEdgePad == null ? null : bossCfg.horizontalEdgePad;
 		state.boss.oscPhase = 0;
+		state.coverRocks.length = 0;
+		state.coverRockSpawned = false;
 
 		if (bannerEl && config.banner) bannerEl.textContent = config.banner;
 		if (!opts.skipFlash && config.introFlash && config.introFlash.text) {
@@ -1594,6 +1813,8 @@ function bootGame() {
 		state.bossCardBoomerangs.length = 0;
 		state.bossTreasureWaves.length = 0;
 		state.bossCrownColumns.length = 0;
+		state.coverRocks.length = 0;
+		state.coverRockSpawned = false;
 		state.cashfishUltLock = 0;
 		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
 		state.bossTreasureWaves.length = 0;
@@ -1634,6 +1855,9 @@ function bootGame() {
 		state.player.shieldLastBlock = 0;
 		state.player.invulnFor = opts.invulnDuration == null ? 1600 : opts.invulnDuration;
 		state.player.shotCooldown = 0;
+		state.player.energyMax = state.player.energyMax == null ? 100 : state.player.energyMax;
+		state.player.energy = state.player.energyMax;
+		state.player.energyRegenTimer = 0;
 		if (opts.healHeart !== false) state.hearts = Math.min(state.hearts + 1, state.maxHearts);
 
 		applyLevelConfig(nextIndex, opts);
@@ -1760,11 +1984,12 @@ function bootGame() {
 	function spawnYachtwalHarborSog() {
 		const player = state.player;
 		const boss = state.boss;
-		const minX = canvas.width * 0.32;
-		const maxX = canvas.width * 0.72;
+		const minX = canvas.width * 0.18;
+		const maxX = canvas.width * 0.6;
 		const minY = canvas.height * 0.3;
 		const maxY = canvas.height * 0.76;
-		const centerX = clamp((player.x + boss.x) / 2, minX, maxX);
+		const leftBias = canvas.width * 0.06;
+		const centerX = clamp(player.x * 0.75 + boss.x * 0.25 - leftBias, minX, maxX);
 		const centerY = clamp(player.y, minY, maxY);
 		const initialLife = 3200 + Math.random() * 400;
 		state.bossWhirlpools.push({
@@ -1792,15 +2017,20 @@ function bootGame() {
 		const boss = state.boss;
 		const enraged = boss.hp <= boss.maxHp * 0.45;
 		const count = enraged ? 4 : 3;
+		const coverRock = state.coverRocks.find(rock => rock.landed);
+		const clearanceY = coverRock
+			? coverRock.y - (coverRock.radiusY == null ? 60 : coverRock.radiusY) - 40
+			: null;
 		for (let i = 0; i < count; i += 1) {
 			const delay = i * 160;
 			const speedBoost = Math.random() * 0.08;
+			const launchY = clearanceY == null ? boss.y + 8 : Math.min(boss.y + 8, clearanceY);
 			state.bossKatapultShots.push({
 				x: boss.x - 70,
-				y: boss.y + 18,
+				y: launchY,
 				vx: -0.46 - speedBoost,
-				vy: -0.34 - Math.random() * 0.04,
-				gravity: 0.0011 + Math.random() * 0.0003,
+				vy: -0.5 - Math.random() * 0.06,
+				gravity: 0.0009 + Math.random() * 0.0002,
 				life: 4600 + Math.random() * 400,
 				delay,
 				radius: 26,
@@ -2384,6 +2614,9 @@ function bootGame() {
 		if (state.over || state.paused || !state.started) return;
 		const player = state.player;
 		if (player.shotCooldown > 0) return;
+		const energyMax = player.energyMax == null ? 100 : player.energyMax;
+		const energyCost = player.energyCost == null ? 35 : player.energyCost;
+		if ((player.energy == null ? energyMax : player.energy) < energyCost) return;
 		state.shots.push({
 			x: player.x + 26,
 			y: player.y - 6,
@@ -2394,7 +2627,9 @@ function bootGame() {
 			spriteOffsetX: 6,
 			spriteOffsetY: 0
 		});
-		player.shotCooldown = 260;
+		player.energy = Math.max(0, (player.energy == null ? energyMax : player.energy) - energyCost);
+		if (player.energy <= 0) player.energyRegenTimer = player.energyRegenDelay == null ? 1200 : player.energyRegenDelay;
+		player.shotCooldown = 220;
 	}
 
 	function hasKey(keySet) {
@@ -2775,6 +3010,8 @@ function bootGame() {
 		state.bossDiamondBeams.length = 0;
 		state.bossCardBoomerangs.length = 0;
 		state.bubbles.length = 0;
+		state.coverRocks.length = 0;
+		state.coverRockSpawned = false;
 		applyLevelConfig(0, { skipFlash: false });
 		state.boss.x = state.boss.entryTargetX == null ? canvas.width * 0.72 : state.boss.entryTargetX;
 		state.boss.y = state.boss.entryTargetY == null ? canvas.height * 0.48 : state.boss.entryTargetY;
@@ -2813,6 +3050,8 @@ function bootGame() {
 		state.coralAbility.timer = 0;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
+		state.coverRocks.length = 0;
+		state.coverRockSpawned = false;
 		state.player.shieldActive = false;
 		state.player.shieldTimer = 0;
 		state.player.shieldLastBlock = 0;
@@ -2859,6 +3098,8 @@ function bootGame() {
 		state.coralAbility.timer = 0;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
+		state.coverRocks.length = 0;
+		state.coverRockSpawned = false;
 		state.foeSpawnTimer = Number.POSITIVE_INFINITY;
 		state.cashfishUltLock = 0;
 		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
@@ -2970,9 +3211,21 @@ function bootGame() {
 
 	function updatePlayer(dt) {
 		const player = state.player;
+		const prevX = player.x;
+		const prevY = player.y;
 		if (player.invulnFor > 0) player.invulnFor = Math.max(0, player.invulnFor - dt);
 		if (player.shotCooldown > 0) player.shotCooldown = Math.max(0, player.shotCooldown - dt);
+		const energyMax = player.energyMax == null ? 100 : player.energyMax;
+		if (player.energy == null) player.energy = energyMax;
+		if (player.energyRegenTimer == null) player.energyRegenTimer = 0;
+		if (player.energyRegenTimer > 0) {
+			player.energyRegenTimer = Math.max(0, player.energyRegenTimer - dt);
+		} else if (player.energy < energyMax) {
+			const regenRate = player.energyRegenRate == null ? 0.04 : player.energyRegenRate;
+			player.energy = Math.min(energyMax, player.energy + regenRate * dt);
+		}
 		if (player.perfumeSlowTimer > 0) player.perfumeSlowTimer = Math.max(0, player.perfumeSlowTimer - dt);
+		if (pointer.shoot) playerShoot();
 		if (player.shieldActive) {
 			player.shieldTimer = Math.max(0, player.shieldTimer - dt);
 			if (player.shieldTimer <= 0) {
@@ -3000,6 +3253,297 @@ function bootGame() {
 			player.y = clamp(player.y + dy, 60, canvas.height - 60);
 			if (Math.abs(moveX) > 0.1) player.dir = moveX > 0 ? 1 : -1;
 		}
+		resolvePlayerCoverCollision(player, prevX, prevY);
+	}
+
+function isPointInsideCover(rock, x, y, padX = 0, padY = 0) {
+		if (rock.collisionMask) {
+			const mask = rock.collisionMask;
+			const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+			const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+			const width = mask.worldWidth;
+			const height = mask.worldHeight;
+			const localX = x - centerX + width * 0.5;
+			const localY = y - centerY + height * 0.5;
+			if (localX < 0 || localY < 0 || localX > width || localY > height) return false;
+			const px = Math.floor(localX * mask.scaleX);
+			const py = Math.floor(localY * mask.scaleY);
+			if (px < 0 || px >= mask.width || py < 0 || py >= mask.height) return false;
+			const expandX = Math.max(0, Math.ceil(Math.max(0, padX) * mask.scaleX));
+			const expandY = Math.max(0, Math.ceil(Math.max(0, padY) * mask.scaleY));
+			const startX = Math.max(0, px - expandX);
+			const endX = Math.min(mask.width - 1, px + expandX);
+			const startY = Math.max(0, py - expandY);
+			const endY = Math.min(mask.height - 1, py + expandY);
+			for (let iy = startY; iy <= endY; iy++) {
+				const rowOffset = iy * mask.width;
+				for (let ix = startX; ix <= endX; ix++) {
+					if (mask.data[rowOffset + ix]) return true;
+				}
+			}
+			return false;
+		}
+		const baseRadiusX = rock.radiusX == null ? 80 : rock.radiusX;
+		const baseRadiusY = rock.radiusY == null ? 60 : rock.radiusY;
+		const padBaseX = rock.padX == null ? 0 : rock.padX;
+		const padBaseY = rock.padY == null ? 0 : rock.padY;
+		const radiusX = Math.max(1, baseRadiusX + padBaseX + padX);
+		const radiusY = Math.max(1, baseRadiusY + padBaseY + padY);
+		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+		const dx = x - centerX;
+		const dy = y - centerY;
+		const nx = dx / radiusX;
+		const ny = dy / radiusY;
+		return nx * nx + ny * ny < 1;
+	}
+
+function computeCoverSurfaceNormal(rock, x, y) {
+		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+		if (rock.collisionMask) {
+			const mask = rock.collisionMask;
+			const localX = x - centerX + mask.worldWidth * 0.5;
+			const localY = y - centerY + mask.worldHeight * 0.5;
+			const px = Math.floor(localX * mask.scaleX);
+			const py = Math.floor(localY * mask.scaleY);
+			const sample = (ix, iy) => {
+				if (ix < 0 || ix >= mask.width || iy < 0 || iy >= mask.height) return 0;
+				return mask.data[iy * mask.width + ix] ? 1 : 0;
+			};
+			let dx = sample(px + 1, py) - sample(px - 1, py);
+			let dy = sample(px, py + 1) - sample(px, py - 1);
+			let nx = -dx;
+			let ny = -dy;
+			let len = Math.hypot(nx, ny);
+			if (len < 1e-3) {
+				nx = x - centerX;
+				ny = y - centerY;
+				len = Math.hypot(nx, ny);
+			}
+			if (len < 1e-3) return { x: 1, y: 0 };
+			return { x: nx / len, y: ny / len };
+		}
+		const nx = x - centerX;
+		const ny = y - centerY;
+		const len = Math.hypot(nx, ny);
+		if (len < 1e-3) return { x: 1, y: 0 };
+		return { x: nx / len, y: ny / len };
+	}
+
+function resolveCoverCollisionForPoint(rock, currX, currY, prevX, prevY) {
+		// Project the moving point back to the first safe position outside the sprite mask.
+		if (!isPointInsideCover(rock, currX, currY)) return null;
+		let insideX = currX;
+		let insideY = currY;
+		let outsideX = prevX;
+		let outsideY = prevY;
+		if (isPointInsideCover(rock, outsideX, outsideY)) {
+			const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+			const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+			const dirX = insideX - centerX;
+			const dirY = insideY - centerY;
+			const len = Math.hypot(dirX, dirY) || 1;
+			let step = 0;
+			let found = false;
+			while (step < 96) {
+				outsideX = insideX + (dirX / len) * (step + 2);
+				outsideY = insideY + (dirY / len) * (step + 2);
+				if (!isPointInsideCover(rock, outsideX, outsideY)) {
+					found = true;
+					break;
+				}
+				step += 4;
+			}
+			if (!found) {
+				const safeRadiusX = Math.max(rock.radiusX == null ? 80 : rock.radiusX, rock.width == null ? 0 : rock.width * 0.5);
+				const safeRadiusY = Math.max(rock.radiusY == null ? 60 : rock.radiusY, rock.height == null ? 0 : rock.height * 0.5);
+				outsideX = centerX + (dirX / len) * (safeRadiusX + 80);
+				outsideY = centerY + (dirY / len) * (safeRadiusY + 80);
+			}
+		}
+		for (let i = 0; i < 8; i++) {
+			const midX = (insideX + outsideX) * 0.5;
+			const midY = (insideY + outsideY) * 0.5;
+			if (isPointInsideCover(rock, midX, midY)) {
+				insideX = midX;
+				insideY = midY;
+			} else {
+				outsideX = midX;
+				outsideY = midY;
+			}
+		}
+		let resolvedX = outsideX;
+		let resolvedY = outsideY;
+		if (isPointInsideCover(rock, resolvedX, resolvedY)) {
+			const fallbackNormal = computeCoverSurfaceNormal(rock, insideX, insideY);
+			resolvedX -= fallbackNormal.x * 2;
+			resolvedY -= fallbackNormal.y * 2;
+		}
+		const normal = computeCoverSurfaceNormal(rock, insideX, insideY);
+		return {
+			collided: true,
+			x: resolvedX,
+			y: resolvedY,
+			normal,
+			hitPointX: insideX,
+			hitPointY: insideY
+		};
+	}
+
+// Encourage AI agents to step around the rock instead of sticking to its surface.
+function applyCoverAvoidance(entity, opts = {}) {
+	if (state.coverRocks.length === 0) return false;
+	const padX = opts.padX == null ? 60 : opts.padX;
+	const padY = opts.padY == null ? 52 : opts.padY;
+	const detourDuration = opts.detourDuration == null ? 820 : opts.detourDuration;
+	const detourSpeed = opts.detourSpeed;
+	const pushSpeed = opts.pushSpeed;
+	const cooldown = opts.cooldown == null ? 420 : opts.cooldown;
+	const allowHorizontal = opts.allowHorizontal !== false;
+	for (const rock of state.coverRocks) {
+		if (!rock.landed) continue;
+		const alreadyDetouring = entity.coverDetourTimer != null && entity.coverDetourTimer > 0;
+		if (!alreadyDetouring && entity.coverDetourCooldown > 0) continue;
+		if (!isPointInsideCover(rock, entity.x, entity.y, padX, padY)) continue;
+		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+		if (alreadyDetouring && entity.coverDetourRockX != null) {
+			const entrySide = entity.coverDetourEntrySide == null ? (entity.x >= entity.coverDetourRockX ? 1 : -1) : entity.coverDetourEntrySide;
+			const relX = entity.x - entity.coverDetourRockX;
+			const storedPad = entity.coverDetourPadX == null ? padX : Math.max(entity.coverDetourPadX, padX);
+			const padMargin = Math.max(22, storedPad * 0.6);
+			const radius = entity.coverDetourRockRadiusX == null
+				? Math.max(storedPad, rock.radiusX == null ? (rock.width == null ? padX : rock.width * 0.5) : rock.radiusX)
+				: entity.coverDetourRockRadiusX;
+			const clear = radius + padMargin;
+			if ((entrySide < 0 && relX > clear) || (entrySide > 0 && relX < -clear)) continue;
+		}
+		let dirY = entity.y >= centerY ? 1 : -1;
+		if (Math.abs(entity.y - centerY) < 12) dirY = dirY === 0 ? (Math.random() < 0.5 ? -1 : 1) : dirY;
+		const dirX = allowHorizontal ? (entity.x >= centerX ? 1 : -1) : 0;
+		entity.coverDetourTimer = Math.max(entity.coverDetourTimer || 0, detourDuration);
+		entity.coverDetourDirY = dirY === 0 ? (Math.random() < 0.5 ? -1 : 1) : dirY;
+		entity.coverDetourDirX = dirX;
+		entity.coverDetourRockX = centerX;
+		const baseRadiusX = rock.radiusX == null ? (rock.width == null ? padX : rock.width * 0.5) : rock.radiusX;
+		entity.coverDetourRockRadiusX = entity.coverDetourRockRadiusX == null ? Math.max(baseRadiusX, padX) : Math.max(entity.coverDetourRockRadiusX, Math.max(baseRadiusX, padX));
+		entity.coverDetourEntrySide = dirX === 0 ? (entity.x >= centerX ? 1 : -1) : dirX;
+		entity.coverDetourPadX = Math.max(entity.coverDetourPadX == null ? padX : entity.coverDetourPadX, padX);
+		if (detourSpeed != null) entity.coverDetourSpeed = detourSpeed;
+		else if (entity.coverDetourSpeed == null) entity.coverDetourSpeed = Math.max(entity.speed || 0.22, 0.18);
+		if (allowHorizontal) {
+			if (pushSpeed != null) entity.coverDetourPushSpeed = pushSpeed;
+			else if (entity.coverDetourPushSpeed == null) entity.coverDetourPushSpeed = (entity.coverDetourSpeed || 0.22) * 0.6;
+		} else {
+			entity.coverDetourDirX = 0;
+		}
+		if (!alreadyDetouring) {
+			const priorCooldown = entity.coverDetourCooldown == null ? 0 : entity.coverDetourCooldown;
+			entity.coverDetourCooldown = Math.max(priorCooldown, cooldown);
+		} else if (entity.coverDetourCooldown != null && entity.coverDetourCooldown < cooldown) {
+			entity.coverDetourCooldown = cooldown;
+		}
+		return true;
+	}
+	return false;
+}
+
+function processCoverDetour(entity, dt, bounds = {}) {
+	if (!entity.coverDetourTimer || entity.coverDetourTimer <= 0) return;
+	entity.coverDetourTimer = Math.max(0, entity.coverDetourTimer - dt);
+	const verticalSpeed = entity.coverDetourSpeed == null ? Math.max(entity.speed || 0.22, 0.18) : entity.coverDetourSpeed;
+	const horizontalSpeed = entity.coverDetourPushSpeed == null ? verticalSpeed * 0.6 : entity.coverDetourPushSpeed;
+	let dirX = entity.coverDetourDirX;
+	if (dirX) {
+		const storedPad = entity.coverDetourPadX == null ? 60 : entity.coverDetourPadX;
+		const margin = Math.max(22, storedPad * 0.6);
+		const rockX = entity.coverDetourRockX == null ? null : entity.coverDetourRockX;
+		const rockRadius = entity.coverDetourRockRadiusX == null ? Math.max(72, storedPad) : entity.coverDetourRockRadiusX;
+		if (rockX != null) {
+			const distance = entity.x - rockX;
+			const entrySide = entity.coverDetourEntrySide == null ? (distance >= 0 ? 1 : -1) : entity.coverDetourEntrySide;
+			const clearDistance = rockRadius + margin;
+			if ((entrySide < 0 && distance > clearDistance) || (entrySide > 0 && distance < -clearDistance)) {
+				entity.coverDetourDirX = 0;
+				dirX = 0;
+			}
+		}
+	}
+	if (dirX) entity.x += dirX * horizontalSpeed * dt;
+	if (entity.coverDetourDirY) entity.y += entity.coverDetourDirY * verticalSpeed * dt;
+	if (bounds.minX != null) entity.x = Math.max(bounds.minX, entity.x);
+	if (bounds.maxX != null) entity.x = Math.min(bounds.maxX, entity.x);
+	if (bounds.minY != null) {
+		if (entity.y <= bounds.minY + 2 && entity.coverDetourDirY < 0) entity.coverDetourDirY = 1;
+		entity.y = Math.max(bounds.minY, entity.y);
+	}
+	if (bounds.maxY != null) {
+		if (entity.y >= bounds.maxY - 2 && entity.coverDetourDirY > 0) entity.coverDetourDirY = -1;
+		entity.y = Math.min(bounds.maxY, entity.y);
+	}
+	if (entity.coverDetourTimer <= 0) {
+		entity.coverDetourDirX = null;
+		entity.coverDetourDirY = null;
+		const minCooldown = entity.type === "ritterfisch" ? 520 : 640;
+		if (entity.coverDetourCooldown == null || entity.coverDetourCooldown < minCooldown) entity.coverDetourCooldown = minCooldown;
+	}
+}
+
+function getRitterfischLaneTarget(foe, rock, minY, maxY) {
+	const baseLane = foe.anchorY == null ? foe.baseY : foe.anchorY;
+	let target = baseLane + Math.sin(foe.sway * 0.45) * canvas.height * 0.035;
+	if (rock && rock.landed) {
+		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+		const radiusX = rock.radiusX == null ? (rock.width == null ? 80 : rock.width * 0.5) : rock.radiusX;
+		const radiusY = rock.radiusY == null ? (rock.height == null ? 60 : rock.height * 0.5) : rock.radiusY;
+		const topEdge = centerY - radiusY;
+		const laneA = clamp(topEdge - Math.max(26, radiusY * 0.35), minY, maxY);
+		const laneB = clamp(topEdge - Math.max(50, radiusY * 0.6), minY, maxY);
+		const useUpperLane = foe.lanePick == null ? Math.random() < 0.5 : foe.lanePick === 1;
+		const preferredLane = useUpperLane ? laneB : laneA;
+		const nearRock = foe.x < centerX + radiusX + 110 && foe.x > centerX - radiusX - 60;
+		if (nearRock) target = preferredLane;
+	}
+	return clamp(target, minY, maxY);
+}
+
+function resolvePlayerCoverCollision(player, prevX, prevY) {
+		if (state.coverRocks.length === 0) return;
+		let lastSafeX = prevX;
+		let lastSafeY = prevY;
+		for (const rock of state.coverRocks) {
+			if (!rock.landed) continue;
+			const collision = resolveCoverCollisionForPoint(rock, player.x, player.y, lastSafeX, lastSafeY);
+			if (!collision) continue;
+			player.x = clamp(collision.x, 60, canvas.width - 60);
+			player.y = clamp(collision.y, 60, canvas.height - 60);
+			lastSafeX = player.x;
+			lastSafeY = player.y;
+		}
+	}
+
+function resolveFoeCoverCollision(foe, prevX, prevY) {
+		if (state.coverRocks.length === 0) {
+			foe.coverCollisionDirection = null;
+			return false;
+		}
+		for (const rock of state.coverRocks) {
+			if (!rock.landed) continue;
+			const collision = resolveCoverCollisionForPoint(rock, foe.x, foe.y, prevX, prevY);
+			if (!collision) continue;
+			foe.x = collision.x;
+			foe.y = collision.y;
+			const normal = collision.normal || { x: 0, y: 0 };
+			let direction = null;
+			if (Math.abs(normal.x) > Math.abs(normal.y)) direction = normal.x > 0 ? "right" : "left";
+			else direction = normal.y > 0 ? "bottom" : "top";
+			foe.coverCollisionDirection = direction;
+			return true;
+		}
+		foe.coverCollisionDirection = null;
+		return false;
 	}
 
 	function updateBubbles(dt) {
@@ -3012,12 +3556,97 @@ function bootGame() {
 		}
 	}
 
+	function updateCoverRocks(dt) {
+		if (state.coverRocks.length === 0) return;
+		const player = state.player;
+		for (const rock of state.coverRocks) {
+			if (!rock.collisionMask && spriteReady(SPRITES.coverRock)) {
+				rock.collisionMask = getCoverRockCollisionMask(SPRITES.coverRock, rock.width, rock.height);
+			}
+			if (!rock.landed && state.levelIndex === 2) {
+				const levelGround = getLevel3GroundLine();
+				if (levelGround != null) {
+					const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
+					const minY = canvas.height * 0.22;
+					rock.groundLine = levelGround;
+					const maxY = Math.max(minY, rock.groundLine - radiusY);
+					rock.targetY = clamp(rock.groundLine - radiusY, minY, maxY);
+				}
+			}
+			if (rock.damageCooldown > 0) rock.damageCooldown = Math.max(0, rock.damageCooldown - dt);
+			if (rock.impactTimer > 0 && rock.landed) rock.impactTimer = Math.max(0, rock.impactTimer - dt);
+			if (rock.hitPulse > 0) rock.hitPulse = Math.max(0, rock.hitPulse - dt);
+			if (rock.landed) continue;
+			if (rock.delay > 0) {
+				rock.delay = Math.max(0, rock.delay - dt);
+				continue;
+			}
+			const gravity = rock.gravity == null ? 0.0011 : rock.gravity;
+			const maxSpeed = rock.maxFallSpeed == null ? 0.68 : rock.maxFallSpeed;
+			rock.vy = (rock.vy || 0) + gravity * dt;
+			if (rock.vy > maxSpeed) rock.vy = maxSpeed;
+			rock.y += rock.vy * dt;
+			const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
+			if (rock.y + radiusY >= rock.groundLine) {
+				rock.y = rock.targetY == null ? rock.groundLine - radiusY : rock.targetY;
+				rock.vy = 0;
+				rock.landed = true;
+				rock.impactTimer = rock.impactTimer == null || rock.impactTimer <= 0 ? 520 : rock.impactTimer;
+				continue;
+			}
+			const baseRadiusX = rock.radiusX == null ? 80 : rock.radiusX;
+			const padX = rock.padX == null ? 42 : rock.padX;
+			const padY = rock.padY == null ? 50 : rock.padY;
+			const padLeft = rock.padLeft == null ? padX : rock.padLeft;
+			const padRight = rock.padRight == null ? padX : rock.padRight;
+			const padTop = rock.padTop == null ? padY : rock.padTop;
+			const padBottom = rock.padBottom == null ? padY : rock.padBottom;
+			const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+			const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+			const dx = player.x - centerX;
+			const dy = player.y - centerY;
+			const guardRadiusX = dx < 0 ? Math.max(20, baseRadiusX + padLeft) : Math.max(20, baseRadiusX + padRight);
+			const guardRadiusY = dy < 0 ? Math.max(20, radiusY + padTop) : Math.max(20, radiusY + padBottom);
+			const guardX = Math.max(46, guardRadiusX * 0.75);
+			const guardY = Math.max(52, guardRadiusY * 0.8);
+			const nx = dx / guardX;
+			const ny = dy / guardY;
+			if (nx * nx + ny * ny < 1) {
+				if ((rock.damageCooldown || 0) <= 0) {
+					damagePlayer(1);
+					rock.damageCooldown = 900;
+				}
+				const pushDir = dx >= 0 ? 1 : -1;
+				const pushRadius = pushDir < 0 ? Math.max(20, baseRadiusX + padLeft) : Math.max(20, baseRadiusX + padRight);
+				player.x = clamp(centerX + pushDir * (pushRadius + 50), 60, canvas.width - 60);
+				player.y = clamp(player.y, 60, canvas.height - 60);
+			}
+		}
+	}
+
+	function findCoverRockHit(x, y, padX = 0, padY = 0) {
+		if (state.coverRocks.length === 0) return null;
+		for (const rock of state.coverRocks) {
+			if (!rock.landed) continue;
+			if (isPointInsideCover(rock, x, y, padX, padY)) return rock;
+		}
+		return null;
+	}
+
+	function registerCoverRockImpact(rock, strength = 1) {
+		if (!rock) return;
+		const pulse = rock.hitPulse == null ? 0 : rock.hitPulse;
+		const added = 140 * clamp(strength, 0.6, 2.4);
+		rock.hitPulse = Math.min(520, pulse + added);
+	}
+
 	function update(dt) {
 		state.frameDt = dt;
 		updatePlayer(dt);
 		updateCoralAllies(dt);
 		updateCoralEffects(dt);
 		updateBubbles(dt);
+		updateCoverRocks(dt);
 		updateFoes(dt);
 		updateShots(dt);
 		updateFoeArrows(dt);
@@ -3051,6 +3680,7 @@ function bootGame() {
 		handlePlayerCoinDrops();
 		handlePlayerSymbolDrops();
 		handlePlayerBossCollision();
+		maybeSpawnLevelThreeCoverRock();
 		state.elapsed += dt;
 	}
 
@@ -3062,6 +3692,7 @@ function bootGame() {
 			else return;
 		}
 
+		if (boss.coverDetourCooldown > 0) boss.coverDetourCooldown = Math.max(0, boss.coverDetourCooldown - dt);
 		boss.pulse += dt * 0.0032;
 		const targetX = boss.entryTargetX == null ? canvas.width * 0.72 : boss.entryTargetX;
 		const targetY = boss.entryTargetY == null ? canvas.height * 0.48 : boss.entryTargetY;
@@ -3090,12 +3721,41 @@ function bootGame() {
 			return;
 		}
 
-		const verticalMin = boss.verticalMin == null ? canvas.height * 0.24 : boss.verticalMin;
-		const verticalMax = boss.verticalMax == null ? canvas.height * 0.68 : boss.verticalMax;
+		let verticalMin = boss.verticalMin == null ? canvas.height * 0.24 : boss.verticalMin;
+		if (state.levelIndex === 2) {
+			const hpBarBottom = 26 + 18 + 6;
+			const spriteKey = boss.spriteKey || "boss";
+			const sprite = SPRITES[spriteKey] || SPRITES.boss;
+			const scale = boss.spriteScale == null ? 0.22 : boss.spriteScale;
+			const offsetY = boss.spriteOffsetY == null ? -12 : boss.spriteOffsetY;
+			const drawH = spriteReady(sprite) ? sprite.naturalHeight * scale : 180 * scale;
+			const topSafe = -120;
+			const minYFromBar = hpBarBottom + topSafe + drawH * 0.5 - offsetY;
+			verticalMin = Math.max(verticalMin, minYFromBar);
+		}
+		let verticalMax = boss.verticalMax == null ? canvas.height * 0.68 : boss.verticalMax;
+		const coverRock = state.coverRocks.find(rock => rock.landed);
+		if (coverRock) {
+			const rockRadiusY = coverRock.radiusY == null ? (coverRock.height == null ? 60 : coverRock.height * 0.5) : coverRock.radiusY;
+			const rockBottom = coverRock.y + rockRadiusY;
+			verticalMax = Math.min(verticalMax, rockBottom - 6);
+		}
 		const verticalTracking = boss.verticalTracking == null ? 0.0024 : boss.verticalTracking;
 		const verticalCenter = (verticalMin + verticalMax) * 0.5;
+		let verticalOscSpeed = boss.verticalOscSpeed == null ? 0 : boss.verticalOscSpeed;
+		let verticalOscAmp = boss.verticalOscAmp == null ? 0 : boss.verticalOscAmp;
+		let verticalOffset = boss.verticalOffset == null ? 0 : boss.verticalOffset;
+		if (state.levelIndex === 2) {
+			const span = Math.max(40, verticalMax - verticalMin);
+			verticalOffset = span * 0.06;
+			verticalOscAmp = span * 0.5;
+			if (!verticalOscSpeed) verticalOscSpeed = 0.0024;
+		}
+		boss.verticalOscPhase = (boss.verticalOscPhase == null ? Math.random() * TAU : boss.verticalOscPhase) + verticalOscSpeed * dt;
+		const verticalOsc = verticalOscAmp > 0 ? Math.sin(boss.verticalOscPhase) * verticalOscAmp : 0;
+		const verticalTargetY = clamp(verticalCenter + verticalOffset + verticalOsc, verticalMin, verticalMax);
 		const bob = Math.sin(boss.pulse * 0.8) * 0.04;
-		boss.y = clamp(boss.y + (verticalCenter - boss.y) * verticalTracking * dt + bob * dt, verticalMin, verticalMax);
+		boss.y = clamp(boss.y + (verticalTargetY - boss.y) * verticalTracking * dt + bob * dt, verticalMin, verticalMax);
 
 		const horizontalMin = boss.horizontalMin == null ? canvas.width * 0.52 : boss.horizontalMin;
 		const horizontalMax = boss.horizontalMax == null ? canvas.width * 0.9 : boss.horizontalMax;
@@ -3128,6 +3788,21 @@ function bootGame() {
 		const deltaX = desiredX - boss.x;
 		boss.x = clamp(boss.x + deltaX * horizontalTracking * dt, horizontalMin, horizontalMax);
 		if (Math.abs(deltaX) > 0.6) boss.dir = deltaX > 0 ? 1 : -1;
+
+		applyCoverAvoidance(boss, {
+			padX: 96,
+			padY: 88,
+			detourDuration: 920,
+			detourSpeed: boss.speed == null ? 0.28 : Math.max(boss.speed * 0.82, 0.24),
+			pushSpeed: 0.3,
+			cooldown: 640
+		});
+		processCoverDetour(boss, dt, {
+			minX: horizontalMin,
+			maxX: horizontalMax,
+			minY: verticalMin,
+			maxY: verticalMax
+		});
 
 		const enraged = boss.hp <= boss.maxHp * 0.35;
 		const attackDelay = (enraged ? 1400 : 2200) + Math.random() * 600;
@@ -3249,18 +3924,75 @@ function bootGame() {
 
 	function updateFoes(dt) {
 		const player = state.player;
+		const primaryCoverRock = state.coverRocks.find(rock => rock.landed);
 		for (const foe of state.foes) {
 			if (foe.dead) continue;
+			if (foe.coverDetourCooldown > 0) foe.coverDetourCooldown = Math.max(0, foe.coverDetourCooldown - dt);
 			foe.sway += dt * 0.0036;
 			const drift = Math.sin(foe.sway * 1.4) * 0.06 * dt;
+			const prevX = foe.x;
+			const prevY = foe.y;
 			if (foe.type === "bogenschreck") {
-				if (foe.x > foe.anchorX) foe.x = Math.max(foe.anchorX, foe.x - foe.speed * dt);
-				else foe.x += Math.sin(foe.sway * 0.5) * 0.015 * dt;
-				if (foe.hoverPhase == null) foe.hoverPhase = Math.random() * TAU;
-				foe.hoverPhase += dt * 0.0026;
-				const hover = Math.sin(foe.hoverPhase) * (foe.hoverAmplitude || 16) * 0.03 * dt;
-				foe.y += drift * 0.4 + hover;
-				foe.y = clamp(foe.y, canvas.height * 0.24, canvas.height * 0.76);
+				const rock = primaryCoverRock;
+				let rockCenterX = null;
+				let rockCenterY = null;
+				let rockRadiusX = null;
+				let rockRadiusY = null;
+				let desiredHoverX = null;
+				let hoveringOverCover = false;
+				if (rock && rock.landed) {
+					rockCenterX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
+					rockCenterY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
+					rockRadiusX = rock.radiusX == null ? (rock.width == null ? 80 : rock.width * 0.5) : rock.radiusX;
+					rockRadiusY = rock.radiusY == null ? (rock.height == null ? 60 : rock.height * 0.5) : rock.radiusY;
+					const forwardThreshold = rockCenterX + rockRadiusX + 36;
+					const hoverX = rockCenterX + Math.max(rockRadiusX * 0.12, 18);
+					desiredHoverX = hoverX;
+					const topEdge = rockCenterY - rockRadiusY;
+					const baseHoverY = clamp(topEdge - Math.max(24, rockRadiusY * 0.28), canvas.height * 0.18, canvas.height * 0.58);
+					const hoverAmplitude = Math.max(18, Math.min(34, rockRadiusY * 0.36));
+					if (!foe.coverHoverMode && foe.x <= forwardThreshold) {
+						foe.coverHoverMode = true;
+						foe.coverHoverPhase = foe.coverHoverPhase == null ? Math.random() * TAU : foe.coverHoverPhase;
+						foe.coverHoverBaseY = baseHoverY;
+						foe.coverHoverAmplitude = hoverAmplitude;
+						foe.coverHoverX = hoverX;
+						foe.coverDetourTimer = 0;
+					} else if (foe.coverHoverMode && foe.x > forwardThreshold + 84) {
+						foe.coverHoverMode = false;
+					}
+					if (foe.coverHoverMode) {
+						hoveringOverCover = true;
+						foe.coverHoverPhase = (foe.coverHoverPhase == null ? Math.random() * TAU : foe.coverHoverPhase) + dt * 0.0028;
+						const approachSpeed = Math.max(foe.speed || 0.18, 0.22);
+						const targetX = foe.coverHoverX == null ? hoverX : foe.coverHoverX;
+						foe.x += clamp(targetX - foe.x, -approachSpeed * dt, approachSpeed * dt);
+						const amplitude = foe.coverHoverAmplitude == null ? hoverAmplitude : foe.coverHoverAmplitude;
+						const baseY = foe.coverHoverBaseY == null ? baseHoverY : foe.coverHoverBaseY;
+						const bob = Math.sin(foe.coverHoverPhase) * amplitude;
+						const targetY = clamp(baseY + bob + drift * 6, canvas.height * 0.18, canvas.height * 0.66);
+						foe.y += clamp(targetY - foe.y, -0.28 * dt, 0.28 * dt);
+						foe.anchorX = targetX;
+						foe.anchorY = baseY;
+					}
+				} else if (foe.coverHoverMode) {
+					foe.coverHoverMode = false;
+				}
+				if (!hoveringOverCover) {
+					if (desiredHoverX != null && rockRadiusX != null) {
+						const entryAnchor = desiredHoverX + Math.max(12, rockRadiusX * 0.08);
+						if (foe.anchorX == null || foe.anchorX > entryAnchor + 1) foe.anchorX = entryAnchor;
+					}
+					if (foe.x > foe.anchorX) foe.x = Math.max(foe.anchorX, foe.x - foe.speed * dt);
+					else foe.x += Math.sin(foe.sway * 0.5) * 0.015 * dt;
+					if (foe.hoverPhase == null) foe.hoverPhase = Math.random() * TAU;
+					foe.hoverPhase += dt * 0.0026;
+					const hover = Math.sin(foe.hoverPhase) * (foe.hoverAmplitude || 16) * 0.03 * dt;
+					foe.y += drift * 0.4 + hover;
+					foe.y = clamp(foe.y, canvas.height * 0.24, canvas.height * 0.76);
+				} else {
+					foe.y = clamp(foe.y, canvas.height * 0.18, canvas.height * 0.7);
+				}
 				foe.shootTimer -= dt;
 				if (foe.shootTimer <= 0) {
 					spawnBogenschreckArrow(foe);
@@ -3329,10 +4061,22 @@ function bootGame() {
 			} else if (foe.type === "ritterfisch") {
 				const minY = canvas.height * 0.24;
 				const maxY = canvas.height * 0.78;
-				const anchorX = foe.anchorX == null ? canvas.width * 0.68 : foe.anchorX;
+				if (foe.anchorX == null) foe.anchorX = canvas.width * 0.68;
+				const anchorDrift = primaryCoverRock ? 0.022 : 0.015;
+				foe.anchorX -= anchorDrift * dt;
+				foe.anchorX = Math.min(foe.anchorX, foe.x + 60);
+				if (foe.passing) foe.anchorX = Math.min(foe.anchorX, foe.x + 10);
+				const anchorX = foe.anchorX;
+				if (foe.lanePick == null) foe.lanePick = Math.random() < 0.5 ? 0 : 1;
+				foe.anchorY = getRitterfischLaneTarget(foe, primaryCoverRock, minY, maxY);
+				const homeY = foe.anchorY == null ? foe.baseY : foe.anchorY;
 				const patrolRange = foe.patrolRange == null ? 20 : foe.patrolRange;
 				const cruiseSpeed = foe.cruiseSpeed == null ? 0.18 : foe.cruiseSpeed;
 				const chargeSpeed = foe.chargeSpeed == null ? 0.46 : foe.chargeSpeed;
+				if (!foe.passing && (foe.x < player.x + 70 || foe.x < canvas.width * 0.22)) {
+					foe.passing = true;
+					foe.chargeTimer = Math.max(foe.chargeTimer || 0, 500);
+				}
 				if (foe.recoverTimer > 0) foe.recoverTimer = Math.max(0, foe.recoverTimer - dt);
 				if (foe.charging) {
 					foe.chargeDuration += dt;
@@ -3351,16 +4095,25 @@ function bootGame() {
 						foe.speed = cruiseSpeed;
 					}
 				} else {
+					if (foe.passing) {
+						foe.damage = 1;
+						foe.speed = cruiseSpeed;
+						foe.x -= cruiseSpeed * dt;
+						const pursue = (player.y - foe.y) * 0.0012 * dt;
+						const homePull = (homeY - foe.y) * 0.0016 * dt;
+						foe.y = clamp(foe.y + pursue + homePull + drift * 0.25, minY, maxY);
+					} else {
 					foe.damage = 1;
 					foe.speed = cruiseSpeed;
-					const patrolOffset = Math.sin(foe.sway * 0.55) * patrolRange;
+						const patrolOffset = Math.sin(foe.sway * 0.55) * patrolRange;
 					const desiredX = anchorX + patrolOffset;
 					const dx = desiredX - foe.x;
 					const step = clamp(dx, -foe.speed * dt, foe.speed * dt);
 					foe.x += step;
-					foe.y += drift * 0.35;
-					const pursue = (player.y - foe.y) * 0.0018 * dt;
-					foe.y = clamp(foe.y + pursue, minY, maxY);
+						foe.y += drift * 0.25;
+						const pursue = (player.y - foe.y) * 0.0012 * dt;
+						const homePull = (homeY - foe.y) * 0.0018 * dt;
+						foe.y = clamp(foe.y + pursue + homePull, minY, maxY);
 					foe.chargeTimer -= dt;
 					if (foe.chargeTimer <= 0 && (foe.recoverTimer || 0) <= 0) {
 						const horizontalGap = foe.x - player.x;
@@ -3373,15 +4126,71 @@ function bootGame() {
 							foe.chargeTimer = 600 + Math.random() * 400;
 						}
 					}
+					}
+				}
+				const hitCover = resolveFoeCoverCollision(foe, prevX, prevY);
+				if (hitCover && foe.charging) {
+					foe.charging = false;
+					foe.chargeDuration = 0;
+					foe.damage = 1;
+					foe.recoverTimer = Math.max(foe.recoverTimer || 0, 700);
+					foe.chargeTimer = (foe.chargeCooldown || 3200) + Math.random() * 160;
+					foe.speed = cruiseSpeed;
 				}
 			} else {
 				foe.x -= foe.speed * dt;
 				foe.y += drift;
 				foe.y = clamp(foe.y, canvas.height * 0.2, canvas.height * 0.78);
 			}
+			if (foe.type !== "ritterfisch") resolveFoeCoverCollision(foe, prevX, prevY);
+			const isRitterfisch = foe.type === "ritterfisch";
+			const isBogenschreck = foe.type === "bogenschreck";
+			const ritterBaseSpeed = isRitterfisch
+				? (foe.charging ? Math.max(foe.chargeSpeed || 0.46, 0.46) * 0.75 : Math.max(foe.speed || 0.24, 0.26) + 0.09)
+				: 0;
+			const detourSpeed = isRitterfisch ? Math.max(0.34, ritterBaseSpeed) : Math.max(0.24, foe.speed || 0.24);
+			const pushSpeed = isRitterfisch ? Math.max(0.36, detourSpeed * 0.95) : detourSpeed * 0.62;
+			const wantsAvoidance = !(isBogenschreck && foe.coverHoverMode);
+			const avoidanceTriggered = wantsAvoidance && applyCoverAvoidance(foe, {
+				padX: isRitterfisch ? 132 : isBogenschreck ? 60 : 72,
+				padY: isRitterfisch ? 108 : isBogenschreck ? 52 : 58,
+				detourDuration: isRitterfisch ? 1400 : 760,
+				detourSpeed,
+				pushSpeed,
+				cooldown: isRitterfisch ? 420 : 360
+			});
+			if (isRitterfisch && avoidanceTriggered) {
+				if (foe.charging) {
+					foe.charging = false;
+					foe.chargeDuration = 0;
+					foe.damage = 1;
+					foe.recoverTimer = Math.max(foe.recoverTimer || 0, 520);
+					foe.chargeTimer = (foe.chargeCooldown || 3200) + Math.random() * 200;
+					foe.speed = foe.cruiseSpeed == null ? (foe.speed || 0.22) : foe.cruiseSpeed;
+				}
+				if (primaryCoverRock) {
+					const centerY = primaryCoverRock.y + (primaryCoverRock.collisionOffsetY == null ? 0 : primaryCoverRock.collisionOffsetY);
+					if (!foe.coverDetourDirY) {
+						const homeY = foe.anchorY == null ? foe.baseY : foe.anchorY;
+						const preferDown = foe.y > homeY + 6;
+						const preferUp = foe.y < homeY - 6;
+						if (preferDown) foe.coverDetourDirY = -1;
+						else if (preferUp) foe.coverDetourDirY = 1;
+						else foe.coverDetourDirY = foe.y >= centerY ? 1 : -1;
+					}
+					if (foe.coverDetourSpeed == null || foe.coverDetourSpeed < detourSpeed) foe.coverDetourSpeed = detourSpeed;
+					if (foe.coverDetourPushSpeed == null || foe.coverDetourPushSpeed < pushSpeed) foe.coverDetourPushSpeed = pushSpeed;
+				}
+			}
+			processCoverDetour(foe, dt, {
+				minX: -140,
+				maxX: canvas.width - 40,
+				minY: canvas.height * 0.2,
+				maxY: canvas.height * 0.82
+			});
 		}
 
-		state.foes = state.foes.filter(foe => !foe.dead && foe.x > -90);
+		state.foes = state.foes.filter(foe => !foe.dead && foe.x > (foe.type === "ritterfisch" ? -160 : -90));
 
 		if (!state.over && !state.boss.active && !state.pendingSymbolAdvance) {
 			state.foeSpawnTimer -= dt;
@@ -3414,6 +4223,14 @@ function bootGame() {
 				arrow.rotation = Math.atan2(arrow.vy, arrow.vx) + Math.PI;
 			} else if (arrow.rotation == null) {
 				arrow.rotation = Math.atan2(arrow.vy, arrow.vx);
+			}
+			const padX = arrow.blockPadX == null ? 28 : arrow.blockPadX;
+			const padY = arrow.blockPadY == null ? 38 : arrow.blockPadY;
+			const cover = findCoverRockHit(arrow.x, arrow.y, padX, padY);
+			if (cover) {
+				arrow.life = 0;
+				registerCoverRockImpact(cover, type === "octo-bolt" ? 0.9 : 0.7);
+				continue;
 			}
 			arrow.life -= dt;
 		}
@@ -3533,6 +4350,13 @@ function bootGame() {
 			torpedo.y += torpedo.vy * dt;
 			torpedo.sway += dt * 0.004;
 			torpedo.y += Math.sin(torpedo.sway) * 0.04 * dt;
+			const torpedoPad = Math.max(18, (torpedo.radius || 18) + 6);
+			const torpedoCover = findCoverRockHit(torpedo.x, torpedo.y, torpedoPad, torpedoPad * 0.6);
+			if (torpedoCover) {
+				torpedo.life = 0;
+				registerCoverRockImpact(torpedoCover, 1.1);
+				continue;
+			}
 			torpedo.life -= dt;
 		}
 		state.bossTorpedoes = state.bossTorpedoes.filter(torpedo => torpedo.life > 0 && torpedo.x > -160 && torpedo.y > -120 && torpedo.y < canvas.height + 120);
@@ -3643,6 +4467,14 @@ function bootGame() {
 			shot.y += shot.vy * dt;
 			shot.vy += (shot.gravity == null ? 0.001 : shot.gravity) * dt;
 			shot.spin = (shot.spin == null ? Math.random() * TAU : shot.spin + dt * 0.0032);
+			const padX = Math.max(28, (shot.radius || 26) + 12);
+			const padY = Math.max(26, (shot.radius || 26));
+			const cover = findCoverRockHit(shot.x, shot.y, padX, padY);
+			if (cover) {
+				shot.dead = true;
+				registerCoverRockImpact(cover, 1.35);
+				continue;
+			}
 			shot.life -= dt;
 			if (shot.life <= 0 || shot.y >= canvas.height * 0.84) {
 				shot.exploding = true;
@@ -3705,6 +4537,12 @@ function bootGame() {
 			const swayAmp = boat.swayAmplitude == null ? 16 : boat.swayAmplitude;
 			const baseY = boat.baseY == null ? boat.y : boat.baseY;
 			boat.y = clamp(baseY + Math.sin(boat.sway) * swayAmp, canvas.height * 0.2, canvas.height * 0.78);
+			const coverBoat = findCoverRockHit(boat.x, boat.y, 50, 42);
+			if (coverBoat) {
+				boat.dead = true;
+				registerCoverRockImpact(coverBoat, 1.5);
+				continue;
+			}
 			if (boat.damageCooldown > 0) boat.damageCooldown = Math.max(0, boat.damageCooldown - dt);
 			if (boat.x < -220) boat.dead = true;
 		}
@@ -4492,6 +5330,8 @@ function bootGame() {
 			}
 		}
 
+
+
 		ctx.save();
 		const glowGrad = ctx.createRadialGradient(width * 0.5, height * 0.08, 0, width * 0.5, height * 0.08, height * 0.9);
 		glowGrad.addColorStop(0, palette.hazeStrong);
@@ -4558,6 +5398,19 @@ function bootGame() {
 			ctx.fill();
 		}
 		ctx.restore();
+
+		if (level === 3 || state.levelIndex === 2) {
+			const floorSprite = LEVEL3_FLOOR_SPRITE;
+			const floorTop = getLevel3FloorTop();
+			if (spriteReady(floorSprite) && floorTop != null) {
+				const scale = width / floorSprite.naturalWidth;
+				const drawW = floorSprite.naturalWidth * scale;
+				const drawH = floorSprite.naturalHeight * scale;
+				const drawX = 0;
+				const drawY = floorTop;
+				ctx.drawImage(floorSprite, drawX, drawY, drawW, drawH);
+			}
+		}
 	}
 
 	function renderBubbles() {
@@ -4569,6 +5422,110 @@ function bootGame() {
 			ctx.stroke();
 		}
 		ctx.restore();
+	}
+
+	function renderFloorOverlay() {
+		const level = state.level || 1;
+		if (level === 2 || state.levelIndex === 1) {
+			const floorSprite = LEVEL2_FLOOR_SPRITE;
+			if (spriteReady(floorSprite)) {
+				const scale = canvas.width / floorSprite.naturalWidth;
+				const drawW = floorSprite.naturalWidth * scale;
+				const drawH = floorSprite.naturalHeight * scale;
+				const drawY = canvas.height - drawH + LEVEL2_FLOOR_OFFSET;
+				ctx.drawImage(floorSprite, 0, drawY, drawW, drawH);
+				const pseudoRand = seed => {
+					const s = Math.sin(seed) * 43758.5453;
+					return s - Math.floor(s);
+				};
+				const time = state.elapsed || 0;
+				const riseSpan = 220;
+				const baseY = drawY + drawH * 0.46;
+				ctx.save();
+				ctx.globalCompositeOperation = "lighter";
+				for (let i = 0; i < 18; i += 1) {
+					const noise = pseudoRand(i * 19.3);
+					const drift = Math.sin(time * 0.0012 + i) * 6;
+					const phase = (time * 0.035 + i * 120) % riseSpan;
+					const x = 160 + noise * 140 + drift;
+					const y = baseY - phase;
+					const size = 2 + pseudoRand(i * 91.7) * 3;
+					const alpha = 0.55 * (1 - phase / riseSpan);
+					ctx.fillStyle = `rgba(190, 90, 255, ${alpha.toFixed(3)})`;
+					ctx.beginPath();
+					ctx.arc(x, y, size, 0, TAU);
+					ctx.fill();
+				}
+				ctx.restore();
+			}
+			return;
+		}
+		if (level === 3 || state.levelIndex === 2) {
+			const floorSprite = LEVEL3_FLOOR_SPRITE;
+			const floorTop = getLevel3FloorTop();
+			if (spriteReady(floorSprite) && floorTop != null) {
+				const scale = canvas.width / floorSprite.naturalWidth;
+				const drawW = floorSprite.naturalWidth * scale;
+				const drawH = floorSprite.naturalHeight * scale;
+				ctx.drawImage(floorSprite, 0, floorTop, drawW, drawH);
+			}
+			return;
+		}
+		if (level === 4 || state.levelIndex === 3) {
+			const floorSprite = LEVEL4_FLOOR_SPRITE;
+			const floorTop = getLevel4FloorTop();
+			if (spriteReady(floorSprite) && floorTop != null) {
+				const scale = canvas.width / floorSprite.naturalWidth;
+				const drawW = floorSprite.naturalWidth * scale;
+				const drawH = floorSprite.naturalHeight * scale;
+				ctx.drawImage(floorSprite, 0, floorTop, drawW, drawH);
+			}
+		}
+	}
+
+	function renderCoverRocks() {
+		if (state.coverRocks.length === 0) return;
+		const sprite = SPRITES.coverRock;
+		for (const rock of state.coverRocks) {
+			const radiusX = rock.radiusX == null ? 80 : rock.radiusX;
+			const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
+			const dropRatio = clamp01((rock.y + radiusY) / Math.max(1, rock.groundLine || canvas.height));
+			const shadowRadius = Math.max(36, radiusX * (0.55 + dropRatio * 0.35));
+			const shadowY = (rock.groundLine == null ? canvas.height * 0.88 : rock.groundLine) + 8;
+			MODELS.simpleShadow(ctx, rock.x + 10, shadowY, shadowRadius);
+			ctx.save();
+			ctx.translate(rock.x, rock.y);
+			const impactRatio = rock.landed && rock.impactTimer > 0 ? rock.impactTimer / 520 : 0;
+			if (impactRatio > 0) {
+				const sway = Math.sin(impactRatio * TAU * 2.4) * 0.06;
+				ctx.rotate(sway);
+			}
+			if (rock.delay > 0) ctx.globalAlpha = 0.75;
+			const hitGlow = rock.hitPulse > 0 ? clamp01(rock.hitPulse / 520) : 0;
+			if (spriteReady(sprite)) {
+				const drawW = rock.width == null ? sprite.naturalWidth * (rock.scale == null ? 0.26 : rock.scale) : rock.width;
+				const drawH = rock.height == null ? sprite.naturalHeight * (rock.scale == null ? 0.26 : rock.scale) : rock.height;
+				ctx.drawImage(sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+			} else {
+				ctx.fillStyle = "#2b2f45";
+				ctx.beginPath();
+				ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, TAU);
+				ctx.fill();
+				ctx.strokeStyle = "#151827";
+				ctx.lineWidth = 4;
+				ctx.stroke();
+			}
+			if (hitGlow > 0) {
+				ctx.save();
+				ctx.globalAlpha = hitGlow * 0.32;
+				ctx.fillStyle = "#ffe9b6";
+				ctx.beginPath();
+				ctx.ellipse(0, 0, radiusX * 0.86, radiusY * 0.78, 0, 0, TAU);
+				ctx.fill();
+				ctx.restore();
+			}
+			ctx.restore();
+		}
 	}
 
 	function renderHeals() {
@@ -5593,6 +6550,29 @@ function bootGame() {
 			ctx.stroke();
 			ctx.restore();
 		}
+		const energyMax = player.energyMax == null ? 100 : player.energyMax;
+		const energyValue = clamp(player.energy == null ? energyMax : player.energy, 0, energyMax);
+		const energyRatio = energyMax > 0 ? energyValue / energyMax : 0;
+		const barWidth = 90;
+		const barHeight = 8;
+		const barCenterX = player.x - player.dir * 70;
+		const barX = barCenterX - barWidth / 2;
+		const barY = player.y - 44;
+		ctx.save();
+		ctx.globalAlpha = 0.82;
+		ctx.fillStyle = "rgba(6,16,28,0.65)";
+		ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+		ctx.fillStyle = "rgba(18,32,52,0.9)";
+		ctx.fillRect(barX, barY, barWidth, barHeight);
+		const energyGrad = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+		energyGrad.addColorStop(0, "#62f5ff");
+		energyGrad.addColorStop(1, "#2fb8ff");
+		ctx.fillStyle = energyGrad;
+		ctx.fillRect(barX, barY, barWidth * energyRatio, barHeight);
+		ctx.strokeStyle = "rgba(220,245,255,0.5)";
+		ctx.lineWidth = 1.6;
+		ctx.strokeRect(barX, barY, barWidth, barHeight);
+		ctx.restore();
 		ctx.save();
 		if (player.invulnFor > 0 && Math.floor(player.invulnFor / 120) % 2 === 0) ctx.globalAlpha = 0.45;
 		MODELS.simpleShadow(ctx, player.x + 12, player.y + 36, 26);
@@ -5738,6 +6718,7 @@ function bootGame() {
 		renderBackground();
 		renderBubbles();
 		renderFoes();
+		renderCoverRocks();
 		renderTsunamiWave();
 		renderHeals();
 		renderCoralEffects();
@@ -5764,6 +6745,7 @@ function bootGame() {
 		renderHealBursts();
 		renderEventFlash();
 		renderPlayer();
+		renderFloorOverlay();
 	}
 
 	function tick(now) {
@@ -5781,18 +6763,12 @@ function bootGame() {
 		if (DEBUG_SHORTCUTS && event.altKey && event.shiftKey) {
 			if (event.code === "Digit1") {
 				event.preventDefault();
-				if (!state.started) {
-					if (!controlsArmed) controlsArmed = true;
-					resetGame();
-				}
-				if (state.over) resetGame();
-				state.pendingSymbolAdvance = null;
-				state.levelScore = Math.max(state.levelScore, state.unlockBossScore);
-				state.boss.active = false;
-				state.boss.entering = false;
-				state.boss.oscPhase = 0;
-				state.boss.hp = state.boss.maxHp;
-				activateBoss();
+				debugJumpToLevel(0);
+				return;
+			}
+			if (event.code === "Digit2") {
+				event.preventDefault();
+				debugJumpToLevel(1);
 				return;
 			}
 			if (event.code === "Digit3") {
@@ -5840,6 +6816,7 @@ function bootGame() {
 				return;
 			}
 			if (event.button !== 0) return;
+			pointer.shoot = true;
 			if (!state.started) {
 				if (!controlsArmed) return;
 				resetGame();
@@ -5858,6 +6835,7 @@ function bootGame() {
 
 	document.addEventListener("pointerup", () => {
 		pointer.down = false;
+		pointer.shoot = false;
 	});
 
 	if (btnRestart) btnRestart.addEventListener("click", () => resetGame());
@@ -5873,14 +6851,30 @@ function bootGame() {
 		});
 
 	if (typeof window !== "undefined") {
+		window.cashBeginGame = () => {
+			if (!bootGame.initialized) bootGame();
+			resetGame();
+			state.over = false;
+			state.paused = false;
+			state.started = true;
+			state.levelIndex = 0;
+			applyLevelConfig(0, { skipFlash: false });
+			primeFoes();
+			scheduleNextFoeSpawn(true);
+			state.lastTick = performance.now();
+			state.boss.active = false;
+			state.boss.entering = false;
+			controlsArmed = true;
+			if (bannerEl) bannerEl.style.display = "block";
+		};
 		window.cashResetGame = resetGame;
 		window.cashSpawnBogenschreck = () => spawnFoe({ type: "bogenschreck" });
 		window.cashDebugJumpLevel = debugJumpToLevel;
 	}
 	resetGame();
-	state.started = false;
-	state.paused = true;
-	controlsArmed = false;
+	state.started = true;
+	state.paused = false;
+	controlsArmed = true;
 	requestAnimationFrame(tick);
 }
 
