@@ -27,6 +27,8 @@ const KEY_CORAL = new Set(["r", "R"]);
 const CODE_CORAL = new Set(["KeyR"]);
 const KEY_TSUNAMI = new Set(["t", "T"]);
 const CODE_TSUNAMI = new Set(["KeyT"]);
+const KEY_SHOOT = new Set([" ", "Space"]);
+const CODE_SHOOT = new Set(["Space"]);
 const FOE_BASE_SCORE = 5;
 
 
@@ -6793,6 +6795,17 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		if (state.started && !state.over && !state.paused && isTsunamiActivationKey(event)) {
 			if (tryActivateTsunamiAbility()) event.preventDefault();
 		}
+		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
+			event.preventDefault();
+			pointer.shoot = true;
+			if (!state.started) {
+				if (!controlsArmed) return;
+				resetGame();
+			} else {
+				playerShoot();
+			}
+			return;
+		}
 		if (!state.started) {
 			if (!controlsArmed) return;
 			resetGame();
@@ -6801,6 +6814,9 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 
 	document.addEventListener("keyup", event => {
 		keys.delete(event.key);
+		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
+			pointer.shoot = false;
+		}
 	});
 
 	canvas.addEventListener("pointerdown", event => {
