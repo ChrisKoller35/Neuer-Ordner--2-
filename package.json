@@ -4,11 +4,16 @@
   "description": "Cashfisch - Ein Unterwasser-Abenteuer-Spiel",
   "main": "index.html",
   "scripts": {
-  "dev": "live-server --port=3001 --open=index.html",
+    "dev": "live-server --port=3001 --open=index.html",
     "start": "npm run dev",
     "compress-assets": "node scripts/compress-assets.js"
   },
-  "keywords": ["spiel", "game", "canvas", "html5"],
+  "keywords": [
+    "spiel",
+    "game",
+    "canvas",
+    "html5"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {

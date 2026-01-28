@@ -746,7 +746,7 @@ const MODELS = {
 		const sway = opts.sway == null ? 0 : opts.sway;
 		const sprite = SPRITES.bogenschreck;
 		if (spriteReady(sprite)) {
-			const baseScale = opts.spriteScale == null ? 0.16 : opts.spriteScale;
+			const baseScale = opts.spriteScale == null ? 0.178 : opts.spriteScale;
 			const overallScale = baseScale * scale;
 			const drawW = sprite.naturalWidth * overallScale;
 			const drawH = sprite.naturalHeight * overallScale;
@@ -1625,7 +1625,7 @@ function bootGame() {
 				firstAttackDelay: 2200,
 				pattern: "cashfish",
 				spriteKey: "cashfish",
-				spriteScale: 0.34,
+				spriteScale: 0.425,
 				spriteOffsetX: -16,
 				spriteOffsetY: -14,
 				spriteFlip: false,
