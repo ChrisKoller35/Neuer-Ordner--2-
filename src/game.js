@@ -29,6 +29,9 @@ const KEY_TSUNAMI = new Set(["t", "T"]);
 const CODE_TSUNAMI = new Set(["KeyT"]);
 const KEY_SHOOT = new Set([" ", "Space"]);
 const CODE_SHOOT = new Set(["Space"]);
+const CITY_SCALE = 3;
+const CITY_SPEED = 0.26;
+const CITY_PLAYER_RADIUS = 18;
 const FOE_BASE_SCORE = 5;
 
 
@@ -77,6 +80,39 @@ function getLevel3GroundLine() {
 const SHIELD_COOLDOWN = 9000;
 const USE_CLASSIC_OKTOPUS_PROJECTILE = true; // Toggle to compare new blowdart prototype with classic sprite
 const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallback
+const USE_CITY_SPRITE = true;
+const CITY_ANIM_SOURCE = "png"; // "png" or "sheet"
+const CITY_SPRITE_FRAME_SIZE = 256;
+const CITY_SPRITE_SCALE = 0.3;
+const CITY_SPRITE_OFFSET_X_SIDE = -4;
+const CITY_SPRITE_OFFSET_X_VERTICAL = -4;
+const CITY_SPRITE_OFFSET_Y = -4;
+const CITY_SPRITE_PADDING = 8;
+const CITY_SPRITE_CROP_INSET = 0;
+const CITY_SPRITE_ALPHA_THRESHOLD = 10;
+const CITY_SPRITE_CROP_OUTSET_X = 48;
+const CITY_SPRITE_CROP_OUTSET_Y = 20;
+const CITY_SPRITE_FRAME_OUTSET = {
+	"0,0": { left: 0, right: 14, top: 0, bottom: 0 }
+};
+
+let citySpriteCropShift = Array.from({ length: 3 }, () => Array.from({ length: 5 }, () => ({ x: 0, y: 0 })));
+const getCitySpriteCropShift = (row, col) => {
+	const r = citySpriteCropShift[row];
+	const entry = r && r[col];
+	return entry ? entry : { x: 0, y: 0 };
+};
+const updateCitySpriteCropShift = (row, col, dx, dy) => {
+	if (!citySpriteCropShift[row] || !citySpriteCropShift[row][col]) return;
+	citySpriteCropShift[row][col].x += dx;
+	citySpriteCropShift[row][col].y += dy;
+		CITY_SPRITE_CACHE.ready = false;
+};
+const CITY_SPRITE_CACHE = { ready: false, frames: [] };
+const CITY_SPRITE_DEBUG_LABEL = "CITY SPRITE v3";
+const DEBUG_BUILD_LABEL = "BUILD v3";
+const CITY_SPRITE_DEBUG = false;
+const CITY_ANIM_FRAME_TIME = 140;
 
 function loadSprite(relativePath) {
 	const img = new Image();
@@ -96,6 +132,148 @@ function loadSprite(relativePath) {
 
 function spriteReady(img) {
 	return !!(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+}
+
+function buildCitySpriteCache() {
+	if (CITY_SPRITE_CACHE.ready) return;
+	const sprite = SPRITES.cityPlayer;
+	if (!spriteReady(sprite)) return;
+	const frameSize = CITY_SPRITE_FRAME_SIZE;
+	const rows = 3;
+	const cols = 5;
+	const pad = CITY_SPRITE_PADDING;
+	const temp = document.createElement("canvas");
+	temp.width = frameSize;
+	temp.height = frameSize;
+	const tctx = temp.getContext("2d");
+	CITY_SPRITE_CACHE.frames = Array.from({ length: rows }, () => Array(cols).fill(null));
+	for (let r = 0; r < rows; r += 1) {
+		for (let c = 0; c < cols; c += 1) {
+			tctx.clearRect(0, 0, frameSize, frameSize);
+			tctx.drawImage(sprite, c * frameSize, r * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
+			const img = tctx.getImageData(0, 0, frameSize, frameSize);
+			const data = img.data;
+			const alphaAt = (x, y) => data[(y * frameSize + x) * 4 + 3];
+			let seedX = Math.floor(frameSize / 2);
+			let seedY = Math.floor(frameSize / 2);
+			if (alphaAt(seedX, seedY) <= CITY_SPRITE_ALPHA_THRESHOLD) {
+				let found = false;
+				for (let radius = 1; radius < frameSize / 2 && !found; radius += 1) {
+					for (let dy = -radius; dy <= radius && !found; dy += 1) {
+						for (let dx = -radius; dx <= radius && !found; dx += 1) {
+							const x = seedX + dx;
+							const y = seedY + dy;
+							if (x < 0 || y < 0 || x >= frameSize || y >= frameSize) continue;
+							if (alphaAt(x, y) > CITY_SPRITE_ALPHA_THRESHOLD) {
+								seedX = x;
+								seedY = y;
+								found = true;
+							}
+						}
+					}
+				}
+				if (!found) {
+					CITY_SPRITE_CACHE.frames[r][c] = null;
+					continue;
+				}
+			}
+			const visited = new Uint8Array(frameSize * frameSize);
+			const queue = [[seedX, seedY]];
+			visited[seedY * frameSize + seedX] = 1;
+			let minX = seedX;
+			let maxX = seedX;
+			let minY = seedY;
+			let maxY = seedY;
+			while (queue.length) {
+				const [x, y] = queue.pop();
+				if (x < minX) minX = x;
+				if (x > maxX) maxX = x;
+				if (y < minY) minY = y;
+				if (y > maxY) maxY = y;
+				const neighbors = [
+					[x - 1, y],
+					[x + 1, y],
+					[x, y - 1],
+					[x, y + 1]
+				];
+				for (const [nx, ny] of neighbors) {
+					if (nx < 0 || ny < 0 || nx >= frameSize || ny >= frameSize) continue;
+					const idx = ny * frameSize + nx;
+					if (visited[idx]) continue;
+					if (alphaAt(nx, ny) > CITY_SPRITE_ALPHA_THRESHOLD) {
+						visited[idx] = 1;
+						queue.push([nx, ny]);
+					}
+				}
+			}
+			const inset = CITY_SPRITE_CROP_INSET;
+			const outsetX = CITY_SPRITE_CROP_OUTSET_X;
+			const outsetY = CITY_SPRITE_CROP_OUTSET_Y;
+			const frameKey = `${r},${c}`;
+			const frameOutset = CITY_SPRITE_FRAME_OUTSET[frameKey] || { left: 0, right: 0, top: 0, bottom: 0 };
+			const frameShift = getCitySpriteCropShift(r, c);
+			minX = Math.min(maxX, minX + inset);
+			minY = Math.min(maxY, minY + inset);
+			maxX = Math.max(minX, maxX - inset);
+			maxY = Math.max(minY, maxY - inset);
+			const baseMinX = Math.max(0, minX - outsetX - frameOutset.left);
+			const baseMinY = Math.max(0, minY - outsetY - frameOutset.top);
+			const baseMaxX = Math.min(frameSize - 1, maxX + outsetX + frameOutset.right);
+			const baseMaxY = Math.min(frameSize - 1, maxY + outsetY + frameOutset.bottom);
+			const baseCenterX = (baseMinX + baseMaxX) / 2;
+			const baseCenterY = (baseMinY + baseMaxY) / 2;
+			const desiredMinX = Math.floor(baseMinX + frameShift.x);
+			const desiredMinY = Math.floor(baseMinY + frameShift.y);
+			const desiredMaxX = Math.ceil(baseMaxX + frameShift.x);
+			const desiredMaxY = Math.ceil(baseMaxY + frameShift.y);
+			minX = desiredMinX;
+			minY = desiredMinY;
+			maxX = desiredMaxX;
+			maxY = desiredMaxY;
+			const cropW = maxX - minX + 1;
+			const cropH = maxY - minY + 1;
+			const centerX = baseCenterX;
+			const centerY = baseCenterY;
+			const frameCanvas = document.createElement("canvas");
+			frameCanvas.width = cropW + pad * 2;
+			frameCanvas.height = cropH + pad * 2;
+			const fctx = frameCanvas.getContext("2d");
+			fctx.imageSmoothingEnabled = false;
+			fctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
+			const srcMinX = clamp(minX, 0, frameSize - 1);
+			const srcMinY = clamp(minY, 0, frameSize - 1);
+			const srcMaxX = clamp(maxX, 0, frameSize - 1);
+			const srcMaxY = clamp(maxY, 0, frameSize - 1);
+			const srcW = Math.max(0, srcMaxX - srcMinX + 1);
+			const srcH = Math.max(0, srcMaxY - srcMinY + 1);
+			if (srcW > 0 && srcH > 0) {
+				const destX = pad + (srcMinX - minX);
+				const destY = pad + (srcMinY - minY);
+				fctx.drawImage(
+					sprite,
+					c * frameSize + srcMinX,
+					r * frameSize + srcMinY,
+					srcW,
+					srcH,
+					destX,
+					destY,
+					srcW,
+					srcH
+				);
+			}
+			const anchorX = baseCenterX - minX + pad;
+			const anchorY = baseCenterY - minY + pad;
+			CITY_SPRITE_CACHE.frames[r][c] = {
+				canvas: frameCanvas,
+				centerX,
+				centerY,
+				anchorX,
+				anchorY,
+				crop: { minX, minY, maxX, maxY }
+			};
+		}
+	}
+	CITY_SPRITE_CACHE.ready = true;
 }
 
 
@@ -121,9 +299,53 @@ const SPRITES = {
 	symbolGeldschein: loadSprite("./Geldscheinsymbol.png"),
 	symbolYacht: loadSprite("./Yachtsymbol.png"),
 	backgroundLevelOne: loadSprite("./Backgroundlvlone.png"),
+	cityTile: loadSprite("./Bodenplatte.png"),
 	coralAllyOne: loadSprite("./Korallenbegleitereins.png"),
 	coralAllyTwo: loadSprite("./Korallenbegleiterzwei.png")
 };
+
+const CITY_ANIM_FRAMES = {
+	down: {
+		idle: loadSprite("./Animation/01_down_idle_0.png"),
+		walk: [
+			loadSprite("./Animation/02_down_walk_1.png"),
+			loadSprite("./Animation/03_down_walk_2.png"),
+			loadSprite("./Animation/04_down_walk_3.png"),
+			loadSprite("./Animation/05_down_walk_4.png")
+		]
+	},
+	left: {
+		idle: loadSprite("./Animation/06_left_idle_0.png"),
+		walk: [
+			loadSprite("./Animation/07_left_walk_1.png"),
+			loadSprite("./Animation/08_left_walk_2.png"),
+			loadSprite("./Animation/09_left_walk_3.png"),
+			loadSprite("./Animation/10_left_walk_4.png")
+		]
+	},
+	up: {
+		idle: loadSprite("./Animation/11_up_idle_0.png"),
+		walk: [
+			loadSprite("./Animation/12_up_walk_1.png"),
+			loadSprite("./Animation/13_up_walk_2.png"),
+			loadSprite("./Animation/14_up_walk_3.png"),
+			loadSprite("./Animation/15_up_walk_4.png")
+		]
+	}
+};
+
+function getCityAnimFrame(player) {
+	const facing = player.facing === "up" ? "up" : player.facing === "side" ? "left" : "down";
+	const frames = CITY_ANIM_FRAMES[facing];
+	if (!frames) return null;
+	const isSide = player.facing === "side";
+	const flip = isSide && player.dirX < 0;
+	if (!player.moving) {
+		return { image: frames.idle, flip, facing };
+	}
+	const index = Math.floor(player.animTime / CITY_ANIM_FRAME_TIME) % frames.walk.length;
+	return { image: frames.walk[index], flip, facing };
+}
 let processedHealSprite = null;
 let pickupHideTimer = null;
 // Cache scaled alpha masks so cover rock collisions align to the sprite silhouette.
@@ -934,13 +1156,365 @@ function bootGame() {
 	const btnRestart = document.getElementById("btnRestart");
 	const btnQuit = document.getElementById("btnQuit");
 	const pickupMsg = document.getElementById("pickupMsg");
+	const citySpriteDebugPanel = document.getElementById("citySpriteDebugPanel");
+	const citySpriteDebugCanvas = document.getElementById("citySpriteDebugCanvas");
+	const citySpriteDebugCtx = citySpriteDebugCanvas ? citySpriteDebugCanvas.getContext("2d") : null;
+	const citySpriteDebugReset = document.getElementById("citySpriteDebugReset");
+	const citySpriteDebugExport = document.getElementById("citySpriteDebugExport");
+	const citySpriteDebugOutput = document.getElementById("citySpriteDebugOutput");
+	const citySpriteDebugCurrent = document.getElementById("citySpriteDebugCurrent");
+	const citySpriteDebugCopy = document.getElementById("citySpriteDebugCopy");
+	let cityInventoryEl = document.getElementById("cityInventory");
+	if (!cityInventoryEl) {
+		cityInventoryEl = document.createElement("aside");
+		cityInventoryEl.id = "cityInventory";
+		cityInventoryEl.className = "city-inventory";
+		cityInventoryEl.setAttribute("aria-label", "Inventar");
+		cityInventoryEl.innerHTML = `
+			<div class="city-inventory-title">Inventar <span class="city-inventory-sub">I</span></div>
+			<div class="city-inventory-section">
+				<div class="city-inventory-sub">Ausrüstung</div>
+				<div class="city-equip-grid">
+					<div class="city-slot" data-slot="weapon">Waffe</div>
+					<div class="city-slot" data-slot="armor">Rüstung</div>
+					<div class="city-slot" data-slot="armor2">Rüstung II</div>
+				</div>
+			</div>
+			<div class="city-inventory-section">
+				<div class="city-inventory-sub">Inventar</div>
+				<div class="city-inventory-grid">
+					<div class="city-slot" data-slot="inv-1"><span class="city-slot-label">Slot 1</span></div>
+					<div class="city-slot" data-slot="inv-2"><span class="city-slot-label">Slot 2</span></div>
+					<div class="city-slot" data-slot="inv-3"><span class="city-slot-label">Slot 3</span></div>
+					<div class="city-slot" data-slot="inv-4"><span class="city-slot-label">Slot 4</span></div>
+					<div class="city-slot" data-slot="inv-5"><span class="city-slot-label">Slot 5</span></div>
+					<div class="city-slot" data-slot="inv-6"><span class="city-slot-label">Slot 6</span></div>
+					<div class="city-slot" data-slot="inv-7"><span class="city-slot-label">Slot 7</span></div>
+					<div class="city-slot" data-slot="inv-8"><span class="city-slot-label">Slot 8</span></div>
+					<div class="city-slot" data-slot="inv-9"><span class="city-slot-label">Slot 9</span></div>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(cityInventoryEl);
+	}
+	let cityMerchantEl = document.getElementById("cityMerchant");
+	if (!cityMerchantEl) {
+		cityMerchantEl = document.createElement("aside");
+		cityMerchantEl.id = "cityMerchant";
+		cityMerchantEl.className = "city-merchant";
+		cityMerchantEl.setAttribute("aria-label", "Händler");
+		cityMerchantEl.innerHTML = `
+			<div class="city-merchant-title">
+				<span>Händler</span>
+				<span class="city-merchant-actions">
+					<button class="btn" data-action="close-merchant">Schließen</button>
+				</span>
+			</div>
+			<div class="city-merchant-grid" id="cityMerchantGrid"></div>
+			<div class="city-merchant-confirm" id="cityMerchantConfirm">
+				<div class="city-merchant-confirm-text" id="cityMerchantConfirmText">Item kaufen?</div>
+				<div class="city-merchant-confirm-actions">
+					<button class="btn primary" data-action="buy-item">Kaufen</button>
+					<button class="btn" data-action="cancel-buy">Abbrechen</button>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(cityMerchantEl);
+	}
+	const CITY_DEBUG_ROWS = 3;
+	const CITY_DEBUG_COLS = 5;
+	const CITY_DEBUG_STORAGE_KEY = "cashfish.citySpriteOffsets.v1";
+	const CITY_DEBUG_CROP_KEY = "cashfish.citySpriteCropShift.v1";
+	const CITY_DEBUG_STORAGE_VERSION_KEY = "cashfish.citySpriteOffsets.version";
+	const CITY_DEBUG_STORAGE_VERSION = "2026-01-29-8";
+	let citySpriteOffsets = [
+		[
+			{ x: 71.33333333333334, y: 9.999999999999996 },
+			{ x: 76.66666666666663, y: 22.000000000000004 },
+			{ x: 75.3333333333334, y: 13.999999999999996 },
+			{ x: 63.33333333333358, y: 17.333333333333 },
+			{ x: 82.00000000000018, y: 23.33333333333332 }
+		],
+		[
+			{ x: 68.66666666666659, y: -2.00000000000003 },
+			{ x: 80, y: -6.000000000000012 },
+			{ x: 87.99999999999999, y: -3.108624468950438e-14 },
+			{ x: 64.66666666666659, y: -16.66666666666667 },
+			{ x: 74.6666666666667, y: 15.333333333333321 }
+		],
+		[
+			{ x: 75.33333333333334, y: -21.333333333333357 },
+			{ x: 60.00000000000002, y: -17.33333333333337 },
+			{ x: 68.6666666666667, y: -17.999999999999996 },
+			{ x: 48, y: -16.666666666666654 },
+			{ x: 65.33333333333336, y: -19.999999999999968 }
+		]
+	];
+	citySpriteCropShift = Array.from(
+		{ length: CITY_DEBUG_ROWS },
+		() => Array.from(
+			{ length: CITY_DEBUG_COLS },
+			() => ({ x: 42.66666666666667, y: 13.333333333333336 })
+		)
+	);
+	try {
+		const storedVersion = localStorage.getItem(CITY_DEBUG_STORAGE_VERSION_KEY);
+		if (storedVersion !== CITY_DEBUG_STORAGE_VERSION) {
+			localStorage.removeItem(CITY_DEBUG_STORAGE_KEY);
+			localStorage.setItem(CITY_DEBUG_STORAGE_VERSION_KEY, CITY_DEBUG_STORAGE_VERSION);
+		}
+		const stored = localStorage.getItem(CITY_DEBUG_STORAGE_KEY);
+		const storedCrop = localStorage.getItem(CITY_DEBUG_CROP_KEY);
+		if (stored) {
+			const parsed = JSON.parse(stored);
+			if (Array.isArray(parsed) && parsed.length >= CITY_DEBUG_ROWS) {
+				citySpriteOffsets = parsed.map((row, r) => (
+					Array.isArray(row) ? row.slice(0, CITY_DEBUG_COLS).map(cell => ({
+						x: Number(cell && cell.x) || 0,
+						y: Number(cell && cell.y) || 0
+					})) : Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 }))
+				)).slice(0, CITY_DEBUG_ROWS);
+			}
+		}
+		if (storedCrop) {
+			const parsed = JSON.parse(storedCrop);
+			if (Array.isArray(parsed) && parsed.length >= CITY_DEBUG_ROWS) {
+				citySpriteCropShift = parsed.map((row, r) => (
+					Array.isArray(row) ? row.slice(0, CITY_DEBUG_COLS).map(cell => ({
+						x: Number(cell && cell.x) || 0,
+						y: Number(cell && cell.y) || 0
+					})) : Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 }))
+				)).slice(0, CITY_DEBUG_ROWS);
+			}
+		}
+	} catch (err) {
+		console.warn("Failed to load city sprite offsets", err);
+	}
+	const persistCitySpriteOffsets = () => {
+		try {
+			localStorage.setItem(CITY_DEBUG_STORAGE_KEY, JSON.stringify(citySpriteOffsets));
+			localStorage.setItem(CITY_DEBUG_CROP_KEY, JSON.stringify(citySpriteCropShift));
+		} catch (err) {
+			console.warn("Failed to persist city sprite offsets", err);
+		}
+	};
+	const getCitySpriteOffset = (row, col) => {
+		const r = citySpriteOffsets[row];
+		const entry = r && r[col];
+		return entry ? entry : { x: 0, y: 0 };
+	};
+	const updateCitySpriteOffset = (row, col, dx, dy) => {
+		if (!citySpriteOffsets[row] || !citySpriteOffsets[row][col]) return;
+		citySpriteOffsets[row][col].x += dx;
+		citySpriteOffsets[row][col].y += dy;
+		persistCitySpriteOffsets();
+	};
+	let citySpriteDrag = null;
+	const getDebugCanvasMetrics = () => {
+		if (!citySpriteDebugCanvas) return null;
+		const sprite = SPRITES.cityPlayer;
+		if (!spriteReady(sprite)) return null;
+		const frameSize = CITY_SPRITE_FRAME_SIZE;
+		const rows = CITY_DEBUG_ROWS;
+		const cols = CITY_DEBUG_COLS;
+		const scale = Math.min(
+			citySpriteDebugCanvas.width / (frameSize * cols),
+			citySpriteDebugCanvas.height / (frameSize * rows)
+		);
+		const sheetW = frameSize * cols * scale;
+		const sheetH = frameSize * rows * scale;
+		const originX = (citySpriteDebugCanvas.width - sheetW) * 0.5;
+		const originY = (citySpriteDebugCanvas.height - sheetH) * 0.5;
+		return { frameSize, rows, cols, scale, originX, originY };
+	};
+	if (citySpriteDebugCanvas) {
+		citySpriteDebugCanvas.addEventListener("contextmenu", event => {
+			event.preventDefault();
+		});
+		citySpriteDebugCanvas.addEventListener("mousedown", event => {
+			if (!CITY_SPRITE_DEBUG) return;
+			const metrics = getDebugCanvasMetrics();
+			if (!metrics) return;
+			const rect = citySpriteDebugCanvas.getBoundingClientRect();
+			const x = event.clientX - rect.left;
+			const y = event.clientY - rect.top;
+			const localX = x - metrics.originX;
+			const localY = y - metrics.originY;
+			if (localX < 0 || localY < 0 || localX >= metrics.frameSize * metrics.cols * metrics.scale || localY >= metrics.frameSize * metrics.rows * metrics.scale) return;
+			const col = Math.floor(localX / (metrics.frameSize * metrics.scale));
+			const row = Math.floor(localY / (metrics.frameSize * metrics.scale));
+			if (cityCropMode) {
+				const shift = getCitySpriteCropShift(row, col);
+				cityCropDrag = {
+					row,
+					col,
+					startX: x,
+					startY: y,
+					origX: shift.x,
+					origY: shift.y,
+					scale: metrics.scale
+				};
+				return;
+			}
+			if (cityAlignMode || cityCropMode) {
+				cityAlignSelectedFrame = { row, col };
+				currentCityFrame = { row, col, flip: false };
+			}
+			const offset = getCitySpriteOffset(row, col);
+			citySpriteDrag = {
+				row,
+				col,
+				startX: x,
+				startY: y,
+				origX: offset.x,
+				origY: offset.y,
+				scale: metrics.scale
+			};
+		});
+		citySpriteDebugCanvas.addEventListener("mousemove", event => {
+			if (!citySpriteDrag && !cityCropDrag) return;
+			const rect = citySpriteDebugCanvas.getBoundingClientRect();
+			const x = event.clientX - rect.left;
+			const y = event.clientY - rect.top;
+			if (citySpriteDrag) {
+				const dx = (x - citySpriteDrag.startX) / citySpriteDrag.scale;
+				const dy = (y - citySpriteDrag.startY) / citySpriteDrag.scale;
+				const row = citySpriteDrag.row;
+				const col = citySpriteDrag.col;
+				if (citySpriteOffsets[row] && citySpriteOffsets[row][col]) {
+					citySpriteOffsets[row][col].x = citySpriteDrag.origX + dx;
+					citySpriteOffsets[row][col].y = citySpriteDrag.origY + dy;
+					persistCitySpriteOffsets();
+				}
+			}
+			if (cityCropDrag) {
+				const dx = (x - cityCropDrag.startX) / cityCropDrag.scale;
+				const dy = (y - cityCropDrag.startY) / cityCropDrag.scale;
+				const row = cityCropDrag.row;
+				const col = cityCropDrag.col;
+				if (citySpriteCropShift[row] && citySpriteCropShift[row][col]) {
+					citySpriteCropShift[row][col].x = cityCropDrag.origX + dx;
+					citySpriteCropShift[row][col].y = cityCropDrag.origY + dy;
+					CITY_SPRITE_CACHE.ready = false;
+					persistCitySpriteOffsets();
+				}
+			}
+		});
+		const endDrag = () => {
+			citySpriteDrag = null;
+			cityCropDrag = null;
+		};
+		citySpriteDebugCanvas.addEventListener("mouseup", endDrag);
+		citySpriteDebugCanvas.addEventListener("mouseleave", endDrag);
+	}
+	if (canvas) {
+		canvas.addEventListener("mousedown", event => {
+			if (!cityAlignMode || state.mode !== "city") return;
+			const rect = canvas.getBoundingClientRect();
+			const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+			const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+			cityAlignDrag = {
+				startX: x,
+				startY: y,
+				row: currentCityFrame.row,
+				col: currentCityFrame.col,
+				flip: currentCityFrame.flip
+			};
+		});
+		canvas.addEventListener("mousemove", event => {
+			if (!cityAlignDrag || !cityAlignMode || state.mode !== "city") return;
+			const rect = canvas.getBoundingClientRect();
+			const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+			const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+			const dx = (x - cityAlignDrag.startX) / CITY_SPRITE_SCALE;
+			const dy = (y - cityAlignDrag.startY) / CITY_SPRITE_SCALE;
+			cityAlignDrag.startX = x;
+			cityAlignDrag.startY = y;
+			updateCitySpriteOffset(cityAlignDrag.row, cityAlignDrag.col, dx, dy);
+		});
+		const endAlignDrag = () => {
+			cityAlignDrag = null;
+		};
+		canvas.addEventListener("mouseup", endAlignDrag);
+		canvas.addEventListener("mouseleave", endAlignDrag);
+	}
+	if (citySpriteDebugReset) {
+		citySpriteDebugReset.addEventListener("click", () => {
+			citySpriteOffsets = Array.from({ length: CITY_DEBUG_ROWS }, () => Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 })));
+			persistCitySpriteOffsets();
+			if (citySpriteDebugOutput) citySpriteDebugOutput.value = "";
+		});
+	}
+	if (citySpriteDebugExport) {
+		citySpriteDebugExport.addEventListener("click", () => {
+			const payload = JSON.stringify({ offsets: citySpriteOffsets, cropShift: citySpriteCropShift }, null, 2);
+			if (citySpriteDebugOutput) {
+				citySpriteDebugOutput.value = payload;
+				citySpriteDebugOutput.focus();
+				citySpriteDebugOutput.select();
+			}
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(payload).catch(() => {
+					// ignore clipboard errors, selection fallback is active
+				});
+			}
+		});
+	}
+	if (citySpriteDebugCopy) {
+		citySpriteDebugCopy.addEventListener("click", async () => {
+			if (!citySpriteDebugCurrent) return;
+			const text = citySpriteDebugCurrent.textContent || "";
+			try {
+				await navigator.clipboard.writeText(text);
+			} catch (err) {
+				if (citySpriteDebugOutput) citySpriteDebugOutput.value = text;
+			}
+		});
+	}
+	if (citySpriteDebugOutput) {
+		citySpriteDebugOutput.addEventListener("click", () => {
+			citySpriteDebugOutput.focus();
+			citySpriteDebugOutput.select();
+		});
+		citySpriteDebugOutput.addEventListener("focus", () => {
+			citySpriteDebugOutput.select();
+		});
+	}
 
 	const keys = new Set();
 	const pointer = { down: false, shoot: false };
 	let controlsArmed = false;
 	const DEBUG_SHORTCUTS = true;
+	let cityAlignMode = false;
+	let cityAlignDrag = null;
+	let currentCityFrame = { row: 0, col: 0, flip: false };
+	let cityAlignSelectedFrame = null;
+	let cityCropDrag = null;
+	let cityCropMode = false;
+	let cityInventoryOpen = false;
+	let cityShopOpen = false;
+	let cityShopSelection = null;
+	const cityInventory = {
+		equipment: { weapon: null, armor: null, armor2: null },
+		items: Array.from({ length: 9 }, () => null)
+	};
+	const cityShopItems = [
+		"Schwert",
+		"Schild",
+		"Orb der Zerstörung",
+		"Düsenantrieb",
+		"Schwanzflosse",
+		"Küssung der Meeresbewohner",
+		"Tiefsee-Laterne",
+		"Perlenring",
+		"Harpunen-Klinge",
+		"Stahlhelm",
+		"Algenmantel",
+		"Seestern-Amulett"
+	];
 
 	const state = {
+		mode: "game",
 		started: false,
 		paused: false,
 		over: false,
@@ -1070,8 +1644,109 @@ function bootGame() {
 		coverRockSpawned: false,
 		levelIndex: 0,
 		levelConfig: null,
-		foeSpawnInterval: { min: 1400, max: 2100 }
+		foeSpawnInterval: { min: 1400, max: 2100 },
+		city: null
 	};
+	const syncCityInventoryVisibility = () => {
+		if (!cityInventoryEl) return;
+		cityInventoryEl.style.display = (state.mode === "city" && cityInventoryOpen) ? "block" : "none";
+	};
+	const syncCityShopVisibility = () => {
+		if (!cityMerchantEl) return;
+		cityMerchantEl.style.display = (state.mode === "city" && cityShopOpen) ? "block" : "none";
+	};
+	const updateCityInventoryUI = () => {
+		if (!cityInventoryEl) return;
+		const setSlotText = (slotName, label, value) => {
+			const el = cityInventoryEl.querySelector(`[data-slot="${slotName}"]`);
+			if (!el) return;
+			el.textContent = value || label;
+			if (value) el.classList.add("filled");
+			else el.classList.remove("filled");
+		};
+		setSlotText("weapon", "Waffe", cityInventory.equipment.weapon);
+		setSlotText("armor", "Rüstung", cityInventory.equipment.armor);
+		setSlotText("armor2", "Rüstung II", cityInventory.equipment.armor2);
+		for (let i = 0; i < cityInventory.items.length; i += 1) {
+			const label = `Slot ${i + 1}`;
+			const value = cityInventory.items[i];
+			const el = cityInventoryEl.querySelector(`[data-slot="inv-${i + 1}"]`);
+			if (!el) continue;
+			el.textContent = value || label;
+			if (value) el.classList.add("filled");
+			else el.classList.remove("filled");
+		}
+	};
+	const updateCityShopUI = () => {
+		if (!cityMerchantEl) return;
+		const grid = cityMerchantEl.querySelector("#cityMerchantGrid");
+		if (grid && grid.childElementCount === 0) {
+			cityShopItems.forEach(item => {
+				const btn = document.createElement("button");
+				btn.type = "button";
+				btn.className = "city-merchant-item";
+				btn.textContent = item;
+				btn.dataset.item = item;
+				grid.appendChild(btn);
+			});
+		}
+		const confirm = cityMerchantEl.querySelector("#cityMerchantConfirm");
+		const confirmText = cityMerchantEl.querySelector("#cityMerchantConfirmText");
+		if (confirm && confirmText) {
+			if (cityShopSelection) {
+				confirm.classList.add("active");
+				confirmText.textContent = `${cityShopSelection} kaufen?`;
+			} else {
+				confirm.classList.remove("active");
+				confirmText.textContent = "Item kaufen?";
+			}
+		}
+	};
+	const tryAddCityItem = itemName => {
+		const slotIndex = cityInventory.items.findIndex(item => !item);
+		if (slotIndex === -1) {
+			if (bannerEl) bannerEl.textContent = "Inventar voll";
+			return false;
+		}
+		cityInventory.items[slotIndex] = itemName;
+		updateCityInventoryUI();
+		if (bannerEl) bannerEl.textContent = `Gekauft: ${itemName}`;
+		return true;
+	};
+	updateCityInventoryUI();
+	updateCityShopUI();
+	if (cityMerchantEl) {
+		cityMerchantEl.addEventListener("click", event => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			const action = target.dataset.action;
+			if (action === "close-merchant") {
+				cityShopOpen = false;
+				cityShopSelection = null;
+				updateCityShopUI();
+				syncCityShopVisibility();
+				return;
+			}
+			if (action === "cancel-buy") {
+				cityShopSelection = null;
+				updateCityShopUI();
+				return;
+			}
+			if (action === "buy-item") {
+				if (!cityShopSelection) return;
+				if (tryAddCityItem(cityShopSelection)) {
+					cityShopSelection = null;
+					updateCityShopUI();
+				}
+				return;
+			}
+			const item = target.dataset.item;
+			if (item) {
+				cityShopSelection = item;
+				updateCityShopUI();
+			}
+		});
+	}
 	function seedBubbles() {
 		const count = 24;
 		state.bubbles = Array.from({ length: count }, () => ({
@@ -1278,9 +1953,7 @@ function bootGame() {
 				advanceLevel(nextLevelIndex, { skipFlash: false, invulnDuration: 1800 });
 				return;
 			}
-			state.win = true;
-			if (bannerEl) bannerEl.textContent = "Boss besiegt!";
-			showGameOver("Du hast den Boss besiegt!");
+			enterCity();
 		}
 
 		function finishPendingSymbolAdvance() {
@@ -2659,6 +3332,20 @@ function bootGame() {
 		return CODE_TSUNAMI.has(event.code || "");
 	}
 
+	function isCityShortcut(event) {
+		if (!event) return false;
+		const isFive = event.code === "Digit5" || event.code === "Numpad5" || event.key === "5" || event.key === "%";
+		if (!isFive) return false;
+		if (event.altKey && event.shiftKey) return true;
+		if (event.ctrlKey || event.metaKey) return false;
+		return state.mode !== "city";
+	}
+
+	function isCityShortcutCandidate(event) {
+		if (!event) return false;
+		return event.code === "Digit5" || event.code === "Numpad5" || event.key === "5" || event.key === "%";
+	}
+
 	function tryActivateShield() {
 		const player = state.player;
 		if (!player.shieldUnlocked || player.shieldActive || player.shieldCooldown > 0) return;
@@ -2946,7 +3633,105 @@ function bootGame() {
 	}
 	// --- End tsunami block ---
 
+	function buildCityState() {
+		const width = canvas.width * CITY_SCALE;
+		const height = canvas.height * CITY_SCALE;
+		const gridSize = 160;
+		const player = {
+			x: width * 0.5,
+			y: height * 0.5,
+			r: CITY_PLAYER_RADIUS,
+			dirX: 1,
+			facing: "down",
+			moving: false,
+			animTime: 0
+		};
+		const npcs = [
+			{ id: "merchant", label: "Händler", x: width * 0.32, y: height * 0.42 },
+			{ id: "quest", label: "Missionen", x: width * 0.68, y: height * 0.58 }
+		];
+		const buildings = [
+			{ x: width * 0.18, y: height * 0.2, w: 220, h: 160 },
+			{ x: width * 0.52, y: height * 0.18, w: 260, h: 180 },
+			{ x: width * 0.22, y: height * 0.62, w: 280, h: 200 },
+			{ x: width * 0.58, y: height * 0.68, w: 240, h: 170 }
+		];
+		const tiles = [];
+		const cols = Math.max(1, Math.ceil(width / gridSize));
+		const rows = Math.max(1, Math.ceil(height / gridSize));
+		for (let y = 0; y < rows; y += 1) {
+			for (let x = 0; x < cols; x += 1) {
+				tiles.push({ x, y, kind: "floor" });
+			}
+		}
+		return {
+			width,
+			height,
+			gridSize,
+			player,
+			camera: { x: 0, y: 0 },
+			npcs,
+			buildings,
+			tiles
+		};
+	}
+
+	function enterCity() {
+		state.mode = "city";
+		state.started = true;
+		state.paused = false;
+		state.over = false;
+		state.win = false;
+		state.level = 5;
+		state.levelIndex = LEVEL_CONFIGS.length;
+		state.elapsed = 0;
+		state.lastTick = performance.now();
+		state.eventFlash = null;
+		state.pendingSymbolAdvance = null;
+		state.city = buildCityState();
+		state.foes.length = 0;
+		state.foeArrows.length = 0;
+		state.shots.length = 0;
+		state.healPickups.length = 0;
+		state.symbolDrops.length = 0;
+		state.coinDrops.length = 0;
+		state.coralAllies.length = 0;
+		state.coralEffects.length = 0;
+		state.boss.active = false;
+		state.bossTorpedoes.length = 0;
+		state.bossSweeps.length = 0;
+		state.bossWakeWaves.length = 0;
+		state.bossPerfumeOrbs.length = 0;
+		state.bossFragranceClouds.length = 0;
+		state.bossCoinBursts.length = 0;
+		state.bossCoinExplosions.length = 0;
+		state.bossDiamondBeams.length = 0;
+		state.bossCardBoomerangs.length = 0;
+		state.bossWhirlpools.length = 0;
+		state.bossKatapultShots.length = 0;
+		state.bossSpeedboats.length = 0;
+		state.tsunamiWave = null;
+		state.eventFlash = null;
+		pointer.shoot = false;
+		cityInventoryOpen = false;
+		cityShopOpen = false;
+		cityShopSelection = null;
+		syncCityInventoryVisibility();
+		syncCityShopVisibility();
+		if (bannerEl) bannerEl.textContent = "Unterwasserstadt";
+		if (endOverlay) endOverlay.style.display = "none";
+		const gameWrap = document.getElementById("gameWrap");
+		const startScreen = document.getElementById("startScreen");
+		const cutWrap = document.getElementById("cutWrap");
+		if (gameWrap) gameWrap.style.display = "block";
+		if (startScreen) startScreen.style.display = "none";
+		if (cutWrap) cutWrap.style.display = "none";
+		controlsArmed = true;
+		updateHUD();
+	}
+
 	function resetGame() {
+		state.mode = "game";
 		state.started = true;
 		state.paused = false;
 		state.over = false;
@@ -2966,6 +3751,11 @@ function bootGame() {
 		state.player.perfumeSlowTimer = 0;
 		state.player.shieldUnlocked = false;
 		state.player.shieldActive = false;
+		cityInventoryOpen = false;
+		cityShopOpen = false;
+		cityShopSelection = null;
+		syncCityInventoryVisibility();
+		syncCityShopVisibility();
 		state.player.shieldTimer = 0;
 		state.player.shieldCooldown = 0;
 		state.player.shieldLastActivation = 0;
@@ -3014,6 +3804,7 @@ function bootGame() {
 		state.bubbles.length = 0;
 		state.coverRocks.length = 0;
 		state.coverRockSpawned = false;
+		state.city = null;
 		applyLevelConfig(0, { skipFlash: false });
 		state.boss.x = state.boss.entryTargetX == null ? canvas.width * 0.72 : state.boss.entryTargetX;
 		state.boss.y = state.boss.entryTargetY == null ? canvas.height * 0.48 : state.boss.entryTargetY;
@@ -3256,6 +4047,38 @@ function bootGame() {
 			if (Math.abs(moveX) > 0.1) player.dir = moveX > 0 ? 1 : -1;
 		}
 		resolvePlayerCoverCollision(player, prevX, prevY);
+	}
+
+	function updateCity(dt) {
+		const city = state.city;
+		if (!city) return;
+		const player = city.player;
+		let moveX = 0;
+		let moveY = 0;
+		if (hasKey(KEY_LEFT)) moveX -= 1;
+		if (hasKey(KEY_RIGHT)) moveX += 1;
+		if (hasKey(KEY_UP)) moveY -= 1;
+		if (hasKey(KEY_DOWN)) moveY += 1;
+		player.moving = !!(moveX || moveY);
+		if (player.moving) {
+			const len = Math.hypot(moveX, moveY) || 1;
+			const dx = (moveX / len) * CITY_SPEED * dt;
+			const dy = (moveY / len) * CITY_SPEED * dt;
+			player.x = clamp(player.x + dx, CITY_PLAYER_RADIUS * 2, city.width - CITY_PLAYER_RADIUS * 2);
+			player.y = clamp(player.y + dy, CITY_PLAYER_RADIUS * 2, city.height - CITY_PLAYER_RADIUS * 2);
+			player.animTime += dt;
+			if (Math.abs(moveX) > Math.abs(moveY)) {
+				player.facing = "side";
+				player.dirX = moveX >= 0 ? 1 : -1;
+			} else if (moveY < 0) {
+				player.facing = "up";
+			} else {
+				player.facing = "down";
+			}
+		} else {
+			player.animTime = 0;
+		}
+		state.elapsed += dt;
 	}
 
 function isPointInsideCover(rock, x, y, padX = 0, padY = 0) {
@@ -5823,6 +6646,16 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		ctx.restore();
 	}
 
+	function renderDebugLabel() {
+		ctx.save();
+		ctx.fillStyle = "rgba(255,255,255,0.8)";
+		ctx.font = "12px 'Segoe UI', sans-serif";
+		ctx.textAlign = "left";
+		ctx.textBaseline = "bottom";
+		ctx.fillText(DEBUG_BUILD_LABEL, 12, canvas.height - 8);
+		ctx.restore();
+	}
+
 	function renderBossPerfumeOrbs() {
 		if (state.bossPerfumeOrbs.length === 0) return;
 		ctx.save();
@@ -6716,7 +7549,276 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		});
 	}
 
+	function renderCity() {
+		const city = state.city;
+		if (!city) return;
+		syncCityInventoryVisibility();
+		syncCityShopVisibility();
+		if (citySpriteDebugPanel) {
+			citySpriteDebugPanel.style.display = (USE_CITY_SPRITE && CITY_SPRITE_DEBUG) ? "block" : "none";
+		}
+		if (USE_CITY_SPRITE && CITY_SPRITE_DEBUG && citySpriteDebugCtx && citySpriteDebugCanvas) {
+			const sprite = SPRITES.cityPlayer;
+			if (spriteReady(sprite)) {
+				buildCitySpriteCache();
+				const frameSize = CITY_SPRITE_FRAME_SIZE;
+				const rows = CITY_DEBUG_ROWS;
+				const cols = CITY_DEBUG_COLS;
+				const scale = Math.min(
+					citySpriteDebugCanvas.width / (frameSize * cols),
+					citySpriteDebugCanvas.height / (frameSize * rows)
+				);
+				const sheetW = frameSize * cols * scale;
+				const sheetH = frameSize * rows * scale;
+				const originX = (citySpriteDebugCanvas.width - sheetW) * 0.5;
+				const originY = (citySpriteDebugCanvas.height - sheetH) * 0.5;
+				citySpriteDebugCtx.save();
+				citySpriteDebugCtx.imageSmoothingEnabled = false;
+				citySpriteDebugCtx.clearRect(0, 0, citySpriteDebugCanvas.width, citySpriteDebugCanvas.height);
+				citySpriteDebugCtx.globalAlpha = 0.95;
+				citySpriteDebugCtx.drawImage(sprite, originX, originY, sheetW, sheetH);
+				citySpriteDebugCtx.globalAlpha = 1;
+				citySpriteDebugCtx.strokeStyle = "rgba(120,200,255,0.6)";
+				citySpriteDebugCtx.lineWidth = 1;
+				citySpriteDebugCtx.strokeRect(originX, originY, sheetW, sheetH);
+				citySpriteDebugCtx.strokeStyle = "rgba(80,220,255,0.95)";
+				for (let r = 0; r < rows; r += 1) {
+					for (let c = 0; c < cols; c += 1) {
+						const entry = CITY_SPRITE_CACHE.frames[r] && CITY_SPRITE_CACHE.frames[r][c];
+						if (!entry) continue;
+						const offset = getCitySpriteOffset(r, c);
+						const cx = originX + (c * frameSize + (entry.centerX || frameSize / 2) + offset.x) * scale;
+						const cy = originY + (r * frameSize + (entry.centerY || frameSize / 2) + offset.y) * scale;
+						citySpriteDebugCtx.beginPath();
+						citySpriteDebugCtx.moveTo(cx - 4, cy);
+						citySpriteDebugCtx.lineTo(cx + 4, cy);
+						citySpriteDebugCtx.moveTo(cx, cy - 4);
+						citySpriteDebugCtx.lineTo(cx, cy + 4);
+						citySpriteDebugCtx.stroke();
+					}
+				}
+				const entry00 = CITY_SPRITE_CACHE.frames[0] && CITY_SPRITE_CACHE.frames[0][0];
+				if (entry00 && entry00.crop) {
+					const baseCrop = entry00.crop;
+					const baseW = (baseCrop.maxX - baseCrop.minX + 1) * scale;
+					const baseH = (baseCrop.maxY - baseCrop.minY + 1) * scale;
+					citySpriteDebugCtx.strokeStyle = "rgba(255,220,120,0.95)";
+					citySpriteDebugCtx.lineWidth = 2;
+					for (let r = 0; r < rows; r += 1) {
+						for (let c = 0; c < cols; c += 1) {
+							const entry = CITY_SPRITE_CACHE.frames[r] && CITY_SPRITE_CACHE.frames[r][c];
+							if (!entry || !entry.crop) continue;
+							const crop = entry.crop;
+							const centerX = (crop.minX + crop.maxX + 1) * 0.5;
+							const centerY = (crop.minY + crop.maxY + 1) * 0.5;
+							const cropX = originX + (c * frameSize + centerX) * scale - baseW / 2;
+							const cropY = originY + (r * frameSize + centerY) * scale - baseH / 2;
+							citySpriteDebugCtx.strokeRect(cropX, cropY, baseW, baseH);
+						}
+					}
+				}
+				if (cityAlignMode && cityAlignSelectedFrame) {
+					const selX = originX + cityAlignSelectedFrame.col * frameSize * scale;
+					const selY = originY + cityAlignSelectedFrame.row * frameSize * scale;
+					citySpriteDebugCtx.strokeStyle = "rgba(255,220,120,0.95)";
+					citySpriteDebugCtx.lineWidth = 2;
+					citySpriteDebugCtx.strokeRect(selX, selY, frameSize * scale, frameSize * scale);
+				}
+				citySpriteDebugCtx.restore();
+			}
+		}
+		const width = canvas.width;
+		const height = canvas.height;
+		const player = city.player;
+		const maxCamX = Math.max(0, city.width - width);
+		const maxCamY = Math.max(0, city.height - height);
+		const camX = clamp(player.x - width * 0.5, 0, maxCamX);
+		const camY = clamp(player.y - height * 0.5, 0, maxCamY);
+		city.camera.x = camX;
+		city.camera.y = camY;
+
+		ctx.clearRect(0, 0, width, height);
+		const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+		bgGrad.addColorStop(0, "#0b2f45");
+		bgGrad.addColorStop(1, "#062031");
+		ctx.fillStyle = bgGrad;
+		ctx.fillRect(0, 0, width, height);
+
+		if (USE_CITY_SPRITE && CITY_SPRITE_DEBUG) {
+			ctx.save();
+			ctx.fillStyle = "rgba(255,255,255,0.7)";
+			ctx.font = "12px 'Segoe UI', sans-serif";
+			ctx.textAlign = "left";
+			ctx.textBaseline = "top";
+			ctx.fillText(CITY_SPRITE_DEBUG_LABEL, 12, 10);
+			ctx.restore();
+		}
+
+		const tile = city.gridSize || 160;
+		ctx.strokeStyle = "rgba(120,200,255,0.08)";
+		ctx.lineWidth = 1;
+		for (let x = -((camX % tile) + tile); x <= width + tile; x += tile) {
+			ctx.beginPath();
+			ctx.moveTo(x, 0);
+			ctx.lineTo(x, height);
+			ctx.stroke();
+		}
+		for (let y = -((camY % tile) + tile); y <= height + tile; y += tile) {
+			ctx.beginPath();
+			ctx.moveTo(0, y);
+			ctx.lineTo(width, y);
+			ctx.stroke();
+		}
+
+		const cityTile = SPRITES.cityTile;
+		ctx.save();
+		ctx.translate(-camX, -camY);
+		for (const placed of city.tiles || []) {
+			const tileX = placed.x * tile;
+			const tileY = placed.y * tile;
+			if (spriteReady(cityTile)) {
+				ctx.drawImage(cityTile, tileX, tileY, tile, tile);
+			} else {
+				ctx.fillStyle = "rgba(120,200,255,0.25)";
+				ctx.fillRect(tileX, tileY, tile, tile);
+			}
+		}
+		ctx.restore();
+
+		ctx.save();
+		ctx.translate(-camX, -camY);
+		for (const building of city.buildings) {
+			const bx = building.x;
+			const by = building.y;
+			const bw = building.w;
+			const bh = building.h;
+			if (bx + bw < camX - 40 || bx > camX + width + 40 || by + bh < camY - 40 || by > camY + height + 40) continue;
+			ctx.fillStyle = "rgba(10,70,110,0.55)";
+			ctx.strokeStyle = "rgba(180,240,255,0.35)";
+			ctx.lineWidth = 2;
+			ctx.fillRect(bx, by, bw, bh);
+			ctx.strokeRect(bx, by, bw, bh);
+		}
+
+		ctx.font = "18px 'Segoe UI', sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "bottom";
+		for (const npc of city.npcs) {
+			const nx = npc.x;
+			const ny = npc.y;
+			ctx.fillStyle = "rgba(255,215,160,0.92)";
+			ctx.beginPath();
+			ctx.ellipse(nx, ny, 22, 16, 0, 0, TAU);
+			ctx.fill();
+			ctx.fillStyle = "rgba(250,250,255,0.9)";
+			ctx.fillText(npc.label, nx, ny - 22);
+		}
+
+		if (USE_CITY_SPRITE) {
+			if (CITY_ANIM_SOURCE === "sheet") {
+				const cityPlayerSprite = SPRITES.cityPlayer;
+				if (spriteReady(cityPlayerSprite)) {
+					buildCitySpriteCache();
+					let row = player.facing === "up" ? 2 : player.facing === "side" ? 1 : 0;
+					let walkFrame = player.moving ? (1 + Math.floor(player.animTime / CITY_ANIM_FRAME_TIME) % 4) : 0;
+					let drawFacing = player.facing;
+					const frameEntry = CITY_SPRITE_CACHE.frames[row] && CITY_SPRITE_CACHE.frames[row][walkFrame];
+					if (frameEntry && frameEntry.canvas) {
+						const frameSize = CITY_SPRITE_FRAME_SIZE;
+						const drawW = frameEntry.canvas.width * CITY_SPRITE_SCALE;
+						const drawH = frameEntry.canvas.height * CITY_SPRITE_SCALE;
+						const prevSmoothing = ctx.imageSmoothingEnabled;
+						ctx.imageSmoothingEnabled = false;
+						ctx.save();
+						ctx.translate(Math.round(player.x), Math.round(player.y));
+						const flipSide = drawFacing === "side" && player.dirX < 0;
+						if (flipSide) ctx.scale(-1, 1);
+						const baseOffsetX = drawFacing === "side" ? CITY_SPRITE_OFFSET_X_SIDE : CITY_SPRITE_OFFSET_X_VERTICAL;
+						const offsetX = baseOffsetX;
+						const anchorX = frameEntry.anchorX || drawW / (2 * CITY_SPRITE_SCALE);
+						const anchorY = frameEntry.anchorY || drawH / (2 * CITY_SPRITE_SCALE);
+						const drawX = -anchorX * CITY_SPRITE_SCALE + offsetX;
+						const drawY = -anchorY * CITY_SPRITE_SCALE + CITY_SPRITE_OFFSET_Y;
+						ctx.drawImage(
+							frameEntry.canvas,
+							drawX,
+							drawY,
+							drawW,
+							drawH
+						);
+						ctx.restore();
+						ctx.imageSmoothingEnabled = prevSmoothing;
+					} else {
+						ctx.fillStyle = "rgba(150,220,255,0.95)";
+						ctx.beginPath();
+						ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
+						ctx.fill();
+						ctx.strokeStyle = "rgba(20,60,90,0.6)";
+						ctx.lineWidth = 2;
+						ctx.stroke();
+					}
+				} else {
+					ctx.fillStyle = "rgba(150,220,255,0.95)";
+					ctx.beginPath();
+					ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
+					ctx.fill();
+					ctx.strokeStyle = "rgba(20,60,90,0.6)";
+					ctx.lineWidth = 2;
+					ctx.stroke();
+				}
+			} else {
+				const animFrame = getCityAnimFrame(player);
+				const sprite = animFrame ? animFrame.image : null;
+				if (sprite && spriteReady(sprite)) {
+					const prevSmoothing = ctx.imageSmoothingEnabled;
+					ctx.imageSmoothingEnabled = false;
+					ctx.save();
+					ctx.translate(Math.round(player.x), Math.round(player.y));
+					if (animFrame.flip) ctx.scale(-1, 1);
+					const isSide = animFrame.facing === "left";
+					const offsetX = isSide ? CITY_SPRITE_OFFSET_X_SIDE : CITY_SPRITE_OFFSET_X_VERTICAL;
+					const drawW = sprite.naturalWidth * CITY_SPRITE_SCALE;
+					const drawH = sprite.naturalHeight * CITY_SPRITE_SCALE;
+					ctx.drawImage(
+						sprite,
+						-drawW / 2 + offsetX,
+						-drawH / 2 + CITY_SPRITE_OFFSET_Y,
+						drawW,
+						drawH
+					);
+					ctx.restore();
+					ctx.imageSmoothingEnabled = prevSmoothing;
+				} else {
+					ctx.fillStyle = "rgba(150,220,255,0.95)";
+					ctx.beginPath();
+					ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
+					ctx.fill();
+					ctx.strokeStyle = "rgba(20,60,90,0.6)";
+					ctx.lineWidth = 2;
+					ctx.stroke();
+				}
+			}
+		} else {
+			ctx.fillStyle = "rgba(150,220,255,0.95)";
+			ctx.beginPath();
+			ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
+			ctx.fill();
+			ctx.strokeStyle = "rgba(20,60,90,0.6)";
+			ctx.lineWidth = 2;
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+
 	function render() {
+		if (state.mode === "city") {
+			renderCity();
+			renderDebugLabel();
+			return;
+		}
+		if (cityInventoryEl) cityInventoryEl.style.display = "none";
+		if (cityMerchantEl) cityMerchantEl.style.display = "none";
+		if (citySpriteDebugPanel) citySpriteDebugPanel.style.display = "none";
 		renderBackground();
 		renderBubbles();
 		renderFoes();
@@ -6748,13 +7850,15 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		renderEventFlash();
 		renderPlayer();
 		renderFloorOverlay();
+		renderDebugLabel();
 	}
 
 	function tick(now) {
 		const dt = clamp(now - state.lastTick, 0, 48);
 		state.lastTick = now;
 		if (state.started && !state.over && !state.paused) {
-			update(dt);
+			if (state.mode === "city") updateCity(dt);
+			else update(dt);
 			updateHUD();
 		}
 		render();
@@ -6762,6 +7866,52 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 	}
 
 	document.addEventListener("keydown", event => {
+		if (state.mode === "city") {
+			if (event.key === "i" || event.key === "I") {
+				cityInventoryOpen = !cityInventoryOpen;
+				syncCityInventoryVisibility();
+				if (bannerEl) bannerEl.textContent = cityInventoryOpen ? "Inventar geöffnet (I)" : "Inventar geschlossen";
+				event.preventDefault();
+				return;
+			}
+			if (event.key === "m" || event.key === "M") {
+				cityAlignMode = !cityAlignMode;
+				if (!cityAlignMode) cityCropMode = false;
+				if (bannerEl) bannerEl.textContent = cityAlignMode ? "Ausrichten aktiv (M)" : "Ausrichten aus";
+				event.preventDefault();
+				return;
+			}
+			if (cityAlignMode && (event.key === "c" || event.key === "C")) {
+				cityCropMode = !cityCropMode;
+				if (bannerEl) bannerEl.textContent = cityCropMode ? "Crop-Modus an (C)" : "Crop-Modus aus";
+				event.preventDefault();
+				return;
+			}
+			if (cityAlignMode && (event.key === "s" || event.key === "S")) {
+				const payload = JSON.stringify({ offsets: citySpriteOffsets, cropShift: citySpriteCropShift }, null, 2);
+				if (citySpriteDebugOutput) citySpriteDebugOutput.value = payload;
+				event.preventDefault();
+				return;
+			}
+			if (cityAlignMode && event.key === "Escape") {
+				cityAlignMode = false;
+				cityCropMode = false;
+				if (bannerEl) bannerEl.textContent = "Ausrichten aus";
+			}
+		}
+		if (isCityShortcutCandidate(event)) {
+			const modeLabel = state.started ? (state.mode === "city" ? "city" : "game") : "title";
+			const keyInfo = `${event.key || "?"}/${event.code || "?"}`;
+			if (bannerEl) bannerEl.textContent = `Shortcut erkannt (${keyInfo}) – Modus: ${modeLabel}`;
+			const bootToast = document.getElementById("bootToast");
+			if (bootToast) bootToast.textContent = `Taste erkannt: ${keyInfo} – Modus: ${modeLabel}`;
+			console.log("City shortcut keydown", { key: event.key, code: event.code, alt: event.altKey, shift: event.shiftKey, mode: modeLabel });
+		}
+		if (isCityShortcut(event)) {
+			event.preventDefault();
+			enterCity();
+			return;
+		}
 		if (DEBUG_SHORTCUTS && event.altKey && event.shiftKey) {
 			if (event.code === "Digit1") {
 				event.preventDefault();
@@ -6783,20 +7933,26 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 				debugJumpToLevel(3);
 				return;
 			}
+			if (event.code === "Digit5") {
+				event.preventDefault();
+				enterCity();
+				return;
+			}
 		}
 		keys.add(event.key);
-		if (state.started && !state.over && !state.paused && isShieldActivationKey(event)) {
+		if (state.started && !state.over && !state.paused && state.mode === "game" && isShieldActivationKey(event)) {
 			event.preventDefault();
 			tryActivateShield();
 		}
-		if (state.started && !state.over && !state.paused && isCoralActivationKey(event)) {
+		if (state.started && !state.over && !state.paused && state.mode === "game" && isCoralActivationKey(event)) {
 			if (tryActivateCoralAllies()) event.preventDefault();
 		}
-		if (state.started && !state.over && !state.paused && isTsunamiActivationKey(event)) {
+		if (state.started && !state.over && !state.paused && state.mode === "game" && isTsunamiActivationKey(event)) {
 			if (tryActivateTsunamiAbility()) event.preventDefault();
 		}
 		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
 			event.preventDefault();
+			if (state.mode === "city") return;
 			pointer.shoot = true;
 			if (!state.started) {
 				if (!controlsArmed) return;
@@ -6820,6 +7976,31 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 	});
 
 	canvas.addEventListener("pointerdown", event => {
+		if (state.mode === "city") {
+			if (event.pointerType === "mouse" && event.button !== 0) return;
+			const rect = canvas.getBoundingClientRect();
+			const localX = (event.clientX - rect.left) * (canvas.width / rect.width);
+			const localY = (event.clientY - rect.top) * (canvas.height / rect.height);
+			const city = state.city;
+			if (!city) return;
+			const camX = city.camera ? city.camera.x : 0;
+			const camY = city.camera ? city.camera.y : 0;
+			const worldX = localX + camX;
+			const worldY = localY + camY;
+			const merchant = city.npcs && city.npcs.find(npc => npc.id === "merchant");
+			if (merchant) {
+				const dist = Math.hypot(worldX - merchant.x, worldY - merchant.y);
+				if (dist <= 34) {
+					cityShopOpen = true;
+					cityShopSelection = null;
+					updateCityShopUI();
+					syncCityShopVisibility();
+					if (bannerEl) bannerEl.textContent = "Händler geöffnet";
+					return;
+				}
+			}
+			return;
+		}
 		if (event.pointerType === "mouse") {
 			if (event.button === 2) {
 				event.preventDefault();
@@ -6886,11 +8067,22 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		window.cashResetGame = resetGame;
 		window.cashSpawnBogenschreck = () => spawnFoe({ type: "bogenschreck" });
 		window.cashDebugJumpLevel = debugJumpToLevel;
+		window.cashEnterCity = () => {
+			if (!bootGame.initialized) bootGame();
+			enterCity();
+		};
 	}
 	resetGame();
 	state.started = true;
 	state.paused = false;
 	controlsArmed = true;
+	if (typeof window !== "undefined") {
+		const hash = (window.location.hash || "").toLowerCase();
+		const query = (window.location.search || "").toLowerCase();
+		if (hash === "#city" || hash === "#stadt" || query.includes("city") || query.includes("stadt")) {
+			enterCity();
+		}
+	}
 	requestAnimationFrame(tick);
 }
 
