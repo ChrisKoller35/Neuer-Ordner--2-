@@ -30,6 +30,7 @@ const CODE_TSUNAMI = new Set(["KeyT"]);
 const KEY_SHOOT = new Set([" ", "Space"]);
 const CODE_SHOOT = new Set(["Space"]);
 const CITY_SCALE = 3;
+const CITY_VIEW_ZOOM = 0.85;
 const CITY_SPEED = 0.26;
 const CITY_PLAYER_RADIUS = 18;
 const FOE_BASE_SCORE = 5;
@@ -81,9 +82,9 @@ const SHIELD_COOLDOWN = 9000;
 const USE_CLASSIC_OKTOPUS_PROJECTILE = true; // Toggle to compare new blowdart prototype with classic sprite
 const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallback
 const USE_CITY_SPRITE = true;
-const CITY_ANIM_SOURCE = "png"; // "png" or "sheet"
+const CITY_ANIM_SOURCE = "rotate"; // "rotate", "png" or "sheet"
 const CITY_SPRITE_FRAME_SIZE = 256;
-const CITY_SPRITE_SCALE = 0.3;
+const CITY_SPRITE_SCALE = 0.15;
 const CITY_SPRITE_OFFSET_X_SIDE = -4;
 const CITY_SPRITE_OFFSET_X_VERTICAL = -4;
 const CITY_SPRITE_OFFSET_Y = -4;
@@ -92,6 +93,13 @@ const CITY_SPRITE_CROP_INSET = 0;
 const CITY_SPRITE_ALPHA_THRESHOLD = 10;
 const CITY_SPRITE_CROP_OUTSET_X = 48;
 const CITY_SPRITE_CROP_OUTSET_Y = 20;
+// Isometrische Perspektive für 3D-Eindruck (jetzt via CSS)
+const CITY_PERSPECTIVE_ENABLED = false;
+const CITY_PERSPECTIVE_SKEW_X = 0.0;    // Horizontale Scherung
+const CITY_PERSPECTIVE_SCALE_Y = 0.7;   // Y-Stauchung (0.7 = 30% gestaucht)
+const CITY_PERSPECTIVE_ORIGIN_Y = 0.5;  // Ursprung der Transformation (0.5 = Mitte)
+// Sprite-Korrektur für 3D-Perspektive (streckt Sprites vertikal)
+const CITY_SPRITE_PERSPECTIVE_STRETCH = 1.0; // Faktor für vertikale Streckung (1.0 = keine) - 2D Top-Down
 const CITY_SPRITE_FRAME_OUTSET = {
 	"0,0": { left: 0, right: 14, top: 0, bottom: 0 }
 };
@@ -283,6 +291,7 @@ const LEVEL4_FLOOR_SPRITE = loadSprite("./Bodengold.png");
 
 const SPRITES = {
 	player: loadSprite("./Player.png"),
+	cityPlayer: loadSprite("./Playertopdown.png"),
 	foe: loadSprite("./foe-jelly.png"),
 	boss: loadSprite("./boss-shark.png"),
 	shot: loadSprite("./player-shot.png"),
@@ -299,57 +308,52 @@ const SPRITES = {
 	symbolGeldschein: loadSprite("./Geldscheinsymbol.png"),
 	symbolYacht: loadSprite("./Yachtsymbol.png"),
 	backgroundLevelOne: loadSprite("./Backgroundlvlone.png"),
-	cityTile: loadSprite("./Bodenplatte.png"),
+	cityTiles: [
+		loadSprite("./Bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg"),
+		loadSprite("./Bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg"),
+		loadSprite("./Bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg"),
+		loadSprite("./Bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg"),
+		loadSprite("./Bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg"),
+		loadSprite("./Bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg")
+	],
 	coralAllyOne: loadSprite("./Korallenbegleitereins.png"),
-	coralAllyTwo: loadSprite("./Korallenbegleiterzwei.png")
+	coralAllyTwo: loadSprite("./Korallenbegleiterzwei.png"),
+	npcHaendler: loadSprite("./Npc/Haendler.png"),
+	npcMission: loadSprite("./Npc/Mission.png"),
+	standwaffen: loadSprite("./Standwaffen.png"),
+	ruestungMeer: loadSprite("./Ruestungmeer.png"),
+	queststand: loadSprite("./Queststand.png"),
+	cityBackground: loadSprite("./Stadthaus.webp")
 };
-
-const CITY_ANIM_FRAMES = {
-	down: {
-		idle: loadSprite("./Animation/01_down_idle_0.png"),
-		walk: [
-			loadSprite("./Animation/02_down_walk_1.png"),
-			loadSprite("./Animation/03_down_walk_2.png"),
-			loadSprite("./Animation/04_down_walk_3.png"),
-			loadSprite("./Animation/05_down_walk_4.png")
-		]
-	},
-	left: {
-		idle: loadSprite("./Animation/06_left_idle_0.png"),
-		walk: [
-			loadSprite("./Animation/07_left_walk_1.png"),
-			loadSprite("./Animation/08_left_walk_2.png"),
-			loadSprite("./Animation/09_left_walk_3.png"),
-			loadSprite("./Animation/10_left_walk_4.png")
-		]
-	},
-	up: {
-		idle: loadSprite("./Animation/11_up_idle_0.png"),
-		walk: [
-			loadSprite("./Animation/12_up_walk_1.png"),
-			loadSprite("./Animation/13_up_walk_2.png"),
-			loadSprite("./Animation/14_up_walk_3.png"),
-			loadSprite("./Animation/15_up_walk_4.png")
-		]
-	}
-};
-
-function getCityAnimFrame(player) {
-	const facing = player.facing === "up" ? "up" : player.facing === "side" ? "left" : "down";
-	const frames = CITY_ANIM_FRAMES[facing];
-	if (!frames) return null;
-	const isSide = player.facing === "side";
-	const flip = isSide && player.dirX < 0;
-	if (!player.moving) {
-		return { image: frames.idle, flip, facing };
-	}
-	const index = Math.floor(player.animTime / CITY_ANIM_FRAME_TIME) % frames.walk.length;
-	return { image: frames.walk[index], flip, facing };
-}
 let processedHealSprite = null;
 let pickupHideTimer = null;
 // Cache scaled alpha masks so cover rock collisions align to the sprite silhouette.
 const coverRockMaskCache = new Map();
+
+// ========== STADT SEITENANSICHT SYSTEM ==========
+// Stadt ist jetzt in Seitenansicht wie Level 1-4
+// Gebäude mit 4 Stockwerken (Test mit Stadt.png)
+const CITY_FLOOR_COUNT = 4; // Anzahl Stockwerke (0 = Erdgeschoss)
+const CITY_FLOOR_HEIGHT = 360; // Höhe pro Stockwerk in Pixel - NOCHMALS ERHÖHT
+const CITY_BUILDING_WIDTH = 1600; // Gebäudebreite
+const CITY_BUILDING_HEIGHT = CITY_FLOOR_HEIGHT * CITY_FLOOR_COUNT; // 3600px
+const CITY_HATCH_WIDTH = 120; // Breite der Luke zum Hochschwimmen
+const CITY_WALL_THICKNESS = 30; // Wandstärke
+const CITY_FLOOR_THICKNESS = 25; // Bodendicke für Kollision
+
+// ========== GRID KOLLISIONS-SYSTEM ==========
+// Grid für begehbare Bereiche - Zellen die markiert sind können betreten werden
+const CITY_GRID_CELL_SIZE = 50; // Größe einer Zelle in Pixel
+const CITY_GRID_COLS = Math.ceil(CITY_BUILDING_WIDTH / CITY_GRID_CELL_SIZE); // 32 Spalten
+const CITY_GRID_ROWS = Math.ceil(CITY_BUILDING_HEIGHT / CITY_GRID_CELL_SIZE); // 72 Zeilen
+
+// Globales Grid - true = begehbar, false = blockiert
+// Wird über window exportiert für Debug-Editor
+window.CITY_WALKABLE_GRID = window.CITY_WALKABLE_GRID || {};
+window.CITY_GRID_EDIT_MODE = false;
+window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
+window.CITY_GRID_COLS = CITY_GRID_COLS;
+window.CITY_GRID_ROWS = CITY_GRID_ROWS;
 
 const SYMBOL_DATA = {
 	pferd: {
@@ -1145,6 +1149,7 @@ function bootGame() {
 	const hudTime = document.getElementById("time");
 	const hudHearts = document.getElementById("hearts");
 	const hudShield = document.getElementById("ab-shield");
+	const hudArmor = document.getElementById("hudArmor");
 	const hudSymbols = {
 		pferd: document.getElementById("sym-pferd"),
 		sprinter: document.getElementById("sym-sprinter"),
@@ -1213,6 +1218,8 @@ function bootGame() {
 			<div class="city-merchant-grid" id="cityMerchantGrid"></div>
 			<div class="city-merchant-confirm" id="cityMerchantConfirm">
 				<div class="city-merchant-confirm-text" id="cityMerchantConfirmText">Item kaufen?</div>
+				<div class="city-merchant-confirm-preview" id="cityMerchantConfirmPreview"></div>
+				<div class="city-merchant-confirm-effect" id="cityMerchantConfirmEffect"></div>
 				<div class="city-merchant-confirm-actions">
 					<button class="btn primary" data-action="buy-item">Kaufen</button>
 					<button class="btn" data-action="cancel-buy">Abbrechen</button>
@@ -1220,6 +1227,30 @@ function bootGame() {
 			</div>
 		`;
 		document.body.appendChild(cityMerchantEl);
+	}
+	let cityMissionEl = document.getElementById("cityMission");
+	if (!cityMissionEl) {
+		cityMissionEl = document.createElement("aside");
+		cityMissionEl.id = "cityMission";
+		cityMissionEl.className = "city-mission";
+		cityMissionEl.setAttribute("aria-label", "Missionen");
+		cityMissionEl.innerHTML = `
+			<div class="city-mission-title">
+				<span>Missionen</span>
+				<span class="city-mission-actions">
+					<button class="btn" data-action="close-mission">Schließen</button>
+				</span>
+			</div>
+			<div class="city-mission-list" id="cityMissionList"></div>
+			<div class="city-mission-confirm" id="cityMissionConfirm">
+				<div class="city-mission-confirm-text" id="cityMissionConfirmText">Mission starten?</div>
+				<div class="city-mission-confirm-actions">
+					<button class="btn primary" data-action="start-mission">Ja</button>
+					<button class="btn" data-action="cancel-mission">Nein</button>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(cityMissionEl);
 	}
 	const CITY_DEBUG_ROWS = 3;
 	const CITY_DEBUG_COLS = 5;
@@ -1494,9 +1525,29 @@ function bootGame() {
 	let cityInventoryOpen = false;
 	let cityShopOpen = false;
 	let cityShopSelection = null;
+	let cityMissionOpen = false;
+	let cityMissionSelection = null;
+	let cityDragState = null;
+	let cityDragGhost = null;
 	const cityInventory = {
 		equipment: { weapon: null, armor: null, armor2: null },
 		items: Array.from({ length: 9 }, () => null)
+	};
+	const ARMOR_ITEM_NAME = "Rüstung der Meeresbewohner";
+	const ARMOR_ITEM_EFFECT = "Ein Treffer wird neutralisiert (pro Level 1x). In der Stadt wird der Effekt wieder aufgeladen.";
+	// Icon-Pfad für CSS background-image (relativer Pfad von index.html aus)
+	const ARMOR_ITEM_ICON = "./src/Ruestungmeer.png";
+	const CITY_ITEM_DATA = {
+		[ARMOR_ITEM_NAME]: {
+			label: ARMOR_ITEM_NAME,
+			type: "armor",
+			icon: ARMOR_ITEM_ICON,
+			effect: ARMOR_ITEM_EFFECT
+		}
+	};
+	const getCityItemData = name => {
+		if (!name) return null;
+		return CITY_ITEM_DATA[name] || { label: name, type: "misc", icon: null, effect: "" };
 	};
 	const cityShopItems = [
 		"Schwert",
@@ -1504,13 +1555,16 @@ function bootGame() {
 		"Orb der Zerstörung",
 		"Düsenantrieb",
 		"Schwanzflosse",
-		"Küssung der Meeresbewohner",
+		ARMOR_ITEM_NAME,
 		"Tiefsee-Laterne",
 		"Perlenring",
 		"Harpunen-Klinge",
 		"Stahlhelm",
 		"Algenmantel",
 		"Seestern-Amulett"
+	];
+	const cityMissions = [
+		{ id: "mission-1", label: "Mission 1", description: "Level 1-4 erneut spielen" }
 	];
 
 	const state = {
@@ -1645,7 +1699,8 @@ function bootGame() {
 		levelIndex: 0,
 		levelConfig: null,
 		foeSpawnInterval: { min: 1400, max: 2100 },
-		city: null
+		city: null,
+		armorShieldCharges: 0
 	};
 	const syncCityInventoryVisibility = () => {
 		if (!cityInventoryEl) return;
@@ -1655,26 +1710,34 @@ function bootGame() {
 		if (!cityMerchantEl) return;
 		cityMerchantEl.style.display = (state.mode === "city" && cityShopOpen) ? "block" : "none";
 	};
+	const syncCityMissionVisibility = () => {
+		if (!cityMissionEl) return;
+		cityMissionEl.style.display = (state.mode === "city" && cityMissionOpen) ? "block" : "none";
+	};
 	const updateCityInventoryUI = () => {
 		if (!cityInventoryEl) return;
-		const setSlotText = (slotName, label, value) => {
+		const renderSlot = (slotName, label, value) => {
 			const el = cityInventoryEl.querySelector(`[data-slot="${slotName}"]`);
 			if (!el) return;
-			el.textContent = value || label;
-			if (value) el.classList.add("filled");
-			else el.classList.remove("filled");
+			const data = value ? getCityItemData(value) : null;
+			el.classList.toggle("filled", !!value);
+			el.dataset.item = value || "";
+			if (!value) {
+				el.innerHTML = `<span class="city-slot-label">${label}</span>`;
+				el.title = "";
+				return;
+			}
+			const iconHtml = data && data.icon ? `<span class="city-item-icon" style="background-image:url('${data.icon}')"></span>` : "";
+			el.innerHTML = `${iconHtml}<span class="city-slot-name">${data ? data.label : value}</span>`;
+			el.title = data ? data.label : value;
 		};
-		setSlotText("weapon", "Waffe", cityInventory.equipment.weapon);
-		setSlotText("armor", "Rüstung", cityInventory.equipment.armor);
-		setSlotText("armor2", "Rüstung II", cityInventory.equipment.armor2);
+		renderSlot("weapon", "Waffe", cityInventory.equipment.weapon);
+		renderSlot("armor", "Rüstung", cityInventory.equipment.armor);
+		renderSlot("armor2", "Rüstung II", cityInventory.equipment.armor2);
 		for (let i = 0; i < cityInventory.items.length; i += 1) {
 			const label = `Slot ${i + 1}`;
 			const value = cityInventory.items[i];
-			const el = cityInventoryEl.querySelector(`[data-slot="inv-${i + 1}"]`);
-			if (!el) continue;
-			el.textContent = value || label;
-			if (value) el.classList.add("filled");
-			else el.classList.remove("filled");
+			renderSlot(`inv-${i + 1}`, label, value);
 		}
 	};
 	const updateCityShopUI = () => {
@@ -1682,25 +1745,143 @@ function bootGame() {
 		const grid = cityMerchantEl.querySelector("#cityMerchantGrid");
 		if (grid && grid.childElementCount === 0) {
 			cityShopItems.forEach(item => {
+				const data = getCityItemData(item);
 				const btn = document.createElement("button");
 				btn.type = "button";
 				btn.className = "city-merchant-item";
-				btn.textContent = item;
+				if (data && data.icon) {
+					btn.classList.add("has-icon");
+					btn.innerHTML = `<span class="city-item-name">${data.label}</span><span class="city-item-icon" style="background-image:url('${data.icon}')"></span>`;
+					btn.title = data.label;
+					btn.setAttribute("aria-label", data.label);
+				} else {
+					btn.textContent = data ? data.label : item;
+				}
 				btn.dataset.item = item;
 				grid.appendChild(btn);
 			});
 		}
 		const confirm = cityMerchantEl.querySelector("#cityMerchantConfirm");
 		const confirmText = cityMerchantEl.querySelector("#cityMerchantConfirmText");
+		const confirmPreview = cityMerchantEl.querySelector("#cityMerchantConfirmPreview");
+		const confirmEffect = cityMerchantEl.querySelector("#cityMerchantConfirmEffect");
 		if (confirm && confirmText) {
 			if (cityShopSelection) {
+				const data = getCityItemData(cityShopSelection);
 				confirm.classList.add("active");
-				confirmText.textContent = `${cityShopSelection} kaufen?`;
+				confirmText.textContent = data ? data.label : cityShopSelection;
+				if (confirmPreview) {
+					const typeLabel = data && data.type === "armor" ? "Rüstung" : "Item";
+					const iconHtml = data && data.icon ? `<span class="city-item-icon" style="background-image:url('${data.icon}')"></span>` : "";
+					confirmPreview.innerHTML = `
+						<div class="city-merchant-type">${typeLabel}</div>
+						<div class="city-merchant-image">${iconHtml}</div>
+					`;
+				}
+				if (confirmEffect) {
+					confirmEffect.textContent = data && data.effect ? data.effect : "";
+				}
 			} else {
 				confirm.classList.remove("active");
 				confirmText.textContent = "Item kaufen?";
+				if (confirmPreview) confirmPreview.textContent = "";
+				if (confirmEffect) confirmEffect.textContent = "";
 			}
 		}
+	};
+	const updateCityMissionUI = () => {
+		if (!cityMissionEl) return;
+		const list = cityMissionEl.querySelector("#cityMissionList");
+		if (list && list.childElementCount === 0) {
+			cityMissions.forEach(mission => {
+				const btn = document.createElement("button");
+				btn.type = "button";
+				btn.className = "city-mission-item";
+				btn.textContent = `${mission.label} · ${mission.description}`;
+				btn.dataset.mission = mission.id;
+				list.appendChild(btn);
+			});
+		}
+		const confirm = cityMissionEl.querySelector("#cityMissionConfirm");
+		const confirmText = cityMissionEl.querySelector("#cityMissionConfirmText");
+		if (confirm && confirmText) {
+			if (cityMissionSelection) {
+				confirm.classList.add("active");
+				confirmText.textContent = "Möchten Sie die Mission starten?";
+			} else {
+				confirm.classList.remove("active");
+				confirmText.textContent = "Mission starten?";
+			}
+		}
+	};
+	const getCitySlotItem = slotName => {
+		if (!slotName) return null;
+		if (slotName.startsWith("inv-")) {
+			const index = Math.max(0, Number.parseInt(slotName.split("-")[1], 10) - 1);
+			return cityInventory.items[index] || null;
+		}
+		return cityInventory.equipment[slotName] || null;
+	};
+	const setCitySlotItem = (slotName, value) => {
+		if (!slotName) return;
+		if (slotName.startsWith("inv-")) {
+			const index = Math.max(0, Number.parseInt(slotName.split("-")[1], 10) - 1);
+			cityInventory.items[index] = value || null;
+			return;
+		}
+		cityInventory.equipment[slotName] = value || null;
+	};
+	const canEquipCityItem = (slotName, itemName) => {
+		if (!itemName) return false;
+		const data = getCityItemData(itemName);
+		if (slotName === "armor") return data && data.type === "armor";
+		return slotName === "weapon" || slotName === "armor2";
+	};
+	const refreshArmorCharge = () => {
+		const armorEquipped = cityInventory.equipment.armor === ARMOR_ITEM_NAME;
+		state.armorShieldCharges = armorEquipped ? 1 : 0;
+		updateHUD();
+	};
+	const cleanupCityDrag = () => {
+		if (cityDragGhost && cityDragGhost.parentElement) cityDragGhost.parentElement.removeChild(cityDragGhost);
+		cityDragGhost = null;
+		cityDragState = null;
+	};
+	const beginCityDrag = (slotEl, slotName, itemName, startEvent) => {
+		if (!slotEl || !slotName || !itemName) return;
+		const data = getCityItemData(itemName);
+		cityDragState = { item: itemName, from: slotName };
+		cityDragGhost = document.createElement("div");
+		cityDragGhost.className = "city-drag-ghost";
+		const iconHtml = data && data.icon ? `<span class="city-item-icon" style="background-image:url('${data.icon}')"></span>` : "";
+		cityDragGhost.innerHTML = `${iconHtml}<span>${data ? data.label : itemName}</span>`;
+		document.body.appendChild(cityDragGhost);
+		const moveGhost = e => {
+			if (!cityDragGhost) return;
+			cityDragGhost.style.left = `${e.clientX + 12}px`;
+			cityDragGhost.style.top = `${e.clientY + 12}px`;
+		};
+		moveGhost(startEvent);
+		const handleMove = e => moveGhost(e);
+		const handleUp = e => {
+			document.removeEventListener("pointermove", handleMove);
+			document.removeEventListener("pointerup", handleUp);
+			const target = document.elementFromPoint(e.clientX, e.clientY);
+			const slotTarget = target ? target.closest(".city-slot") : null;
+			const toSlot = slotTarget ? slotTarget.dataset.slot : null;
+			if (toSlot && toSlot !== slotName) {
+				const targetItem = getCitySlotItem(toSlot);
+				if (toSlot.startsWith("inv-") || canEquipCityItem(toSlot, itemName)) {
+					setCitySlotItem(toSlot, itemName);
+					setCitySlotItem(slotName, targetItem);
+					if (toSlot === "armor" || slotName === "armor") refreshArmorCharge();
+					updateCityInventoryUI();
+				}
+			}
+			cleanupCityDrag();
+		};
+		document.addEventListener("pointermove", handleMove);
+		document.addEventListener("pointerup", handleUp, { once: true });
 	};
 	const tryAddCityItem = itemName => {
 		const slotIndex = cityInventory.items.findIndex(item => !item);
@@ -1715,6 +1896,20 @@ function bootGame() {
 	};
 	updateCityInventoryUI();
 	updateCityShopUI();
+	updateCityMissionUI();
+	if (cityInventoryEl) {
+		cityInventoryEl.addEventListener("pointerdown", event => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			const slot = target.closest(".city-slot");
+			if (!slot) return;
+			const slotName = slot.dataset.slot;
+			const item = getCitySlotItem(slotName);
+			if (!item) return;
+			event.preventDefault();
+			beginCityDrag(slot, slotName, item, event);
+		});
+	}
 	if (cityMerchantEl) {
 		cityMerchantEl.addEventListener("click", event => {
 			const target = event.target;
@@ -1740,10 +1935,45 @@ function bootGame() {
 				}
 				return;
 			}
-			const item = target.dataset.item;
+			const itemBtn = target.closest(".city-merchant-item");
+			const item = itemBtn ? itemBtn.dataset.item : null;
 			if (item) {
 				cityShopSelection = item;
 				updateCityShopUI();
+			}
+		});
+	}
+	if (cityMissionEl) {
+		cityMissionEl.addEventListener("click", event => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			const action = target.dataset.action;
+			if (action === "close-mission") {
+				cityMissionOpen = false;
+				cityMissionSelection = null;
+				updateCityMissionUI();
+				syncCityMissionVisibility();
+				return;
+			}
+			if (action === "cancel-mission") {
+				cityMissionSelection = null;
+				updateCityMissionUI();
+				return;
+			}
+			if (action === "start-mission") {
+				if (!cityMissionSelection) return;
+				cityMissionOpen = false;
+				cityMissionSelection = null;
+				syncCityMissionVisibility();
+				resetGame();
+				if (bannerEl) bannerEl.textContent = "Mission gestartet";
+				return;
+			}
+			const missionBtn = target.closest(".city-mission-item");
+			const mission = missionBtn ? missionBtn.dataset.mission : null;
+			if (mission) {
+				cityMissionSelection = mission;
+				updateCityMissionUI();
 			}
 		});
 	}
@@ -3634,45 +3864,100 @@ function bootGame() {
 	// --- End tsunami block ---
 
 	function buildCityState() {
-		const width = canvas.width * CITY_SCALE;
-		const height = canvas.height * CITY_SCALE;
-		const gridSize = 160;
-		const player = {
-			x: width * 0.5,
-			y: height * 0.5,
-			r: CITY_PLAYER_RADIUS,
-			dirX: 1,
-			facing: "down",
-			moving: false,
-			animTime: 0
+		// SEITENANSICHT Stadt wie Level 1-4
+		// Gebäude mit 10 Stockwerken, von unten nach oben - VERDOPPELT
+		const width = canvas.width;
+		const height = canvas.height;
+		
+		// Gebäude-Position (beginnt links, größer als Canvas)
+		const buildingX = 100; // Fester Startpunkt links
+		const buildingY = -CITY_BUILDING_HEIGHT + height; // Gebäude ragt nach oben über Canvas
+		
+		// Boden-Offset für Spieler/NPC-Positionierung (muss mit updateCity übereinstimmen)
+		const FLOOR_OFFSET = CITY_FLOOR_THICKNESS + 0;
+		
+		// Individuelle Offsets pro Stockwerk (gemessen mit Debug-Tool)
+		// Stock 0: -32px, Stock 1: +40px, Stock 2: +133px, Stock 3: +220px
+		const FLOOR_INDIVIDUAL_OFFSETS = {
+			0: -32,
+			1: 40,
+			2: 133,
+			3: 220
 		};
-		const npcs = [
-			{ id: "merchant", label: "Händler", x: width * 0.32, y: height * 0.42 },
-			{ id: "quest", label: "Missionen", x: width * 0.68, y: height * 0.58 }
-		];
-		const buildings = [
-			{ x: width * 0.18, y: height * 0.2, w: 220, h: 160 },
-			{ x: width * 0.52, y: height * 0.18, w: 260, h: 180 },
-			{ x: width * 0.22, y: height * 0.62, w: 280, h: 200 },
-			{ x: width * 0.58, y: height * 0.68, w: 240, h: 170 }
-		];
-		const tiles = [];
-		const cols = Math.max(1, Math.ceil(width / gridSize));
-		const rows = Math.max(1, Math.ceil(height / gridSize));
-		for (let y = 0; y < rows; y += 1) {
-			for (let x = 0; x < cols; x += 1) {
-				tiles.push({ x, y, kind: "floor" });
-			}
+		
+		// Berechne Stockwerk-Positionen (Y-Koordinate für jeden Stock)
+		// Stock 0 = Erdgeschoss (unten), Stock 9 = oben
+		const floors = [];
+		for (let i = 0; i < CITY_FLOOR_COUNT; i++) {
+			const floorY = buildingY + CITY_BUILDING_HEIGHT - (i + 1) * CITY_FLOOR_HEIGHT;
+			floors.push({
+				index: i,
+				y: floorY,
+				// Luke-Position (mittig im Stockwerk)
+				hatchX: buildingX + CITY_BUILDING_WIDTH / 2 - CITY_HATCH_WIDTH / 2,
+				hatchY: floorY, // Luke ist am oberen Rand des Stockwerks
+				hasHatch: i < CITY_FLOOR_COUNT - 1 // Oberstes Stockwerk hat keine Luke nach oben
+			});
 		}
+		
+		// Hilfsfunktion für Boden-Y-Position (mit individuellen Offsets)
+		const getFloorGroundY = (floorIndex) => {
+			const indivOffset = FLOOR_INDIVIDUAL_OFFSETS[floorIndex] || 0;
+			return floors[floorIndex].y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET + indivOffset;
+		};
+		
+		// Spieler startet links im Erdgeschoss (ursprüngliche Position)
+		const player = {
+			x: buildingX + 150,
+			y: getFloorGroundY(0), // Korrekte Boden-Position
+			r: CITY_PLAYER_RADIUS,
+			dir: 1, // Blickrichtung (1 = rechts, -1 = links)
+			floor: 0, // Aktuelles Stockwerk (nur für Referenz, nicht für Kollision)
+			moving: false,
+			animTime: 0,
+			swimming: false // true wenn durch Luke schwimmend
+		};
+		
+		// NPCs auf verschiedenen Stockwerken - verteilt über das größere Gebäude
+		// Missionen auf Stock 1, Händler auf Stock 2
+		const npcs = [
+			{ 
+				id: "quest", 
+				label: "Missionen", 
+				x: buildingX + 400, 
+				y: getFloorGroundY(1), // Korrekte Boden-Position
+				floor: 1
+			},
+			{ 
+				id: "merchant", 
+				label: "Händler", 
+				x: buildingX + CITY_BUILDING_WIDTH - 500, 
+				y: getFloorGroundY(2) + 10, // Etwas nach unten verschoben
+				floor: 2
+			}
+		];
+		
+		// Kamera folgt dem Spieler
+		const cameraY = Math.max(0, Math.min(
+			player.y - height / 2,
+			CITY_BUILDING_HEIGHT - height
+		));
+		
 		return {
 			width,
 			height,
-			gridSize,
+			buildingX,
+			buildingY,
+			buildingWidth: CITY_BUILDING_WIDTH,
+			buildingHeight: CITY_BUILDING_HEIGHT,
+			floors,
 			player,
-			camera: { x: 0, y: 0 },
+			camera: { x: 0, y: cameraY },
 			npcs,
-			buildings,
-			tiles
+			floorHeight: CITY_FLOOR_HEIGHT,
+			hatchWidth: CITY_HATCH_WIDTH,
+			wallThickness: CITY_WALL_THICKNESS,
+			floorThickness: CITY_FLOOR_THICKNESS
 		};
 	}
 
@@ -3713,11 +3998,15 @@ function bootGame() {
 		state.tsunamiWave = null;
 		state.eventFlash = null;
 		pointer.shoot = false;
+		state.armorShieldCharges = cityInventory.equipment.armor === ARMOR_ITEM_NAME ? 1 : 0;
 		cityInventoryOpen = false;
 		cityShopOpen = false;
 		cityShopSelection = null;
+		cityMissionOpen = false;
+		cityMissionSelection = null;
 		syncCityInventoryVisibility();
 		syncCityShopVisibility();
+		syncCityMissionVisibility();
 		if (bannerEl) bannerEl.textContent = "Unterwasserstadt";
 		if (endOverlay) endOverlay.style.display = "none";
 		const gameWrap = document.getElementById("gameWrap");
@@ -3751,11 +4040,15 @@ function bootGame() {
 		state.player.perfumeSlowTimer = 0;
 		state.player.shieldUnlocked = false;
 		state.player.shieldActive = false;
+		state.armorShieldCharges = cityInventory.equipment.armor === ARMOR_ITEM_NAME ? 1 : 0;
 		cityInventoryOpen = false;
 		cityShopOpen = false;
 		cityShopSelection = null;
+		cityMissionOpen = false;
+		cityMissionSelection = null;
 		syncCityInventoryVisibility();
 		syncCityShopVisibility();
+		syncCityMissionVisibility();
 		state.player.shieldTimer = 0;
 		state.player.shieldCooldown = 0;
 		state.player.shieldLastActivation = 0;
@@ -3987,6 +4280,14 @@ function bootGame() {
 			else if (player.shieldCooldown > 0) hudShield.title = `Schild lädt (${Math.ceil(player.shieldCooldown / 1000)}s)`;
 			else hudShield.title = "Schild bereit (Shift/E)";
 		}
+		if (hudArmor) {
+			const armorEquipped = cityInventory.equipment.armor === ARMOR_ITEM_NAME;
+			const armorReady = armorEquipped && state.armorShieldCharges > 0 && state.mode === "game";
+			hudArmor.classList.toggle("active", armorReady);
+			hudArmor.classList.toggle("inactive", !armorReady);
+			hudArmor.style.display = armorEquipped ? "inline-flex" : "none";
+			hudArmor.title = armorEquipped ? (armorReady ? "Rüstung aktiv – nächster Treffer wird neutralisiert" : "Rüstung verbraucht (lädt in der Stadt)") : "";
+		}
 		if (hudSymbols) {
 			for (const [kind, el] of Object.entries(hudSymbols)) {
 				if (!el) continue;
@@ -4053,31 +4354,123 @@ function bootGame() {
 		const city = state.city;
 		if (!city) return;
 		const player = city.player;
+		const floors = city.floors;
+		
+		// ===== BEWEGUNGSEINGABE =====
 		let moveX = 0;
 		let moveY = 0;
 		if (hasKey(KEY_LEFT)) moveX -= 1;
 		if (hasKey(KEY_RIGHT)) moveX += 1;
 		if (hasKey(KEY_UP)) moveY -= 1;
 		if (hasKey(KEY_DOWN)) moveY += 1;
+		
 		player.moving = !!(moveX || moveY);
+		
+		// ===== GRID-BASIERTE KOLLISION =====
+		// Prüft ob eine Position im begehbaren Grid liegt
+		// WICHTIG: y ist die Füße-Position, aber wir prüfen die Mitte des Spielers
+		const PLAYER_VISUAL_OFFSET = 71; // Spieler wird ca. 71px oberhalb von y gezeichnet
+		
+		const isPositionWalkable = (x, y) => {
+			// Position relativ zum Gebäude
+			// Wir prüfen die MITTE des Spielers, nicht die Füße
+			const relX = x - city.buildingX;
+			const relY = (y - PLAYER_VISUAL_OFFSET) - city.buildingY;
+			
+			// Grid-Zelle berechnen
+			const col = Math.floor(relX / CITY_GRID_CELL_SIZE);
+			const row = Math.floor(relY / CITY_GRID_CELL_SIZE);
+			
+			// Außerhalb des Grids = blockiert (Spieler bleibt im Haus)
+			if (col < 0 || col >= CITY_GRID_COLS || row < 0 || row >= CITY_GRID_ROWS) {
+				return false;
+			}
+			
+			// Prüfe Grid
+			const key = `${col},${row}`;
+			const grid = window.CITY_WALKABLE_GRID || {};
+			
+			// Wenn Grid leer ist, erlaube alles (noch nicht konfiguriert)
+			if (Object.keys(grid).length === 0) {
+				return true;
+			}
+			
+			return grid[key] === true;
+		};
+		
+		// ===== BEWEGUNG IM WASSER - GRID-BASIERT =====
+		// Der Fisch kann sich nur auf markierten Grid-Zellen bewegen
+		
 		if (player.moving) {
-			const len = Math.hypot(moveX, moveY) || 1;
-			const dx = (moveX / len) * CITY_SPEED * dt;
-			const dy = (moveY / len) * CITY_SPEED * dt;
-			player.x = clamp(player.x + dx, CITY_PLAYER_RADIUS * 2, city.width - CITY_PLAYER_RADIUS * 2);
-			player.y = clamp(player.y + dy, CITY_PLAYER_RADIUS * 2, city.height - CITY_PLAYER_RADIUS * 2);
 			player.animTime += dt;
-			if (Math.abs(moveX) > Math.abs(moveY)) {
-				player.facing = "side";
-				player.dirX = moveX >= 0 ? 1 : -1;
-			} else if (moveY < 0) {
-				player.facing = "up";
+			
+			// Berechne neue Position
+			let newX = player.x;
+			let newY = player.y;
+			
+			if (moveX !== 0) {
+				newX += moveX * CITY_SPEED * dt;
+				player.dir = moveX > 0 ? 1 : -1;
+			}
+			if (moveY !== 0) {
+				newY += moveY * CITY_SPEED * dt;
+			}
+			
+			// Gebäude-Grenzen
+			const minX = city.buildingX + city.wallThickness + player.r;
+			const maxX = city.buildingX + city.buildingWidth - city.wallThickness - player.r;
+			const minY = city.buildingY + player.r;
+			const maxY = city.buildingY + city.buildingHeight - player.r;
+			
+			newX = clamp(newX, minX, maxX);
+			newY = clamp(newY, minY, maxY);
+			
+			// Prüfe ob neue Position begehbar ist
+			if (isPositionWalkable(newX, newY)) {
+				player.x = newX;
+				player.y = newY;
 			} else {
-				player.facing = "down";
+				// Versuche nur horizontale Bewegung
+				if (moveX !== 0 && isPositionWalkable(newX, player.y)) {
+					player.x = newX;
+				}
+				// Versuche nur vertikale Bewegung
+				else if (moveY !== 0 && isPositionWalkable(player.x, newY)) {
+					player.y = newY;
+				}
 			}
 		} else {
 			player.animTime = 0;
 		}
+		
+		// ===== KAMERA UPDATE - folgt dem Spieler =====
+		// Im Grid-Editor-Modus: Kamera wird extern gesteuert
+		if (!window.CITY_GRID_EDIT_MODE) {
+			// Kamera Y-Offset so dass Spieler im sichtbaren Bereich bleibt
+			const targetCamY = player.y - city.height / 2;
+			// Kamera-Grenzen: nicht über das Gebäude hinaus scrollen (vertikal)
+			const minCamY = city.buildingY;
+			const maxCamY = city.buildingY + city.buildingHeight - city.height;
+			city.camera.y = clamp(targetCamY, minCamY, maxCamY);
+			
+			// Kamera X für horizontales Scrollen - ERWEITERT um Wasser zu sehen
+			// Kamera folgt dem Spieler immer, auch über Gebäudegrenzen hinaus
+			const targetCamX = player.x - city.width / 2;
+			// Erweiterte Grenzen: 200px links und rechts vom Gebäude sichtbar
+			const waterPadding = 200;
+			const minCamX = city.buildingX - waterPadding;
+			const maxCamX = city.buildingX + city.buildingWidth - city.width + waterPadding;
+			city.camera.x = clamp(targetCamX, minCamX, maxCamX);
+		} else {
+			// Grid-Editor-Modus: Kamera-Werte von außen übernehmen
+			if (typeof window.CITY_CAMERA_X_DEBUG === 'number') {
+				city.camera.x = window.CITY_CAMERA_X_DEBUG;
+			}
+			if (typeof window.CITY_CAMERA_Y_DEBUG === 'number') {
+				city.camera.y = window.CITY_CAMERA_Y_DEBUG;
+			}
+		}
+		
 		state.elapsed += dt;
 	}
 
@@ -5554,6 +5947,12 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			const now = performance.now();
 			player.shieldTimer = Math.max(0, player.shieldTimer - 600);
 			player.shieldLastBlock = now;
+			return;
+		}
+		if (state.mode === "game" && cityInventory.equipment.armor === ARMOR_ITEM_NAME && state.armorShieldCharges > 0) {
+			state.armorShieldCharges = 0;
+			triggerEventFlash("armorBlock", { text: "Rüstung schützt!", duration: 1200, opacity: 0.9 });
+			updateHUD();
 			return;
 		}
 		if (player.invulnFor > 0) return;
@@ -7552,262 +7951,468 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 	function renderCity() {
 		const city = state.city;
 		if (!city) return;
+		
+		// CSS 3D-Perspektive DEAKTIVIERT für Seitenansicht
+		if (canvas && canvas.classList.contains("city-perspective")) {
+			canvas.classList.remove("city-perspective");
+		}
 		syncCityInventoryVisibility();
 		syncCityShopVisibility();
+		syncCityMissionVisibility();
 		if (citySpriteDebugPanel) {
-			citySpriteDebugPanel.style.display = (USE_CITY_SPRITE && CITY_SPRITE_DEBUG) ? "block" : "none";
+			citySpriteDebugPanel.style.display = "none";
 		}
-		if (USE_CITY_SPRITE && CITY_SPRITE_DEBUG && citySpriteDebugCtx && citySpriteDebugCanvas) {
-			const sprite = SPRITES.cityPlayer;
-			if (spriteReady(sprite)) {
-				buildCitySpriteCache();
-				const frameSize = CITY_SPRITE_FRAME_SIZE;
-				const rows = CITY_DEBUG_ROWS;
-				const cols = CITY_DEBUG_COLS;
-				const scale = Math.min(
-					citySpriteDebugCanvas.width / (frameSize * cols),
-					citySpriteDebugCanvas.height / (frameSize * rows)
-				);
-				const sheetW = frameSize * cols * scale;
-				const sheetH = frameSize * rows * scale;
-				const originX = (citySpriteDebugCanvas.width - sheetW) * 0.5;
-				const originY = (citySpriteDebugCanvas.height - sheetH) * 0.5;
-				citySpriteDebugCtx.save();
-				citySpriteDebugCtx.imageSmoothingEnabled = false;
-				citySpriteDebugCtx.clearRect(0, 0, citySpriteDebugCanvas.width, citySpriteDebugCanvas.height);
-				citySpriteDebugCtx.globalAlpha = 0.95;
-				citySpriteDebugCtx.drawImage(sprite, originX, originY, sheetW, sheetH);
-				citySpriteDebugCtx.globalAlpha = 1;
-				citySpriteDebugCtx.strokeStyle = "rgba(120,200,255,0.6)";
-				citySpriteDebugCtx.lineWidth = 1;
-				citySpriteDebugCtx.strokeRect(originX, originY, sheetW, sheetH);
-				citySpriteDebugCtx.strokeStyle = "rgba(80,220,255,0.95)";
-				for (let r = 0; r < rows; r += 1) {
-					for (let c = 0; c < cols; c += 1) {
-						const entry = CITY_SPRITE_CACHE.frames[r] && CITY_SPRITE_CACHE.frames[r][c];
-						if (!entry) continue;
-						const offset = getCitySpriteOffset(r, c);
-						const cx = originX + (c * frameSize + (entry.centerX || frameSize / 2) + offset.x) * scale;
-						const cy = originY + (r * frameSize + (entry.centerY || frameSize / 2) + offset.y) * scale;
-						citySpriteDebugCtx.beginPath();
-						citySpriteDebugCtx.moveTo(cx - 4, cy);
-						citySpriteDebugCtx.lineTo(cx + 4, cy);
-						citySpriteDebugCtx.moveTo(cx, cy - 4);
-						citySpriteDebugCtx.lineTo(cx, cy + 4);
-						citySpriteDebugCtx.stroke();
-					}
-				}
-				const entry00 = CITY_SPRITE_CACHE.frames[0] && CITY_SPRITE_CACHE.frames[0][0];
-				if (entry00 && entry00.crop) {
-					const baseCrop = entry00.crop;
-					const baseW = (baseCrop.maxX - baseCrop.minX + 1) * scale;
-					const baseH = (baseCrop.maxY - baseCrop.minY + 1) * scale;
-					citySpriteDebugCtx.strokeStyle = "rgba(255,220,120,0.95)";
-					citySpriteDebugCtx.lineWidth = 2;
-					for (let r = 0; r < rows; r += 1) {
-						for (let c = 0; c < cols; c += 1) {
-							const entry = CITY_SPRITE_CACHE.frames[r] && CITY_SPRITE_CACHE.frames[r][c];
-							if (!entry || !entry.crop) continue;
-							const crop = entry.crop;
-							const centerX = (crop.minX + crop.maxX + 1) * 0.5;
-							const centerY = (crop.minY + crop.maxY + 1) * 0.5;
-							const cropX = originX + (c * frameSize + centerX) * scale - baseW / 2;
-							const cropY = originY + (r * frameSize + centerY) * scale - baseH / 2;
-							citySpriteDebugCtx.strokeRect(cropX, cropY, baseW, baseH);
-						}
-					}
-				}
-				if (cityAlignMode && cityAlignSelectedFrame) {
-					const selX = originX + cityAlignSelectedFrame.col * frameSize * scale;
-					const selY = originY + cityAlignSelectedFrame.row * frameSize * scale;
-					citySpriteDebugCtx.strokeStyle = "rgba(255,220,120,0.95)";
-					citySpriteDebugCtx.lineWidth = 2;
-					citySpriteDebugCtx.strokeRect(selX, selY, frameSize * scale, frameSize * scale);
-				}
-				citySpriteDebugCtx.restore();
-			}
-		}
+		
 		const width = canvas.width;
 		const height = canvas.height;
 		const player = city.player;
-		const maxCamX = Math.max(0, city.width - width);
-		const maxCamY = Math.max(0, city.height - height);
-		const camX = clamp(player.x - width * 0.5, 0, maxCamX);
-		const camY = clamp(player.y - height * 0.5, 0, maxCamY);
-		city.camera.x = camX;
-		city.camera.y = camY;
+		const floors = city.floors;
 
+		// Hintergrund - Unterwasser-Gradient wie in Level 1-4
 		ctx.clearRect(0, 0, width, height);
 		const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-		bgGrad.addColorStop(0, "#0b2f45");
-		bgGrad.addColorStop(1, "#062031");
+		bgGrad.addColorStop(0, "#03294a");
+		bgGrad.addColorStop(0.55, "#02203b");
+		bgGrad.addColorStop(1, "#02111f");
 		ctx.fillStyle = bgGrad;
 		ctx.fillRect(0, 0, width, height);
-
-		if (USE_CITY_SPRITE && CITY_SPRITE_DEBUG) {
-			ctx.save();
-			ctx.fillStyle = "rgba(255,255,255,0.7)";
-			ctx.font = "12px 'Segoe UI', sans-serif";
-			ctx.textAlign = "left";
-			ctx.textBaseline = "top";
-			ctx.fillText(CITY_SPRITE_DEBUG_LABEL, 12, 10);
-			ctx.restore();
-		}
-
-		const tile = city.gridSize || 160;
-		ctx.strokeStyle = "rgba(120,200,255,0.08)";
-		ctx.lineWidth = 1;
-		for (let x = -((camX % tile) + tile); x <= width + tile; x += tile) {
-			ctx.beginPath();
-			ctx.moveTo(x, 0);
-			ctx.lineTo(x, height);
-			ctx.stroke();
-		}
-		for (let y = -((camY % tile) + tile); y <= height + tile; y += tile) {
-			ctx.beginPath();
-			ctx.moveTo(0, y);
-			ctx.lineTo(width, y);
-			ctx.stroke();
-		}
-
-		const cityTile = SPRITES.cityTile;
+		
+		// Lichtstrahlen von oben (wie Cutscene)
 		ctx.save();
-		ctx.translate(-camX, -camY);
-		for (const placed of city.tiles || []) {
-			const tileX = placed.x * tile;
-			const tileY = placed.y * tile;
-			if (spriteReady(cityTile)) {
-				ctx.drawImage(cityTile, tileX, tileY, tile, tile);
-			} else {
-				ctx.fillStyle = "rgba(120,200,255,0.25)";
-				ctx.fillRect(tileX, tileY, tile, tile);
-			}
+		ctx.globalCompositeOperation = "lighter";
+		ctx.globalAlpha = 0.18;
+		for (let i = 0; i < 3; i++) {
+			const phase = performance.now() * 0.0003 + i * 1.5;
+			const center = (width / 4) * (i + 1) + Math.sin(phase) * 40;
+			const beamWidth = 80;
+			const grad = ctx.createLinearGradient(center, 0, center, height * 0.7);
+			grad.addColorStop(0, "rgba(255,255,255,0.3)");
+			grad.addColorStop(0.6, "rgba(40,80,120,0.2)");
+			grad.addColorStop(1, "rgba(0,0,0,0)");
+			ctx.fillStyle = grad;
+			ctx.beginPath();
+			ctx.moveTo(center - beamWidth * 0.3, 0);
+			ctx.lineTo(center + beamWidth * 0.3, 0);
+			ctx.lineTo(center + beamWidth * 0.6, height * 0.7);
+			ctx.lineTo(center - beamWidth * 0.6, height * 0.7);
+			ctx.closePath();
+			ctx.fill();
 		}
 		ctx.restore();
-
+		
+		// ===== KAMERA-TRANSFORMATION =====
+		// Speichere aktuelle Transformation und wende Kamera-Offset an
 		ctx.save();
-		ctx.translate(-camX, -camY);
-		for (const building of city.buildings) {
-			const bx = building.x;
-			const by = building.y;
-			const bw = building.w;
-			const bh = building.h;
-			if (bx + bw < camX - 40 || bx > camX + width + 40 || by + bh < camY - 40 || by > camY + height + 40) continue;
-			ctx.fillStyle = "rgba(10,70,110,0.55)";
-			ctx.strokeStyle = "rgba(180,240,255,0.35)";
-			ctx.lineWidth = 2;
+		ctx.translate(-city.camera.x, -city.camera.y);
+		
+		// ===== GEBÄUDE MIT STADT.PNG ZEICHNEN =====
+		const bx = city.buildingX;
+		const by = city.buildingY;
+		const bw = city.buildingWidth;
+		const bh = city.buildingHeight;
+		
+		// ===== WASSER LINKS UND RECHTS VOM GEBÄUDE =====
+		const waterPadding = 400; // Wie weit das Wasser sichtbar ist
+		
+		// Wasser links vom Gebäude
+		const waterGradLeft = ctx.createLinearGradient(bx - waterPadding, 0, bx, 0);
+		waterGradLeft.addColorStop(0, "rgba(2, 30, 50, 0.95)");
+		waterGradLeft.addColorStop(0.5, "rgba(3, 40, 65, 0.9)");
+		waterGradLeft.addColorStop(1, "rgba(5, 50, 80, 0.85)");
+		ctx.fillStyle = waterGradLeft;
+		ctx.fillRect(bx - waterPadding, by, waterPadding, bh);
+		
+		// Wasser rechts vom Gebäude
+		const waterGradRight = ctx.createLinearGradient(bx + bw, 0, bx + bw + waterPadding, 0);
+		waterGradRight.addColorStop(0, "rgba(5, 50, 80, 0.85)");
+		waterGradRight.addColorStop(0.5, "rgba(3, 40, 65, 0.9)");
+		waterGradRight.addColorStop(1, "rgba(2, 30, 50, 0.95)");
+		ctx.fillStyle = waterGradRight;
+		ctx.fillRect(bx + bw, by, waterPadding, bh);
+		
+		// Blasen im Wasser (animiert)
+		ctx.save();
+		ctx.globalAlpha = 0.5;
+		const bubbleTime = performance.now() * 0.001;
+		for (let i = 0; i < 8; i++) {
+			const seed = i * 137.5;
+			const side = i < 4 ? -1 : 1; // Links oder rechts
+			const baseX = side < 0 ? bx - waterPadding / 2 : bx + bw + waterPadding / 2;
+			const offsetX = Math.sin(seed) * (waterPadding * 0.3);
+			const bubbleX = baseX + offsetX;
+			const bubbleY = by + bh - ((bubbleTime * 30 + seed * 10) % bh);
+			const bubbleR = 3 + Math.sin(seed * 2) * 2;
+			
+			ctx.strokeStyle = "rgba(150, 200, 255, 0.6)";
+			ctx.lineWidth = 1.5;
+			ctx.beginPath();
+			ctx.arc(bubbleX, bubbleY, bubbleR, 0, Math.PI * 2);
+			ctx.stroke();
+		}
+		ctx.restore();
+		
+		// Stadt-Hintergrundbild zeichnen (wenn geladen)
+		const cityBg = SPRITES.cityBackground;
+		if (spriteReady(cityBg)) {
+			// Bild so skalieren, dass es das Gebäude abdeckt
+			const imgAspect = cityBg.naturalWidth / cityBg.naturalHeight;
+			const buildingAspect = bw / bh;
+			
+			let drawW, drawH, drawX, drawY;
+			
+			// Bild auf Gebäude-Bereich anpassen (cover-Modus)
+			if (imgAspect > buildingAspect) {
+				// Bild ist breiter - Höhe anpassen
+				drawH = bh;
+				drawW = bh * imgAspect;
+				drawX = bx - (drawW - bw) / 2;
+				drawY = by;
+			} else {
+				// Bild ist höher - Breite anpassen
+				drawW = bw;
+				drawH = bw / imgAspect;
+				drawX = bx;
+				drawY = by - (drawH - bh) / 2;
+			}
+			
+			ctx.drawImage(cityBg, drawX, drawY, drawW, drawH);
+		} else {
+			// Fallback: Einfacher Gebäude-Rahmen
+			ctx.fillStyle = "rgba(15, 45, 75, 0.85)";
 			ctx.fillRect(bx, by, bw, bh);
+			ctx.strokeStyle = "rgba(100, 180, 220, 0.6)";
+			ctx.lineWidth = 3;
 			ctx.strokeRect(bx, by, bw, bh);
 		}
-
-		ctx.font = "18px 'Segoe UI', sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "bottom";
+		
+		// ===== NPCs ZEICHNEN =====
+		const NPC_SPRITE_SCALE = 0.22; // Größere Skalierung für Händler-NPC
+		const NPC_MISSION_SCALE = 0.22; // Größere Skalierung für Missionen-NPC
+		
 		for (const npc of city.npcs) {
 			const nx = npc.x;
 			const ny = npc.y;
-			ctx.fillStyle = "rgba(255,215,160,0.92)";
-			ctx.beginPath();
-			ctx.ellipse(nx, ny, 22, 16, 0, 0, TAU);
-			ctx.fill();
-			ctx.fillStyle = "rgba(250,250,255,0.9)";
-			ctx.fillText(npc.label, nx, ny - 22);
-		}
-
-		if (USE_CITY_SPRITE) {
-			if (CITY_ANIM_SOURCE === "sheet") {
-				const cityPlayerSprite = SPRITES.cityPlayer;
-				if (spriteReady(cityPlayerSprite)) {
-					buildCitySpriteCache();
-					let row = player.facing === "up" ? 2 : player.facing === "side" ? 1 : 0;
-					let walkFrame = player.moving ? (1 + Math.floor(player.animTime / CITY_ANIM_FRAME_TIME) % 4) : 0;
-					let drawFacing = player.facing;
-					const frameEntry = CITY_SPRITE_CACHE.frames[row] && CITY_SPRITE_CACHE.frames[row][walkFrame];
-					if (frameEntry && frameEntry.canvas) {
-						const frameSize = CITY_SPRITE_FRAME_SIZE;
-						const drawW = frameEntry.canvas.width * CITY_SPRITE_SCALE;
-						const drawH = frameEntry.canvas.height * CITY_SPRITE_SCALE;
-						const prevSmoothing = ctx.imageSmoothingEnabled;
-						ctx.imageSmoothingEnabled = false;
-						ctx.save();
-						ctx.translate(Math.round(player.x), Math.round(player.y));
-						const flipSide = drawFacing === "side" && player.dirX < 0;
-						if (flipSide) ctx.scale(-1, 1);
-						const baseOffsetX = drawFacing === "side" ? CITY_SPRITE_OFFSET_X_SIDE : CITY_SPRITE_OFFSET_X_VERTICAL;
-						const offsetX = baseOffsetX;
-						const anchorX = frameEntry.anchorX || drawW / (2 * CITY_SPRITE_SCALE);
-						const anchorY = frameEntry.anchorY || drawH / (2 * CITY_SPRITE_SCALE);
-						const drawX = -anchorX * CITY_SPRITE_SCALE + offsetX;
-						const drawY = -anchorY * CITY_SPRITE_SCALE + CITY_SPRITE_OFFSET_Y;
-						ctx.drawImage(
-							frameEntry.canvas,
-							drawX,
-							drawY,
-							drawW,
-							drawH
-						);
-						ctx.restore();
-						ctx.imageSmoothingEnabled = prevSmoothing;
-					} else {
-						ctx.fillStyle = "rgba(150,220,255,0.95)";
-						ctx.beginPath();
-						ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
-						ctx.fill();
-						ctx.strokeStyle = "rgba(20,60,90,0.6)";
-						ctx.lineWidth = 2;
-						ctx.stroke();
-					}
-				} else {
-					ctx.fillStyle = "rgba(150,220,255,0.95)";
-					ctx.beginPath();
-					ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
-					ctx.fill();
-					ctx.strokeStyle = "rgba(20,60,90,0.6)";
-					ctx.lineWidth = 2;
-					ctx.stroke();
-				}
-			} else {
-				const animFrame = getCityAnimFrame(player);
-				const sprite = animFrame ? animFrame.image : null;
-				if (sprite && spriteReady(sprite)) {
-					const prevSmoothing = ctx.imageSmoothingEnabled;
-					ctx.imageSmoothingEnabled = false;
-					ctx.save();
-					ctx.translate(Math.round(player.x), Math.round(player.y));
-					if (animFrame.flip) ctx.scale(-1, 1);
-					const isSide = animFrame.facing === "left";
-					const offsetX = isSide ? CITY_SPRITE_OFFSET_X_SIDE : CITY_SPRITE_OFFSET_X_VERTICAL;
-					const drawW = sprite.naturalWidth * CITY_SPRITE_SCALE;
-					const drawH = sprite.naturalHeight * CITY_SPRITE_SCALE;
-					ctx.drawImage(
-						sprite,
-						-drawW / 2 + offsetX,
-						-drawH / 2 + CITY_SPRITE_OFFSET_Y,
-						drawW,
-						drawH
-					);
-					ctx.restore();
-					ctx.imageSmoothingEnabled = prevSmoothing;
-				} else {
-					ctx.fillStyle = "rgba(150,220,255,0.95)";
-					ctx.beginPath();
-					ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
-					ctx.fill();
-					ctx.strokeStyle = "rgba(20,60,90,0.6)";
-					ctx.lineWidth = 2;
-					ctx.stroke();
-				}
+			
+			// NPC-Sprite auswählen
+			let npcSprite = null;
+			let spriteScale = NPC_SPRITE_SCALE;
+			if (npc.id === "merchant") {
+				npcSprite = SPRITES.npcHaendler;
+			} else if (npc.id === "quest") {
+				npcSprite = SPRITES.npcMission;
+				spriteScale = NPC_MISSION_SCALE;
 			}
+			
+			let labelOffset = 40;
+			
+			if (npcSprite && spriteReady(npcSprite)) {
+				const drawW = npcSprite.naturalWidth * spriteScale;
+				const drawH = npcSprite.naturalHeight * spriteScale;
+				
+				// NPC-Sprite (Seitenansicht, nicht gestaucht)
+				ctx.save();
+				ctx.translate(nx, ny);
+				ctx.drawImage(npcSprite, -drawW / 2, -drawH, drawW, drawH);
+				ctx.restore();
+				
+				labelOffset = drawH + 15;
+			} else {
+				// Fallback-Kreis
+				ctx.fillStyle = npc.id === "merchant" ? "rgba(255, 200, 100, 0.9)" : "rgba(100, 200, 255, 0.9)";
+				ctx.beginPath();
+				ctx.arc(nx, ny - 15, 20, 0, TAU);
+				ctx.fill();
+				ctx.strokeStyle = "rgba(255,255,255,0.5)";
+				ctx.lineWidth = 2;
+				ctx.stroke();
+			}
+			
+			// NPC-Label
+			ctx.fillStyle = "rgba(255,255,255,0.9)";
+			ctx.font = "bold 14px 'Segoe UI', sans-serif";
+			ctx.textAlign = "center";
+			ctx.fillText(npc.label, nx, ny - labelOffset);
+			
+			// Interaktions-Hinweis
+			ctx.fillStyle = "rgba(200, 230, 255, 0.6)";
+			ctx.font = "12px 'Segoe UI', sans-serif";
+			ctx.fillText("[Klick zum Öffnen]", nx, ny - labelOffset + 16);
+		}
+		
+		// ===== SPIELER ZEICHNEN (mit Player.png wie in Level 1-4) =====
+		const playerSprite = SPRITES.player;
+		
+		// Offset-Korrektur für präzise Positionierung auf dem gelben Punkt
+		const playerOffsetX = -3.5;
+		const playerOffsetY = 50.0;
+		
+		if (spriteReady(playerSprite)) {
+			const scale = 0.18;
+			const drawW = playerSprite.naturalWidth * scale;
+			const drawH = playerSprite.naturalHeight * scale;
+			
+			// Spieler-Sprite
+			ctx.save();
+			ctx.translate(player.x + playerOffsetX, player.y + playerOffsetY);
+			// Flip horizontal basierend auf Blickrichtung
+			if (player.dir < 0) {
+				ctx.scale(-1, 1);
+			}
+			// Leichte Schwimm-Animation
+			const bob = Math.sin(performance.now() * 0.003) * 2;
+			ctx.drawImage(playerSprite, -drawW / 2, -drawH + bob, drawW, drawH);
+			ctx.restore();
 		} else {
-			ctx.fillStyle = "rgba(150,220,255,0.95)";
+			// Fallback wenn Sprite nicht geladen
+			ctx.fillStyle = "rgba(100, 200, 255, 0.95)";
 			ctx.beginPath();
-			ctx.ellipse(player.x, player.y, player.r * 1.1, player.r * 0.8, 0, 0, TAU);
+			ctx.arc(player.x + playerOffsetX, player.y + playerOffsetY - 15, player.r, 0, TAU);
 			ctx.fill();
-			ctx.strokeStyle = "rgba(20,60,90,0.6)";
+			ctx.strokeStyle = "rgba(255,255,255,0.5)";
 			ctx.lineWidth = 2;
 			ctx.stroke();
 		}
+		
+		// ===== KAMERA-TRANSFORMATION BEENDEN =====
 		ctx.restore();
+		
+		// ===== UI-ELEMENTE (ohne Kamera-Transformation) =====
+		
+		// Aktuelles Stockwerk anzeigen
+		ctx.fillStyle = "rgba(0, 20, 40, 0.7)";
+		ctx.fillRect(10, 10, 180, 50);
+		ctx.strokeStyle = "rgba(100, 180, 220, 0.5)";
+		ctx.lineWidth = 2;
+		ctx.strokeRect(10, 10, 180, 50);
+		
+		ctx.fillStyle = "rgba(255,255,255,0.9)";
+		ctx.font = "bold 16px 'Segoe UI', sans-serif";
+		ctx.textAlign = "left";
+		ctx.fillText("Unterwasserstadt", 20, 30);
+		ctx.font = "14px 'Segoe UI', sans-serif";
+		ctx.fillStyle = "rgba(180, 220, 255, 0.9)";
+		ctx.fillText(`Stockwerk: ${player.floor}`, 20, 50);
+		
+		// Steuerungshinweise
+		ctx.fillStyle = "rgba(0, 20, 40, 0.6)";
+		ctx.fillRect(width - 200, height - 70, 190, 60);
+		ctx.fillStyle = "rgba(180, 220, 255, 0.8)";
+		ctx.font = "12px 'Segoe UI', sans-serif";
+		ctx.textAlign = "right";
+		ctx.fillText("A/D - Laufen", width - 20, height - 50);
+		ctx.fillText("W/S - Schwimmen", width - 20, height - 35);
+		ctx.fillText("M - Grid Editor", width - 20, height - 20);
+		
+		// ===== GRID EDITOR - BEGEHBARE BEREICHE MARKIEREN =====
+		if (window.CITY_GRID_EDIT_MODE) {
+			ctx.save();
+			ctx.translate(-city.camera.x, -city.camera.y);
+			
+			const grid = window.CITY_WALKABLE_GRID || {};
+			const cellSize = CITY_GRID_CELL_SIZE;
+			
+			// Zeichne Grid über das ganze Gebäude
+			for (let row = 0; row < CITY_GRID_ROWS; row++) {
+				for (let col = 0; col < CITY_GRID_COLS; col++) {
+					const x = city.buildingX + col * cellSize;
+					const y = city.buildingY + row * cellSize;
+					const key = `${col},${row}`;
+					const isWalkable = grid[key] === true;
+					
+					// Zelle zeichnen
+					if (isWalkable) {
+						// Begehbar = grün
+						ctx.fillStyle = "rgba(0, 255, 100, 0.4)";
+						ctx.fillRect(x, y, cellSize, cellSize);
+					}
+					
+					// Raster-Linien
+					ctx.strokeStyle = isWalkable ? "rgba(0, 255, 100, 0.8)" : "rgba(255, 255, 255, 0.2)";
+					ctx.lineWidth = isWalkable ? 2 : 1;
+					ctx.strokeRect(x, y, cellSize, cellSize);
+				}
+			}
+			
+			// Spieler-Position im Grid markieren
+			// WICHTIG: player.y ist die Füße-Position, der Sprite wird darüber gezeichnet
+			// Für die Kollision verwenden wir einen Offset von 71px
+			const PLAYER_VISUAL_OFFSET = 71;
+			const playerCol = Math.floor((player.x - city.buildingX) / cellSize);
+			const playerRow = Math.floor(((player.y - PLAYER_VISUAL_OFFSET) - city.buildingY) / cellSize);
+			
+			// Zeige die Grid-Zelle die tatsächlich geprüft wird (grün)
+			ctx.strokeStyle = "#0f0";
+			ctx.lineWidth = 3;
+			ctx.strokeRect(
+				city.buildingX + playerCol * cellSize,
+				city.buildingY + playerRow * cellSize,
+				cellSize, cellSize
+			);
+			
+			// Spieler-Zentrum markieren (gelber Punkt)
+			// Im Drag-Modus: Zeige den FESTEN Referenzpunkt
+			ctx.fillStyle = "#ff0";
+			ctx.beginPath();
+			if (window.CITY_PLAYER_DRAG_MODE && window.DRAG_REFERENCE_POINT) {
+				// Fester Referenzpunkt (bewegt sich nicht)
+				ctx.arc(window.DRAG_REFERENCE_POINT.x, window.DRAG_REFERENCE_POINT.y, 8, 0, Math.PI * 2);
+				ctx.fill();
+				// Roter Punkt für aktuelle Spielerposition zum Vergleich
+				ctx.fillStyle = "#f00";
+				ctx.beginPath();
+				ctx.arc(player.x, player.y - PLAYER_VISUAL_OFFSET, 5, 0, Math.PI * 2);
+				ctx.fill();
+			} else {
+				// Normal: Gelber Punkt folgt dem Spieler
+				ctx.arc(player.x, player.y - PLAYER_VISUAL_OFFSET, 5, 0, Math.PI * 2);
+				ctx.fill();
+			}
+			
+			ctx.restore();
+			
+			// Editor-Hinweise
+			ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+			ctx.fillRect(200, 10, 400, 90);
+			ctx.strokeStyle = "#0f0";
+			ctx.lineWidth = 3;
+			ctx.strokeRect(200, 10, 450, 130);
+			
+			ctx.fillStyle = "#0f0";
+			ctx.font = "bold 16px monospace";
+			ctx.textAlign = "left";
+			ctx.fillText("🔧 GRID EDITOR - Begehbare Bereiche", 215, 32);
+			ctx.font = "13px monospace";
+			ctx.fillText("🖱️ Linksklick halten = Zellen markieren (malen)", 215, 52);
+			ctx.fillText("🖱️ Rechtsklick halten = Zellen entfernen", 215, 70);
+			ctx.fillText("⬆⬇⬅➡ Pfeiltasten = Kamera bewegen", 215, 88);
+			ctx.fillText("S = Speichern | R = Reset | M = Editor aus", 215, 106);
+			
+			// Debug: Spieler-Position anzeigen
+			const gridKey = `${playerCol},${playerRow}`;
+			const isInGrid = window.CITY_WALKABLE_GRID && window.CITY_WALKABLE_GRID[gridKey];
+			ctx.fillStyle = isInGrid ? "#0f0" : "#f00";
+			ctx.fillText(`Spieler: Col=${playerCol}, Row=${playerRow} | Im Grid: ${isInGrid ? "JA" : "NEIN"}`, 215, 124);
+		}
+		
+		// ===== IMMER: Debug-Anzeige für Spieler-Grid-Position =====
+		{
+			const cellSize = CITY_GRID_CELL_SIZE;
+			const PLAYER_VISUAL_OFFSET = 71;
+			const pCol = Math.floor((player.x - city.buildingX) / cellSize);
+			const pRow = Math.floor(((player.y - PLAYER_VISUAL_OFFSET) - city.buildingY) / cellSize);
+			const gKey = `${pCol},${pRow}`;
+			const inGrid = window.CITY_WALKABLE_GRID && window.CITY_WALKABLE_GRID[gKey];
+			
+			ctx.save();
+			ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+			ctx.fillRect(10, city.height - 60, 320, 50);
+			ctx.fillStyle = inGrid ? "#0f0" : "#f00";
+			ctx.font = "bold 14px monospace";
+			ctx.textAlign = "left";
+			ctx.fillText(`Grid: Col=${pCol}, Row=${pRow}`, 20, city.height - 40);
+			ctx.fillText(`Im Grid: ${inGrid ? "JA ✓" : "NEIN ✗"} | Zellen: ${Object.keys(window.CITY_WALKABLE_GRID || {}).length}`, 20, city.height - 20);
+			ctx.restore();
+		}
+		
+		// ===== Debug-Variablen für Grid-Editor exportieren =====
+		if (!window.CITY_GRID_EDIT_MODE) {
+			// Normale Kamera-Werte exportieren
+			window.CITY_CAMERA_X_DEBUG = city.camera.x;
+			window.CITY_CAMERA_Y_DEBUG = city.camera.y;
+		}
+		window.CITY_BUILDING_X_DEBUG = city.buildingX;
+		window.CITY_BUILDING_Y_DEBUG = city.buildingY;
+		window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
+		window.CITY_GRID_COLS = CITY_GRID_COLS;
+		window.CITY_GRID_ROWS = CITY_GRID_ROWS;
+		
+		// Spieler-Referenz für Drag-Modus exportieren
+		window.CITY_PLAYER_DEBUG = player;
+		
+		// ===== DEBUG: GELBE BODEN-LINIEN FÜR JEDES STOCKWERK =====
+		// Diese Linien zeigen wo der Spieler tatsächlich stehen kann
+		if (window.SHOW_FLOOR_DEBUG_LINES) {
+			ctx.save();
+			ctx.translate(-city.camera.x, -city.camera.y);
+			
+			const FLOOR_OFFSET = city.floorThickness + 0; // Korrigiert auf +0
+			const userOffset = window.FLOOR_LINE_OFFSET || 0; // Globaler Offset
+			const individualOffsets = window.FLOOR_LINE_INDIVIDUAL_OFFSETS || {};
+			const innerLeft = city.buildingX + city.wallThickness;
+			const innerRight = city.buildingX + city.buildingWidth - city.wallThickness;
+			
+			// Export Floor-Daten für Maus-Erkennung
+			window.CITY_FLOORS_DEBUG = [];
+			
+			for (let i = 0; i < floors.length; i++) {
+				const floor = floors[i];
+				const indivOffset = individualOffsets[i] || 0;
+				// Die Y-Position wo der Spieler steht (Füße) + Offsets
+				const groundY = floor.y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET + userOffset + indivOffset;
+				
+				// Speichere für Maus-Erkennung
+				window.CITY_FLOORS_DEBUG.push({ index: i, groundY: groundY });
+				
+				// Gelbe Debug-Linie (dicker wenn individ. Offset)
+				ctx.strokeStyle = indivOffset !== 0 ? "#00ff00" : "#ffff00";
+				ctx.lineWidth = indivOffset !== 0 ? 6 : 4;
+				ctx.setLineDash([]);
+				ctx.beginPath();
+				ctx.moveTo(innerLeft, groundY);
+				ctx.lineTo(innerRight, groundY);
+				ctx.stroke();
+				
+				// Greif-Bereich anzeigen (halbtransparent)
+				ctx.fillStyle = "rgba(255, 255, 0, 0.1)";
+				ctx.fillRect(innerLeft, groundY - 15, innerRight - innerLeft, 30);
+				
+				// Label mit schwarzem Hintergrund für bessere Lesbarkeit
+				const offsetText = indivOffset !== 0 ? ` (${indivOffset > 0 ? '+' : ''}${Math.round(indivOffset)})` : '';
+				const labelText = `Stock ${i}${offsetText}`;
+				ctx.font = "bold 16px monospace";
+				const textWidth = ctx.measureText(labelText).width;
+				ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+				ctx.fillRect(innerLeft + 100, groundY - 25, textWidth + 14, 24);
+				ctx.fillStyle = indivOffset !== 0 ? "#00ff00" : "#ffff00";
+				ctx.textAlign = "left";
+				ctx.fillText(labelText, innerLeft + 107, groundY - 8);
+				
+				// Greif-Symbol
+				ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+				ctx.font = "14px sans-serif";
+				ctx.fillText("⬍", innerLeft + 75, groundY + 5);
+			}
+			
+			ctx.restore();
+			
+			// Hinweis-Box oben links
+			ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+			ctx.fillRect(200, 10, 350, 110);
+			ctx.strokeStyle = "#ffff00";
+			ctx.lineWidth = 3;
+			ctx.strokeRect(200, 10, 350, 110);
+			ctx.fillStyle = "#ffff00";
+			ctx.font = "bold 16px monospace";
+			ctx.textAlign = "left";
+			ctx.fillText("🔧 BODEN-LINIEN EDITOR", 215, 32);
+			ctx.font = "14px monospace";
+			ctx.fillText("🖱️ Linien mit Maus ziehen", 215, 52);
+			ctx.fillText("↑/↓ = Alle verschieben | Shift = 10px", 215, 70);
+			ctx.fillText("R = Reset | S = Speichern | M = Aus", 215, 88);
+			ctx.fillStyle = "#00ff00";
+			ctx.fillText("Grün = individuell angepasst", 215, 106);
+			
+			// Aktueller Offset-Wert groß anzeigen
+			ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+			ctx.fillRect(560, 10, 130, 40);
+			ctx.strokeStyle = userOffset === 0 ? "#888" : "#00ff00";
+			ctx.lineWidth = 2;
+			ctx.strokeRect(560, 10, 130, 40);
+			ctx.fillStyle = userOffset === 0 ? "#888" : "#00ff00";
+			ctx.font = "bold 20px monospace";
+			ctx.textAlign = "center";
+			ctx.fillText("Global: " + (userOffset >= 0 ? "+" : "") + userOffset, 625, 38);
+		}
 	}
 
 	function render() {
@@ -7816,8 +8421,13 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			renderDebugLabel();
 			return;
 		}
+		// CSS 3D-Perspektive entfernen wenn nicht im Stadt-Modus
+		if (canvas && canvas.classList.contains("city-perspective")) {
+			canvas.classList.remove("city-perspective");
+		}
 		if (cityInventoryEl) cityInventoryEl.style.display = "none";
 		if (cityMerchantEl) cityMerchantEl.style.display = "none";
+		if (cityMissionEl) cityMissionEl.style.display = "none";
 		if (citySpriteDebugPanel) citySpriteDebugPanel.style.display = "none";
 		renderBackground();
 		renderBubbles();
@@ -7867,36 +8477,13 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 
 	document.addEventListener("keydown", event => {
 		if (state.mode === "city") {
+			// Inventar öffnen/schließen
 			if (event.key === "i" || event.key === "I") {
 				cityInventoryOpen = !cityInventoryOpen;
 				syncCityInventoryVisibility();
 				if (bannerEl) bannerEl.textContent = cityInventoryOpen ? "Inventar geöffnet (I)" : "Inventar geschlossen";
 				event.preventDefault();
 				return;
-			}
-			if (event.key === "m" || event.key === "M") {
-				cityAlignMode = !cityAlignMode;
-				if (!cityAlignMode) cityCropMode = false;
-				if (bannerEl) bannerEl.textContent = cityAlignMode ? "Ausrichten aktiv (M)" : "Ausrichten aus";
-				event.preventDefault();
-				return;
-			}
-			if (cityAlignMode && (event.key === "c" || event.key === "C")) {
-				cityCropMode = !cityCropMode;
-				if (bannerEl) bannerEl.textContent = cityCropMode ? "Crop-Modus an (C)" : "Crop-Modus aus";
-				event.preventDefault();
-				return;
-			}
-			if (cityAlignMode && (event.key === "s" || event.key === "S")) {
-				const payload = JSON.stringify({ offsets: citySpriteOffsets, cropShift: citySpriteCropShift }, null, 2);
-				if (citySpriteDebugOutput) citySpriteDebugOutput.value = payload;
-				event.preventDefault();
-				return;
-			}
-			if (cityAlignMode && event.key === "Escape") {
-				cityAlignMode = false;
-				cityCropMode = false;
-				if (bannerEl) bannerEl.textContent = "Ausrichten aus";
 			}
 		}
 		if (isCityShortcutCandidate(event)) {
@@ -7981,21 +8568,40 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			const rect = canvas.getBoundingClientRect();
 			const localX = (event.clientX - rect.left) * (canvas.width / rect.width);
 			const localY = (event.clientY - rect.top) * (canvas.height / rect.height);
+			
 			const city = state.city;
 			if (!city) return;
-			const camX = city.camera ? city.camera.x : 0;
-			const camY = city.camera ? city.camera.y : 0;
-			const worldX = localX + camX;
-			const worldY = localY + camY;
+			
+			// Kamera-Offset berücksichtigen für Welt-Koordinaten
+			const cameraX = city.camera ? city.camera.x : 0;
+			const cameraY = city.camera ? city.camera.y : 0;
+			const worldX = localX + cameraX;
+			const worldY = localY + cameraY;
+			
+			// Klick auf NPCs prüfen (Seitenansicht - keine Perspektiv-Korrektur nötig)
+			const npcClickRadius = 100;
+			
 			const merchant = city.npcs && city.npcs.find(npc => npc.id === "merchant");
 			if (merchant) {
 				const dist = Math.hypot(worldX - merchant.x, worldY - merchant.y);
-				if (dist <= 34) {
+				if (dist <= npcClickRadius) {
 					cityShopOpen = true;
 					cityShopSelection = null;
 					updateCityShopUI();
 					syncCityShopVisibility();
 					if (bannerEl) bannerEl.textContent = "Händler geöffnet";
+					return;
+				}
+			}
+			const questGiver = city.npcs && city.npcs.find(npc => npc.id === "quest");
+			if (questGiver) {
+				const dist = Math.hypot(worldX - questGiver.x, worldY - questGiver.y);
+				if (dist <= npcClickRadius) {
+					cityMissionOpen = true;
+					cityMissionSelection = null;
+					updateCityMissionUI();
+					syncCityMissionVisibility();
+					if (bannerEl) bannerEl.textContent = "Missionen geöffnet";
 					return;
 				}
 			}
@@ -8029,7 +8635,7 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 	});
 
 	canvas.addEventListener("contextmenu", event => event.preventDefault());
-
+	
 	document.addEventListener("pointerup", () => {
 		pointer.down = false;
 		pointer.shoot = false;
@@ -8070,6 +8676,37 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		window.cashEnterCity = () => {
 			if (!bootGame.initialized) bootGame();
 			enterCity();
+		};
+		// Debug-Funktion: Hole Stadt-Daten für Floor-Editor
+		window.cashGetCityData = () => {
+			if (!state.city) return null;
+			const city = state.city;
+			const FLOOR_OFFSET = city.floorThickness + 0;
+			const floors = city.floors.map((floor, i) => ({
+				stock: i,
+				floorY: floor.y,
+				groundY: Math.round(floor.y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET),
+				hatchX: floor.hatchX,
+				hasHatch: floor.hasHatch
+			}));
+			return {
+				canvasSize: { width: canvas.width, height: canvas.height },
+				building: {
+					x: city.buildingX,
+					y: city.buildingY,
+					width: city.buildingWidth,
+					height: city.buildingHeight
+				},
+				floorHeight: CITY_FLOOR_HEIGHT,
+				floorThickness: city.floorThickness,
+				floors: floors,
+				player: {
+					x: city.player.x,
+					y: city.player.y,
+					floor: city.player.floor
+				},
+				camera: city.camera
+			};
 		};
 	}
 	resetGame();

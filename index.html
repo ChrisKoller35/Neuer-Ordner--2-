@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Cashfisch — v31 (größere Symbole, Glow, Glückwunsch-Text & Schlüssel)</title>
+<title>Cashfisch Ã¢â¬â v31 (grÃÂ¶ÃÅ¸ere Symbole, Glow, GlÃÂ¼ckwunsch-Text & SchlÃÂ¼ssel)</title>
 <link rel="stylesheet" href="./src/styles.css"/>
 </head>
 <body>
 <div id="globalErr"></div>
-<div id="bootToast">Boot: bereit…</div>
+<div id="bootToast">Boot: bereitÃ¢â¬Â¦</div>
 
 <!-- START SCREEN -->
 <div id="startScreen">
   <div class="start-content">
     <div class="start-placeholder" role="img" aria-label="Titelbild der Cashfisch-Unterwasserwelt"></div>
-    <button id="btnStartGame" class="btn primary start-btn" aria-label="Start Game">▶ Start Game</button>
+    <button id="btnStartGame" class="btn primary start-btn" aria-label="Start Game">Ã¢âÂ¶ Start Game</button>
   </div>
 </div>
 
@@ -22,11 +22,11 @@
 <div id="gameWrap" style="display:none">
   <div id="endOverlay" class="end">
     <div class="endcard">
-      <h2 id="endTitle">Glückwunsch! Du hast den Cashfisch besiegt und bist jetzt frei.</h2>
-      <p>Was möchtest du tun?</p>
+      <h2 id="endTitle">GlÃÂ¼ckwunsch! Du hast den Cashfisch besiegt und bist jetzt frei.</h2>
+      <p>Was mÃÂ¶chtest du tun?</p>
       <div class="endbtns">
-        <button id="btnRestart" class="btn primary">🔁 Nochmal spielen</button>
-        <button id="btnQuit" class="btn danger">⏹ Beenden</button>
+        <button id="btnRestart" class="btn primary">Ã°Å¸âÂ Nochmal spielen</button>
+        <button id="btnQuit" class="btn danger">Ã¢ÂÂ¹ Beenden</button>
       </div>
     </div>
   </div>
@@ -46,6 +46,7 @@
         <span class="ab" id="ab-bite" title="Angriff (Space/Linksklick)">🦷</span>
         <span class="ab locked" id="ab-shield" title="Schild (Shift/E)">🛡</span>
       </span>
+      <span class="armor-indicator inactive" id="hudArmor" title="Rüstung der Meeresbewohner">🛡️</span>
       <span class="symbols">
         <span class="slot" id="sym-pferd" title="Schlüssel"></span>
         <span class="slot" id="sym-sprinter" title="Geldschein"></span>
@@ -55,7 +56,6 @@
     </div>
   </div>
 </div>
-
 <!-- CUTSCENE -->
 <div id="cutWrap" style="display:none">
   <canvas id="cutCanvas" width="1200" height="675" class="frame"></canvas>
@@ -64,7 +64,7 @@
     <div class="cut-info-body">
       <ul>
         <li>Bewegung: WASD</li>
-        <li>Angriff: Linke Maustaste — halten für Dauerfeuer</li>
+        <li>Angriff: Linke Maustaste Ã¢â¬â halten fÃÂ¼r Dauerfeuer</li>
         <li>Ab Level 2: Schild auf E</li>
         <li>Ab Level 3: Korallenbegleiter auf R</li>
         <li>Ab Level 4: Ultimate auf T (1 Aktivierung)</li>
@@ -72,18 +72,987 @@
     </div>
   </aside>
   <div class="hud">
-    <button id="cutNext" class="btn">▶ Weiter</button>
+    <button id="cutNext" class="btn">Ã¢âÂ¶ Weiter</button>
   </div>
-  <div class="btn" id="cutHint" style="position:fixed;left:50%;transform:translateX(-50%);bottom:14px;display:none">Cutscene Ende — Space/Klick startet das Spiel</div>
+  <div class="btn" id="cutHint" style="position:fixed;left:50%;transform:translateX(-50%);bottom:14px;display:none">Cutscene Ende Ã¢â¬â Space/Klick startet das Spiel</div>
   <div class="name" style="position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;gap:16px;opacity:.85;font-weight:700;color:#cfe4ff">
-    <span style="background:#0b1320cc;border:1px solid rgba(255,255,255,.12);padding:4px 8px;border-radius:10px">👁️ Erzähler</span>
-    <span style="background:#0b1320cc;border:1px solid rgba(255,255,255,.12);padding:4px 8px;border-radius:10px">🎣 Spieler</span>
+    <span style="background:#0b1320cc;border:1px solid rgba(255,255,255,.12);padding:4px 8px;border-radius:10px">Ã°Å¸âÂÃ¯Â¸Â ErzÃÂ¤hler</span>
+    <span style="background:#0b1320cc;border:1px solid rgba(255,255,255,.12);padding:4px 8px;border-radius:10px">Ã°Å¸Å½Â£ Spieler</span>
   </div>
 </div>
 
 <script src="./src/error-display.js"></script>
 
 <script type="module" src="./src/game.js?v=20260129aj"></script>
+
+<!-- DEBUG: Grid Editor fÃÂ¼r begehbare Bereiche -->
+<script>
+(function() {
+  "use strict";
+  
+  // Grid Editor State
+  window.CITY_GRID_EDIT_MODE = false;
+  let isMouseDown = false;
+  let isRightMouseDown = false;
+  let lastPaintedCell = null;
+  
+  // ===== SPIELER-VERSCHIEBE-MODUS =====
+  window.CITY_PLAYER_DRAG_MODE = false;
+  window.isDraggingPlayer = false;
+  window.playerDragOffset = { x: 0, y: 0 };
+  // Fester Referenzpunkt fÃÂ¼r Drag-Modus (wird beim Aktivieren gesetzt)
+  window.DRAG_REFERENCE_POINT = null;
+  
+  // Kamera-Steuerung fÃÂ¼r Grid-Editor
+  let gridEditorCameraX = 0;
+  let gridEditorCameraY = 0;
+  const CAMERA_SPEED = 30;
+  
+  // Begehbare Grid-Zellen (560 Zellen)
+  window.CITY_WALKABLE_GRID = {
+    "8,3": true,
+    "9,3": true,
+    "10,3": true,
+    "11,3": true,
+    "12,3": true,
+    "13,3": true,
+    "14,3": true,
+    "15,3": true,
+    "16,3": true,
+    "17,3": true,
+    "18,3": true,
+    "19,3": true,
+    "20,3": true,
+    "21,3": true,
+    "22,3": true,
+    "23,3": true,
+    "8,4": true,
+    "9,4": true,
+    "10,4": true,
+    "11,4": true,
+    "12,4": true,
+    "13,4": true,
+    "14,4": true,
+    "15,4": true,
+    "16,4": true,
+    "17,4": true,
+    "18,4": true,
+    "19,4": true,
+    "20,4": true,
+    "21,4": true,
+    "22,4": true,
+    "23,4": true,
+    "8,5": true,
+    "9,5": true,
+    "10,5": true,
+    "11,5": true,
+    "12,5": true,
+    "13,5": true,
+    "14,5": true,
+    "15,5": true,
+    "16,5": true,
+    "17,5": true,
+    "18,5": true,
+    "19,5": true,
+    "20,5": true,
+    "21,5": true,
+    "22,5": true,
+    "23,5": true,
+    "14,6": true,
+    "15,6": true,
+    "16,6": true,
+    "17,6": true,
+    "14,7": true,
+    "15,7": true,
+    "16,7": true,
+    "17,7": true,
+    "0,8": true,
+    "1,8": true,
+    "2,8": true,
+    "3,8": true,
+    "4,8": true,
+    "5,8": true,
+    "6,8": true,
+    "7,8": true,
+    "8,8": true,
+    "9,8": true,
+    "10,8": true,
+    "11,8": true,
+    "12,8": true,
+    "13,8": true,
+    "14,8": true,
+    "15,8": true,
+    "16,8": true,
+    "17,8": true,
+    "18,8": true,
+    "19,8": true,
+    "20,8": true,
+    "21,8": true,
+    "22,8": true,
+    "23,8": true,
+    "24,8": true,
+    "25,8": true,
+    "26,8": true,
+    "27,8": true,
+    "28,8": true,
+    "29,8": true,
+    "30,8": true,
+    "31,8": true,
+    "0,9": true,
+    "1,9": true,
+    "2,9": true,
+    "3,9": true,
+    "4,9": true,
+    "5,9": true,
+    "6,9": true,
+    "7,9": true,
+    "8,9": true,
+    "9,9": true,
+    "10,9": true,
+    "11,9": true,
+    "12,9": true,
+    "13,9": true,
+    "14,9": true,
+    "15,9": true,
+    "16,9": true,
+    "17,9": true,
+    "18,9": true,
+    "19,9": true,
+    "20,9": true,
+    "21,9": true,
+    "22,9": true,
+    "23,9": true,
+    "24,9": true,
+    "25,9": true,
+    "26,9": true,
+    "27,9": true,
+    "28,9": true,
+    "29,9": true,
+    "30,9": true,
+    "31,9": true,
+    "0,10": true,
+    "1,10": true,
+    "2,10": true,
+    "3,10": true,
+    "4,10": true,
+    "5,10": true,
+    "6,10": true,
+    "7,10": true,
+    "8,10": true,
+    "9,10": true,
+    "10,10": true,
+    "11,10": true,
+    "12,10": true,
+    "13,10": true,
+    "14,10": true,
+    "15,10": true,
+    "16,10": true,
+    "17,10": true,
+    "18,10": true,
+    "19,10": true,
+    "20,10": true,
+    "21,10": true,
+    "22,10": true,
+    "23,10": true,
+    "24,10": true,
+    "25,10": true,
+    "26,10": true,
+    "27,10": true,
+    "28,10": true,
+    "29,10": true,
+    "30,10": true,
+    "31,10": true,
+    "14,11": true,
+    "15,11": true,
+    "16,11": true,
+    "17,11": true,
+    "14,12": true,
+    "15,12": true,
+    "16,12": true,
+    "17,12": true,
+    "0,13": true,
+    "1,13": true,
+    "2,13": true,
+    "3,13": true,
+    "4,13": true,
+    "5,13": true,
+    "6,13": true,
+    "7,13": true,
+    "8,13": true,
+    "9,13": true,
+    "10,13": true,
+    "11,13": true,
+    "12,13": true,
+    "13,13": true,
+    "14,13": true,
+    "15,13": true,
+    "16,13": true,
+    "17,13": true,
+    "18,13": true,
+    "19,13": true,
+    "20,13": true,
+    "21,13": true,
+    "22,13": true,
+    "23,13": true,
+    "24,13": true,
+    "25,13": true,
+    "26,13": true,
+    "27,13": true,
+    "28,13": true,
+    "29,13": true,
+    "30,13": true,
+    "31,13": true,
+    "0,14": true,
+    "1,14": true,
+    "2,14": true,
+    "3,14": true,
+    "4,14": true,
+    "5,14": true,
+    "6,14": true,
+    "7,14": true,
+    "8,14": true,
+    "9,14": true,
+    "10,14": true,
+    "11,14": true,
+    "12,14": true,
+    "13,14": true,
+    "14,14": true,
+    "15,14": true,
+    "16,14": true,
+    "17,14": true,
+    "18,14": true,
+    "19,14": true,
+    "20,14": true,
+    "21,14": true,
+    "22,14": true,
+    "23,14": true,
+    "24,14": true,
+    "25,14": true,
+    "26,14": true,
+    "27,14": true,
+    "28,14": true,
+    "29,14": true,
+    "30,14": true,
+    "31,14": true,
+    "0,15": true,
+    "1,15": true,
+    "2,15": true,
+    "3,15": true,
+    "4,15": true,
+    "5,15": true,
+    "6,15": true,
+    "7,15": true,
+    "8,15": true,
+    "9,15": true,
+    "10,15": true,
+    "11,15": true,
+    "12,15": true,
+    "13,15": true,
+    "14,15": true,
+    "15,15": true,
+    "16,15": true,
+    "17,15": true,
+    "18,15": true,
+    "19,15": true,
+    "20,15": true,
+    "21,15": true,
+    "22,15": true,
+    "23,15": true,
+    "24,15": true,
+    "25,15": true,
+    "26,15": true,
+    "27,15": true,
+    "28,15": true,
+    "29,15": true,
+    "30,15": true,
+    "31,15": true,
+    "14,16": true,
+    "15,16": true,
+    "16,16": true,
+    "17,16": true,
+    "14,17": true,
+    "15,17": true,
+    "16,17": true,
+    "17,17": true,
+    "0,18": true,
+    "1,18": true,
+    "2,18": true,
+    "3,18": true,
+    "4,18": true,
+    "5,18": true,
+    "6,18": true,
+    "7,18": true,
+    "8,18": true,
+    "9,18": true,
+    "10,18": true,
+    "11,18": true,
+    "12,18": true,
+    "13,18": true,
+    "14,18": true,
+    "15,18": true,
+    "16,18": true,
+    "17,18": true,
+    "18,18": true,
+    "19,18": true,
+    "20,18": true,
+    "21,18": true,
+    "22,18": true,
+    "23,18": true,
+    "24,18": true,
+    "25,18": true,
+    "26,18": true,
+    "27,18": true,
+    "28,18": true,
+    "29,18": true,
+    "30,18": true,
+    "31,18": true,
+    "0,19": true,
+    "1,19": true,
+    "2,19": true,
+    "3,19": true,
+    "4,19": true,
+    "5,19": true,
+    "6,19": true,
+    "7,19": true,
+    "8,19": true,
+    "9,19": true,
+    "10,19": true,
+    "11,19": true,
+    "12,19": true,
+    "13,19": true,
+    "14,19": true,
+    "15,19": true,
+    "16,19": true,
+    "17,19": true,
+    "18,19": true,
+    "19,19": true,
+    "20,19": true,
+    "21,19": true,
+    "22,19": true,
+    "23,19": true,
+    "24,19": true,
+    "25,19": true,
+    "26,19": true,
+    "27,19": true,
+    "28,19": true,
+    "29,19": true,
+    "30,19": true,
+    "31,19": true,
+    "0,20": true,
+    "1,20": true,
+    "2,20": true,
+    "3,20": true,
+    "4,20": true,
+    "5,20": true,
+    "6,20": true,
+    "7,20": true,
+    "8,20": true,
+    "9,20": true,
+    "10,20": true,
+    "11,20": true,
+    "12,20": true,
+    "13,20": true,
+    "14,20": true,
+    "15,20": true,
+    "16,20": true,
+    "17,20": true,
+    "18,20": true,
+    "19,20": true,
+    "20,20": true,
+    "21,20": true,
+    "22,20": true,
+    "23,20": true,
+    "24,20": true,
+    "25,20": true,
+    "26,20": true,
+    "27,20": true,
+    "28,20": true,
+    "29,20": true,
+    "30,20": true,
+    "31,20": true,
+    "0,21": true,
+    "1,21": true,
+    "2,21": true,
+    "3,21": true,
+    "4,21": true,
+    "5,21": true,
+    "6,21": true,
+    "7,21": true,
+    "8,21": true,
+    "9,21": true,
+    "10,21": true,
+    "11,21": true,
+    "12,21": true,
+    "13,21": true,
+    "14,21": true,
+    "15,21": true,
+    "16,21": true,
+    "17,21": true,
+    "18,21": true,
+    "19,21": true,
+    "20,21": true,
+    "21,21": true,
+    "22,21": true,
+    "23,21": true,
+    "24,21": true,
+    "25,21": true,
+    "26,21": true,
+    "27,21": true,
+    "28,21": true,
+    "29,21": true,
+    "30,21": true,
+    "31,21": true,
+    "14,22": true,
+    "15,22": true,
+    "16,22": true,
+    "17,22": true,
+    "14,23": true,
+    "15,23": true,
+    "16,23": true,
+    "17,23": true,
+    "0,24": true,
+    "1,24": true,
+    "2,24": true,
+    "3,24": true,
+    "4,24": true,
+    "5,24": true,
+    "6,24": true,
+    "7,24": true,
+    "8,24": true,
+    "9,24": true,
+    "10,24": true,
+    "11,24": true,
+    "12,24": true,
+    "13,24": true,
+    "14,24": true,
+    "15,24": true,
+    "16,24": true,
+    "17,24": true,
+    "18,24": true,
+    "19,24": true,
+    "20,24": true,
+    "21,24": true,
+    "22,24": true,
+    "23,24": true,
+    "24,24": true,
+    "25,24": true,
+    "26,24": true,
+    "27,24": true,
+    "28,24": true,
+    "29,24": true,
+    "30,24": true,
+    "31,24": true,
+    "0,25": true,
+    "1,25": true,
+    "2,25": true,
+    "3,25": true,
+    "4,25": true,
+    "5,25": true,
+    "6,25": true,
+    "7,25": true,
+    "8,25": true,
+    "9,25": true,
+    "10,25": true,
+    "11,25": true,
+    "12,25": true,
+    "13,25": true,
+    "14,25": true,
+    "15,25": true,
+    "16,25": true,
+    "17,25": true,
+    "18,25": true,
+    "19,25": true,
+    "20,25": true,
+    "21,25": true,
+    "22,25": true,
+    "23,25": true,
+    "24,25": true,
+    "25,25": true,
+    "26,25": true,
+    "27,25": true,
+    "28,25": true,
+    "29,25": true,
+    "30,25": true,
+    "31,25": true,
+    "0,26": true,
+    "1,26": true,
+    "2,26": true,
+    "3,26": true,
+    "4,26": true,
+    "5,26": true,
+    "6,26": true,
+    "7,26": true,
+    "8,26": true,
+    "9,26": true,
+    "10,26": true,
+    "11,26": true,
+    "12,26": true,
+    "13,26": true,
+    "14,26": true,
+    "15,26": true,
+    "16,26": true,
+    "17,26": true,
+    "18,26": true,
+    "19,26": true,
+    "20,26": true,
+    "21,26": true,
+    "22,26": true,
+    "23,26": true,
+    "24,26": true,
+    "25,26": true,
+    "26,26": true,
+    "27,26": true,
+    "28,26": true,
+    "29,26": true,
+    "30,26": true,
+    "31,26": true,
+    "0,27": true,
+    "1,27": true,
+    "2,27": true,
+    "3,27": true,
+    "4,27": true,
+    "5,27": true,
+    "6,27": true,
+    "7,27": true,
+    "8,27": true,
+    "9,27": true,
+    "10,27": true,
+    "11,27": true,
+    "12,27": true,
+    "13,27": true,
+    "14,27": true,
+    "15,27": true,
+    "16,27": true,
+    "17,27": true,
+    "18,27": true,
+    "19,27": true,
+    "20,27": true,
+    "21,27": true,
+    "22,27": true,
+    "23,27": true,
+    "24,27": true,
+    "25,27": true,
+    "26,27": true,
+    "27,27": true,
+    "28,27": true,
+    "29,27": true,
+    "30,27": true,
+    "31,27": true,
+    "0,28": true,
+    "1,28": true,
+    "2,28": true,
+    "3,28": true,
+    "4,28": true,
+    "5,28": true,
+    "6,28": true,
+    "7,28": true,
+    "8,28": true,
+    "9,28": true,
+    "10,28": true,
+    "11,28": true,
+    "12,28": true,
+    "13,28": true,
+    "14,28": true,
+    "15,28": true,
+    "16,28": true,
+    "17,28": true,
+    "18,28": true,
+    "19,28": true,
+    "20,28": true,
+    "21,28": true,
+    "22,28": true,
+    "23,28": true,
+    "24,28": true,
+    "25,28": true,
+    "26,28": true,
+    "27,28": true,
+    "28,28": true,
+    "29,28": true,
+    "30,28": true,
+    "31,28": true,
+  };
+  
+  // Warte bis Canvas existiert
+  function initGridEditor() {
+    const canvas = document.getElementById('game');
+    if (!canvas) {
+      setTimeout(initGridEditor, 100);
+      return;
+    }
+    
+    // Hilfsfunktion: Mausposition zu Grid-Zelle
+    function mouseToGridCell(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+      
+      // Hole Kamera-Position und GebÃÂ¤ude-Daten
+      // Im Grid-Editor-Modus nutzen wir unsere eigene Kamera
+      const cameraX = window.CITY_GRID_EDIT_MODE ? gridEditorCameraX : (window.CITY_CAMERA_X_DEBUG || 0);
+      const cameraY = window.CITY_GRID_EDIT_MODE ? gridEditorCameraY : (window.CITY_CAMERA_Y_DEBUG || 0);
+      const buildingX = window.CITY_BUILDING_X_DEBUG || 100;
+      const buildingY = window.CITY_BUILDING_Y_DEBUG || -765;
+      const cellSize = window.CITY_GRID_CELL_SIZE || 50;
+      
+      // Welt-Position berechnen
+      const worldX = mouseX + cameraX;
+      const worldY = mouseY + cameraY;
+      
+      // Grid-Zelle berechnen
+      const col = Math.floor((worldX - buildingX) / cellSize);
+      const row = Math.floor((worldY - buildingY) / cellSize);
+      
+      return { col, row, worldX, worldY };
+    }
+    
+    // Zelle markieren (hinzufÃÂ¼gen)
+    function markCell(col, row) {
+      const maxCols = window.CITY_GRID_COLS || 32;
+      const maxRows = window.CITY_GRID_ROWS || 29;
+      
+      if (col < 0 || col >= maxCols || row < 0 || row >= maxRows) {
+        return false;
+      }
+      
+      const key = `${col},${row}`;
+      if (!window.CITY_WALKABLE_GRID[key]) {
+        window.CITY_WALKABLE_GRID[key] = true;
+        console.log(`%c[Grid] Ã¢Åâ ${key}`, 'color: lime;');
+        return true;
+      }
+      return false;
+    }
+    
+    // Zelle entfernen
+    function removeCell(col, row) {
+      const key = `${col},${row}`;
+      if (window.CITY_WALKABLE_GRID[key]) {
+        delete window.CITY_WALKABLE_GRID[key];
+        console.log(`%c[Grid] Ã¢Åâ ${key}`, 'color: orange;');
+        return true;
+      }
+      return false;
+    }
+    
+    // Mausklick - Start malen
+    canvas.addEventListener('mousedown', (e) => {
+      if (!window.CITY_GRID_EDIT_MODE) return;
+      // Wenn Drag-Modus aktiv ist, Grid-Editor ignoriert Klicks komplett
+      if (window.CITY_PLAYER_DRAG_MODE) return;
+      
+      const { col, row } = mouseToGridCell(e);
+      lastPaintedCell = `${col},${row}`;
+      
+      if (e.button === 0) { // Linksklick = markieren
+        isMouseDown = true;
+        markCell(col, row);
+        e.stopPropagation();
+        e.preventDefault();
+      } else if (e.button === 2) { // Rechtsklick = entfernen
+        isRightMouseDown = true;
+        removeCell(col, row);
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
+    
+    // Maus bewegen - malen wenn gedrÃÂ¼ckt
+    canvas.addEventListener('mousemove', (e) => {
+      if (!window.CITY_GRID_EDIT_MODE) return;
+      // Wenn Drag-Modus aktiv ist, Grid-Editor ignoriert Mausbewegungen
+      if (window.CITY_PLAYER_DRAG_MODE) return;
+      if (!isMouseDown && !isRightMouseDown) return;
+      
+      const { col, row } = mouseToGridCell(e);
+      const cellKey = `${col},${row}`;
+      
+      // Nur wenn neue Zelle
+      if (cellKey !== lastPaintedCell) {
+        lastPaintedCell = cellKey;
+        
+        if (isMouseDown) {
+          markCell(col, row);
+        } else if (isRightMouseDown) {
+          removeCell(col, row);
+        }
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
+    
+    // Maus loslassen - Stop malen
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 0) isMouseDown = false;
+      if (e.button === 2) isRightMouseDown = false;
+      lastPaintedCell = null;
+    });
+    
+    // Rechtsklick-MenÃÂ¼ verhindern
+    canvas.addEventListener('contextmenu', (e) => {
+      if (window.CITY_GRID_EDIT_MODE) {
+        e.preventDefault();
+      }
+    });
+    
+    // ===== SPIELER-VERSCHIEBE-MODUS =====
+    // Mausklick im Drag-Modus - irgendwo klicken um Spieler zu bewegen
+    canvas.addEventListener('mousedown', (e) => {
+      if (!window.CITY_PLAYER_DRAG_MODE) return;
+      if (e.button !== 0) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+      
+      // Hole Spieler-Position
+      const player = window.CITY_PLAYER_DEBUG;
+      if (!player) {
+        console.log('%c[Drag] Spieler nicht gefunden! Bist du im City-Level?', 'color: red;');
+        return;
+      }
+      
+      // Im Drag-Modus: Sofort Spieler ziehen, egal wo geklickt wird
+      window.isDraggingPlayer = true;
+      window.playerDragOffset.x = 0;
+      window.playerDragOffset.y = 0;
+      
+      // Spieler direkt zur Mausposition setzen
+      const cameraX = window.CITY_CAMERA_X_DEBUG || 0;
+      const cameraY = window.CITY_CAMERA_Y_DEBUG || 0;
+      player.x = mouseX + cameraX;
+      player.y = mouseY + cameraY;
+      
+      console.log('%c[Drag] Spieler wird gezogen... Position: ' + player.x.toFixed(0) + ', ' + player.y.toFixed(0), 'color: yellow; font-weight: bold;');
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+    
+    // Maus bewegen im Drag-Modus
+    canvas.addEventListener('mousemove', (e) => {
+      if (!window.CITY_PLAYER_DRAG_MODE || !window.isDraggingPlayer) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+      
+      const cameraX = window.CITY_CAMERA_X_DEBUG || 0;
+      const cameraY = window.CITY_CAMERA_Y_DEBUG || 0;
+      
+      const worldX = mouseX + cameraX;
+      const worldY = mouseY + cameraY;
+      
+      // Spieler-Position aktualisieren
+      const player = window.CITY_PLAYER_DEBUG;
+      if (player) {
+        player.x = worldX - window.playerDragOffset.x;
+        player.y = worldY - window.playerDragOffset.y;
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+    
+    // Maus loslassen im Drag-Modus
+    document.addEventListener('mouseup', (e) => {
+      if (window.isDraggingPlayer) {
+        window.isDraggingPlayer = false;
+        const player = window.CITY_PLAYER_DEBUG;
+        if (player) {
+          console.log('%c[Drag] Spieler abgesetzt bei x=' + player.x.toFixed(1) + ', y=' + player.y.toFixed(1), 'color: yellow; font-weight: bold;');
+        }
+      }
+    });
+    
+    console.log('%c[Grid Editor] Canvas gefunden - Klick-Handler aktiv!', 'color: lime;');
+  }
+  
+  // Tastatur - mit capture phase um VOR dem Spiel abzufangen
+  document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    
+    // Debug: Zeige alle TastendrÃÂ¼cke
+    // console.log('[Key]', e.key, 'ctrl:', e.ctrlKey, 'alt:', e.altKey);
+    
+    // L = Toggle Spieler-Verschiebe-Modus
+    if (key === 'l' && !e.ctrlKey && !e.altKey) {
+      window.CITY_PLAYER_DRAG_MODE = !window.CITY_PLAYER_DRAG_MODE;
+      
+      if (window.CITY_PLAYER_DRAG_MODE) {
+        // Speichere den aktuellen "korrigierten" Punkt als festen Referenzpunkt
+        const player = window.CITY_PLAYER_DEBUG;
+        if (player) {
+          const cellSize = window.CITY_GRID_CELL_SIZE || 50;
+          window.DRAG_REFERENCE_POINT = {
+            x: player.x,
+            y: player.y - 71 - cellSize  // Eine Zelle nach oben (- cellSize)
+          };
+        }
+        
+        console.log('%c==========================================', 'color: yellow;');
+        console.log('%c[DRAG MODE] AKTIVIERT', 'color: yellow; font-weight: bold; font-size: 16px;');
+        console.log('%c==========================================', 'color: yellow;');
+        console.log('%cÃ°Å¸âÂ±Ã¯Â¸Â Irgendwo auf Canvas klicken und ziehen', 'color: yellow;');
+        console.log('%cÃ¢Å¡Âª Gelber Punkt = Fester Referenzpunkt (bleibt stehen)', 'color: yellow;');
+        console.log('%cS = Position ausgeben (fÃÂ¼r Offset-Korrektur)', 'color: cyan;');
+        console.log('%cL = Drag-Modus beenden', 'color: gray;');
+        
+        // Zeige Info-Overlay
+        alert('DRAG MODE AKTIVIERT!\n\nDer GELBE PUNKT bleibt jetzt fest stehen.\nZiehe den Spieler zum gelben Punkt.\nDann drÃÂ¼cke S um den Offset zu berechnen.\nDrÃÂ¼cke L nochmal um den Modus zu beenden.');
+      } else {
+        window.DRAG_REFERENCE_POINT = null;
+        console.log('%c[DRAG MODE] Deaktiviert', 'color: gray; font-weight: bold;');
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // S im Drag-Modus = Position und Offset ausgeben
+    if (key === 's' && !e.ctrlKey && window.CITY_PLAYER_DRAG_MODE) {
+      const player = window.CITY_PLAYER_DEBUG;
+      const ref = window.DRAG_REFERENCE_POINT;
+      if (player && ref) {
+        // Berechne den Offset zwischen Spieler und Referenzpunkt
+        const playerCorrectedY = player.y - 71; // aktuelle korrigierte Position
+        const offsetX = player.x - ref.x;
+        const offsetY = playerCorrectedY - ref.y;
+        
+        const offsetInfo = `
+========== OFFSET-BERECHNUNG ==========
+Gelber Punkt (Referenz): x=${ref.x.toFixed(1)}, y=${ref.y.toFixed(1)}
+Roter Punkt (Spieler):   x=${player.x.toFixed(1)}, y=${playerCorrectedY.toFixed(1)}
+
+OFFSET: dx=${offsetX.toFixed(1)}, dy=${offsetY.toFixed(1)}
+
+Wenn der Offset 0,0 ist, sind beide Punkte ÃÂ¼bereinander.
+Falls nicht: Ziehe den Spieler nÃÂ¤her zum gelben Punkt!
+=======================================`;
+        console.log('%c' + offsetInfo, 'color: cyan; font-size: 14px;');
+        
+        // Kopierbare Ausgabe - ÃÂ¶ffne Prompt-Dialog
+        const copyText = `OFFSET: dx=${offsetX.toFixed(1)}, dy=${offsetY.toFixed(1)}`;
+        const result = prompt('Offset berechnet! Kopiere den Text unten:\n\n(Strg+C zum Kopieren)', copyText);
+        
+        // Versuche auch in Zwischenablage zu kopieren
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(copyText).then(() => {
+            console.log('%c[Kopiert] Text wurde in die Zwischenablage kopiert!', 'color: lime;');
+          }).catch(() => {
+            console.log('%c[Hinweis] Kopieren fehlgeschlagen - nutze den Prompt-Dialog', 'color: orange;');
+          });
+        }
+      }
+      e.preventDefault();
+      return;
+    }
+    
+    // M = Toggle Grid Editor
+    if (key === 'm' && !e.ctrlKey && !e.altKey) {
+      window.CITY_GRID_EDIT_MODE = !window.CITY_GRID_EDIT_MODE;
+      
+      if (window.CITY_GRID_EDIT_MODE) {
+        // Initialisiere Editor-Kamera mit aktueller Spielkamera
+        gridEditorCameraX = window.CITY_CAMERA_X_DEBUG || 0;
+        gridEditorCameraY = window.CITY_CAMERA_Y_DEBUG || 0;
+        
+        console.log('%c[Grid Editor] AKTIVIERT', 'color: lime; font-weight: bold; font-size: 16px;');
+        console.log('%cÃ°Å¸âÂ±Ã¯Â¸Â Linksklick/halten = Zellen markieren', 'color: lime;');
+        console.log('%cÃ°Å¸âÂ±Ã¯Â¸Â Rechtsklick/halten = Zellen entfernen', 'color: orange;');
+        console.log('%cÃ¢Â¬â Ã¢Â¬â¡Ã¢Â¬â¦Ã¢Å¾Â¡ Pfeiltasten = Kamera bewegen', 'color: cyan;');
+        console.log('%cS = Speichern | R = Reset', 'color: yellow;');
+        console.log('%cZellen: ' + Object.keys(window.CITY_WALKABLE_GRID).length, 'color: white;');
+      } else {
+        console.log('%c[Grid Editor] Deaktiviert', 'color: gray; font-weight: bold;');
+      }
+      e.preventDefault();
+      return;
+    }
+    
+    // Nur wenn Grid Editor aktiv
+    if (!window.CITY_GRID_EDIT_MODE) return;
+    
+    // Pfeiltasten = Kamera steuern
+    if (e.key === 'ArrowUp') {
+      gridEditorCameraY -= CAMERA_SPEED;
+      window.CITY_CAMERA_Y_DEBUG = gridEditorCameraY;
+      console.log('%c[Kamera] Y=' + gridEditorCameraY, 'color: cyan;');
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      gridEditorCameraY += CAMERA_SPEED;
+      window.CITY_CAMERA_Y_DEBUG = gridEditorCameraY;
+      console.log('%c[Kamera] Y=' + gridEditorCameraY, 'color: cyan;');
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'ArrowLeft') {
+      gridEditorCameraX -= CAMERA_SPEED;
+      window.CITY_CAMERA_X_DEBUG = gridEditorCameraX;
+      console.log('%c[Kamera] X=' + gridEditorCameraX, 'color: cyan;');
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      gridEditorCameraX += CAMERA_SPEED;
+      window.CITY_CAMERA_X_DEBUG = gridEditorCameraX;
+      console.log('%c[Kamera] X=' + gridEditorCameraX, 'color: cyan;');
+      e.preventDefault();
+      return;
+    }
+    
+    // R = Reset Grid
+    if (key === 'r' && !e.ctrlKey) {
+      if (confirm('Grid wirklich komplett lÃÂ¶schen?')) {
+        window.CITY_WALKABLE_GRID = {};
+        console.log('%c[Grid] Alle Zellen gelÃÂ¶scht!', 'color: orange; font-weight: bold;');
+      }
+      e.preventDefault();
+      return;
+    }
+    
+    // S = Speichern
+    if (key === 's' && !e.ctrlKey) {
+      const grid = window.CITY_WALKABLE_GRID;
+      const keys = Object.keys(grid).sort((a, b) => {
+        const [ax, ay] = a.split(',').map(Number);
+        const [bx, by] = b.split(',').map(Number);
+        return ay - by || ax - bx;
+      });
+      
+      let result = `// Begehbare Grid-Zellen (${keys.length} Zellen)\n`;
+      result += 'window.CITY_WALKABLE_GRID = {\n';
+      for (const k of keys) {
+        result += `  "${k}": true,\n`;
+      }
+      result += '};\n';
+      
+      console.log('%c[Grid] GESPEICHERT:', 'color: lime; font-weight: bold; font-size: 16px;');
+      console.log(result);
+      
+      navigator.clipboard.writeText(result).then(() => {
+        alert(`Grid gespeichert! ${keys.length} begehbare Zellen.\n\nCode in Zwischenablage kopiert.\n\nFÃÂ¼ge den Code in index.html ein um ihn zu speichern.`);
+      }).catch(() => {
+        alert(`Grid: ${keys.length} begehbare Zellen.\n\nSiehe Konsole fÃÂ¼r Code.`);
+      });
+      e.preventDefault();
+      return;
+    }
+  }, true); // true = capture phase, wird VOR dem Spiel ausgefÃÂ¼hrt
+  
+  // Starte Initialisierung
+  initGridEditor();
+  
+  console.log('%c[Grid Editor] DrÃÂ¼cke M um den Grid-Editor zu ÃÂ¶ffnen!', 'color: lime; font-weight: bold; font-size: 14px;');
+  console.log('%c[Drag Mode] DrÃÂ¼cke L um den Spieler zu verschieben!', 'color: yellow; font-weight: bold; font-size: 14px;');
+})();
+</script>
 
 <script>
 "use strict";
@@ -355,20 +1324,20 @@
   }
 
   const script=[
-    {speaker:"Erzähler", text:"Spielsteuerung:\n• Bewegung: WASD\n• Angriff: Linke Maustaste (halten = Dauerfeuer)\n• Ab Level 2: Schild auf E\n• Ab Level 3: Korallenbegleiter auf R\n• Ab Level 4: Ultimate auf T (1 Aktivierung)"},
-    {speaker:"Erzähler", text:"Tief unter der Oberfläche schuften Fische in engen Stollen – Diamanten für den gierigen Cashfisch."},
-    {speaker:"Erzähler", text:"Er hortet jeden Glitzerstein. Für die anderen bleibt: nichts."},
+    {speaker:"ErzÃÂ¤hler", text:"Spielsteuerung:\nÃ¢â¬Â¢ Bewegung: WASD\nÃ¢â¬Â¢ Angriff: Linke Maustaste (halten = Dauerfeuer)\nÃ¢â¬Â¢ Ab Level 2: Schild auf E\nÃ¢â¬Â¢ Ab Level 3: Korallenbegleiter auf R\nÃ¢â¬Â¢ Ab Level 4: Ultimate auf T (1 Aktivierung)"},
+    {speaker:"ErzÃÂ¤hler", text:"Tief unter der OberflÃÂ¤che schuften Fische in engen Stollen Ã¢â¬â Diamanten fÃÂ¼r den gierigen Cashfisch."},
+    {speaker:"ErzÃÂ¤hler", text:"Er hortet jeden Glitzerstein. FÃÂ¼r die anderen bleibt: nichts."},
     {speaker:"Spieler (murmelt)", text:"Jetzt muss ich schon wieder im Stollen arbeiten..."},
-    {speaker:"Spieler", text:"Ich hab’ genug davon. Ich breche aus!"},
-    {speaker:"Erzähler", text:"Drei Symbole können den Ausgang öffnen: ein Schlüssel-Symbol, ein Geldschein-Symbol und ein Yacht-Symbol."},
-    {speaker:"Erzähler", text:"Besiege ihre Wächter, nimm dir die Zeichen – und stürze den Cashfisch."},
+    {speaker:"Spieler", text:"Ich habÃ¢â¬â¢ genug davon. Ich breche aus!"},
+    {speaker:"ErzÃÂ¤hler", text:"Drei Symbole kÃÂ¶nnen den Ausgang ÃÂ¶ffnen: ein SchlÃÂ¼ssel-Symbol, ein Geldschein-Symbol und ein Yacht-Symbol."},
+    {speaker:"ErzÃÂ¤hler", text:"Besiege ihre WÃÂ¤chter, nimm dir die Zeichen Ã¢â¬â und stÃÂ¼rze den Cashfisch."},
     {speaker:"Spieler (entschlossen)", text:"Kein Stollen mehr. Jetzt nehme ich mir die Freiheit."}
   ];
 
   let idx=0, typed="", typing=true, cutDone=false, startedIcons=false, t0=performance.now();
 
   function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
-  function currentSpeaker(){ const s=(script[idx]&&script[idx].speaker||"").toLowerCase(); if(s.startsWith('erzähler')) return 'narr'; if(s.startsWith('spieler')) return 'play'; return ''; }
+  function currentSpeaker(){ const s=(script[idx]&&script[idx].speaker||"").toLowerCase(); if(s.startsWith('erzÃÂ¤hler')) return 'narr'; if(s.startsWith('spieler')) return 'play'; return ''; }
   function nextLine(){ if(idx>=script.length){ endCutscene(); return; } typed=""; typing=true; t0=performance.now(); }
   function startIcons(){ startedIcons=true; const start=performance.now(); (function fade(){ const k=Math.min(1,(performance.now()-start)/1200); showIcons=k; if(k<1 && !cutDone) requestAnimationFrame(fade); })(); }
   function endCutscene(){ cutDone=true; hint.style.display='block'; }
@@ -443,7 +1412,7 @@
     const pad=16, boxH=130;
     ctx.save(); ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(0,cvs.height-boxH-12,cvs.width,boxH+12); ctx.fillStyle='#0b1320cc'; ctx.fillRect(0,cvs.height-boxH,cvs.width,boxH); ctx.restore();
     ctx.save(); ctx.font='16px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; ctx.fillStyle='#9aa3c7'; const cur=script[Math.min(idx,script.length-1)]; if(cur){ ctx.fillText(cur.speaker||'', pad+4, cvs.height-boxH+26); } ctx.fillStyle='#e8ecff'; ctx.font='20px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; const text=typing?typed:(script[idx]?script[idx].text:typed); const lines=wrapText(text,760); let y=cvs.height-boxH+56; for(const L of lines){ ctx.fillText(L, pad+4, y); y+=28; } ctx.restore();
-    ctx.save(); ctx.font='600 14px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; ctx.fillStyle='#9aa3c7'; ctx.textAlign='right'; const blink=Math.floor(now/500)%2===0?'':' ▶'; ctx.fillText(cutDone?'Space/Klick: Start':('Space/Klick: Weiter'+blink), cvs.width-14, cvs.height-14); ctx.restore();
+    ctx.save(); ctx.font='600 14px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; ctx.fillStyle='#9aa3c7'; ctx.textAlign='right'; const blink=Math.floor(now/500)%2===0?'':' Ã¢âÂ¶'; ctx.fillText(cutDone?'Space/Klick: Start':('Space/Klick: Weiter'+blink), cvs.width-14, cvs.height-14); ctx.restore();
 
     if(showIcons>0){
       const gridSize = 50;
