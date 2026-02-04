@@ -75,6 +75,9 @@ import {
 	CITY_SPRITE_DEBUG_LABEL
 } from './city/constants.js';
 
+// Stadt UI-Modul importieren
+import { createCityUI } from './city/ui.js';
+
 let canvas = null;
 let ctx = null;
 
@@ -1340,13 +1343,8 @@ function bootGame() {
 	let cityAlignSelectedFrame = null;
 	let cityCropDrag = null;
 	let cityCropMode = false;
-	let cityInventoryOpen = false;
-	let cityShopOpen = false;
-	let cityShopSelection = null;
-	let cityMissionOpen = false;
-	let cityMissionSelection = null;
-	let cityDragState = null;
-	let cityDragGhost = null;
+	// cityInventoryOpen, cityShopOpen, cityMissionOpen, cityDragState, cityDragGhost 
+	// werden jetzt vom cityUI-Modul verwaltet
 	const cityInventory = {
 		equipment: { weapon: null, armor: null, armor2: null },
 		items: Array.from({ length: 9 }, () => null)
@@ -1508,281 +1506,50 @@ function bootGame() {
 		city: null,
 		armorShieldCharges: 0
 	};
-	const syncCityInventoryVisibility = () => {
-		if (!cityInventoryEl) return;
-		cityInventoryEl.style.display = (state.mode === "city" && cityInventoryOpen) ? "block" : "none";
-	};
-	const syncCityShopVisibility = () => {
-		if (!cityMerchantEl) return;
-		cityMerchantEl.style.display = (state.mode === "city" && cityShopOpen) ? "block" : "none";
-	};
-	const syncCityMissionVisibility = () => {
-		if (!cityMissionEl) return;
-		cityMissionEl.style.display = (state.mode === "city" && cityMissionOpen) ? "block" : "none";
-	};
-	const updateCityInventoryUI = () => {
-		if (!cityInventoryEl) return;
-		const renderSlot = (slotName, label, value) => {
-			const el = cityInventoryEl.querySelector(`[data-slot="${slotName}"]`);
-			if (!el) return;
-			const data = value ? getCityItemData(value) : null;
-			el.classList.toggle("filled", !!value);
-			el.dataset.item = value || "";
-			if (!value) {
-				el.innerHTML = `<span class="city-slot-label">${label}</span>`;
-				el.title = "";
-				return;
-			}
-			const iconHtml = data && data.icon ? `<span class="city-item-icon" style="background-image:url('${data.icon}')"></span>` : "";
-			el.innerHTML = `${iconHtml}<span class="city-slot-name">${data ? data.label : value}</span>`;
-			el.title = data ? data.label : value;
-		};
-		renderSlot("weapon", "Waffe", cityInventory.equipment.weapon);
-		renderSlot("armor", "Rüstung", cityInventory.equipment.armor);
-		renderSlot("armor2", "Rüstung II", cityInventory.equipment.armor2);
-		for (let i = 0; i < cityInventory.items.length; i += 1) {
-			const label = `Slot ${i + 1}`;
-			const value = cityInventory.items[i];
-			renderSlot(`inv-${i + 1}`, label, value);
-		}
-	};
-	const updateCityShopUI = () => {
-		if (!cityMerchantEl) return;
-		const grid = cityMerchantEl.querySelector("#cityMerchantGrid");
-		if (grid && grid.childElementCount === 0) {
-			cityShopItems.forEach(item => {
-				const data = getCityItemData(item);
-				const btn = document.createElement("button");
-				btn.type = "button";
-				btn.className = "city-merchant-item";
-				if (data && data.icon) {
-					btn.classList.add("has-icon");
-					btn.innerHTML = `<span class="city-item-name">${data.label}</span><span class="city-item-icon" style="background-image:url('${data.icon}')"></span>`;
-					btn.title = data.label;
-					btn.setAttribute("aria-label", data.label);
-				} else {
-					btn.textContent = data ? data.label : item;
-				}
-				btn.dataset.item = item;
-				grid.appendChild(btn);
-			});
-		}
-		const confirm = cityMerchantEl.querySelector("#cityMerchantConfirm");
-		const confirmText = cityMerchantEl.querySelector("#cityMerchantConfirmText");
-		const confirmPreview = cityMerchantEl.querySelector("#cityMerchantConfirmPreview");
-		const confirmEffect = cityMerchantEl.querySelector("#cityMerchantConfirmEffect");
-		if (confirm && confirmText) {
-			if (cityShopSelection) {
-				const data = getCityItemData(cityShopSelection);
-				confirm.classList.add("active");
-				confirmText.textContent = data ? data.label : cityShopSelection;
-				if (confirmPreview) {
-					const typeLabel = data && data.type === "armor" ? "Rüstung" : "Item";
-					const iconHtml = data && data.icon ? `<span class="city-item-icon" style="background-image:url('${data.icon}')"></span>` : "";
-					confirmPreview.innerHTML = `
-						<div class="city-merchant-type">${typeLabel}</div>
-						<div class="city-merchant-image">${iconHtml}</div>
-					`;
-				}
-				if (confirmEffect) {
-					confirmEffect.textContent = data && data.effect ? data.effect : "";
-				}
-			} else {
-				confirm.classList.remove("active");
-				confirmText.textContent = "Item kaufen?";
-				if (confirmPreview) confirmPreview.textContent = "";
-				if (confirmEffect) confirmEffect.textContent = "";
-			}
-		}
-	};
-	const updateCityMissionUI = () => {
-		if (!cityMissionEl) return;
-		const list = cityMissionEl.querySelector("#cityMissionList");
-		if (list && list.childElementCount === 0) {
-			cityMissions.forEach(mission => {
-				const btn = document.createElement("button");
-				btn.type = "button";
-				btn.className = "city-mission-item";
-				btn.textContent = `${mission.label} · ${mission.description}`;
-				btn.dataset.mission = mission.id;
-				list.appendChild(btn);
-			});
-		}
-		const confirm = cityMissionEl.querySelector("#cityMissionConfirm");
-		const confirmText = cityMissionEl.querySelector("#cityMissionConfirmText");
-		if (confirm && confirmText) {
-			if (cityMissionSelection) {
-				confirm.classList.add("active");
-				confirmText.textContent = "Möchten Sie die Mission starten?";
-			} else {
-				confirm.classList.remove("active");
-				confirmText.textContent = "Mission starten?";
-			}
-		}
-	};
-	const getCitySlotItem = slotName => {
-		if (!slotName) return null;
-		if (slotName.startsWith("inv-")) {
-			const index = Math.max(0, Number.parseInt(slotName.split("-")[1], 10) - 1);
-			return cityInventory.items[index] || null;
-		}
-		return cityInventory.equipment[slotName] || null;
-	};
-	const setCitySlotItem = (slotName, value) => {
-		if (!slotName) return;
-		if (slotName.startsWith("inv-")) {
-			const index = Math.max(0, Number.parseInt(slotName.split("-")[1], 10) - 1);
-			cityInventory.items[index] = value || null;
-			return;
-		}
-		cityInventory.equipment[slotName] = value || null;
-	};
-	const canEquipCityItem = (slotName, itemName) => {
-		if (!itemName) return false;
-		const data = getCityItemData(itemName);
-		if (slotName === "armor") return data && data.type === "armor";
-		return slotName === "weapon" || slotName === "armor2";
-	};
-	const refreshArmorCharge = () => {
-		const armorEquipped = cityInventory.equipment.armor === ARMOR_ITEM_NAME;
-		state.armorShieldCharges = armorEquipped ? 1 : 0;
-		updateHUD();
-	};
-	const cleanupCityDrag = () => {
-		if (cityDragGhost && cityDragGhost.parentElement) cityDragGhost.parentElement.removeChild(cityDragGhost);
-		cityDragGhost = null;
-		cityDragState = null;
-	};
-	const beginCityDrag = (slotEl, slotName, itemName, startEvent) => {
-		if (!slotEl || !slotName || !itemName) return;
-		const data = getCityItemData(itemName);
-		cityDragState = { item: itemName, from: slotName };
-		cityDragGhost = document.createElement("div");
-		cityDragGhost.className = "city-drag-ghost";
-		const iconHtml = data && data.icon ? `<span class="city-item-icon" style="background-image:url('${data.icon}')"></span>` : "";
-		cityDragGhost.innerHTML = `${iconHtml}<span>${data ? data.label : itemName}</span>`;
-		document.body.appendChild(cityDragGhost);
-		const moveGhost = e => {
-			if (!cityDragGhost) return;
-			cityDragGhost.style.left = `${e.clientX + 12}px`;
-			cityDragGhost.style.top = `${e.clientY + 12}px`;
-		};
-		moveGhost(startEvent);
-		const handleMove = e => moveGhost(e);
-		const handleUp = e => {
-			document.removeEventListener("pointermove", handleMove);
-			document.removeEventListener("pointerup", handleUp);
-			const target = document.elementFromPoint(e.clientX, e.clientY);
-			const slotTarget = target ? target.closest(".city-slot") : null;
-			const toSlot = slotTarget ? slotTarget.dataset.slot : null;
-			if (toSlot && toSlot !== slotName) {
-				const targetItem = getCitySlotItem(toSlot);
-				if (toSlot.startsWith("inv-") || canEquipCityItem(toSlot, itemName)) {
-					setCitySlotItem(toSlot, itemName);
-					setCitySlotItem(slotName, targetItem);
-					if (toSlot === "armor" || slotName === "armor") refreshArmorCharge();
-					updateCityInventoryUI();
-				}
-			}
-			cleanupCityDrag();
-		};
-		document.addEventListener("pointermove", handleMove);
-		document.addEventListener("pointerup", handleUp, { once: true });
-	};
-	const tryAddCityItem = itemName => {
-		const slotIndex = cityInventory.items.findIndex(item => !item);
-		if (slotIndex === -1) {
-			if (bannerEl) bannerEl.textContent = "Inventar voll";
-			return false;
-		}
-		cityInventory.items[slotIndex] = itemName;
-		updateCityInventoryUI();
-		if (bannerEl) bannerEl.textContent = `Gekauft: ${itemName}`;
-		return true;
-	};
-	updateCityInventoryUI();
-	updateCityShopUI();
-	updateCityMissionUI();
-	if (cityInventoryEl) {
-		cityInventoryEl.addEventListener("pointerdown", event => {
-			const target = event.target;
-			if (!(target instanceof HTMLElement)) return;
-			const slot = target.closest(".city-slot");
-			if (!slot) return;
-			const slotName = slot.dataset.slot;
-			const item = getCitySlotItem(slotName);
-			if (!item) return;
-			event.preventDefault();
-			beginCityDrag(slot, slotName, item, event);
-		});
-	}
-	if (cityMerchantEl) {
-		cityMerchantEl.addEventListener("click", event => {
-			const target = event.target;
-			if (!(target instanceof HTMLElement)) return;
-			const action = target.dataset.action;
-			if (action === "close-merchant") {
-				cityShopOpen = false;
-				cityShopSelection = null;
-				updateCityShopUI();
-				syncCityShopVisibility();
-				return;
-			}
-			if (action === "cancel-buy") {
-				cityShopSelection = null;
-				updateCityShopUI();
-				return;
-			}
-			if (action === "buy-item") {
-				if (!cityShopSelection) return;
-				if (tryAddCityItem(cityShopSelection)) {
-					cityShopSelection = null;
-					updateCityShopUI();
-				}
-				return;
-			}
-			const itemBtn = target.closest(".city-merchant-item");
-			const item = itemBtn ? itemBtn.dataset.item : null;
-			if (item) {
-				cityShopSelection = item;
-				updateCityShopUI();
-			}
-		});
-	}
-	if (cityMissionEl) {
-		cityMissionEl.addEventListener("click", event => {
-			const target = event.target;
-			if (!(target instanceof HTMLElement)) return;
-			const action = target.dataset.action;
-			if (action === "close-mission") {
-				cityMissionOpen = false;
-				cityMissionSelection = null;
-				updateCityMissionUI();
-				syncCityMissionVisibility();
-				return;
-			}
-			if (action === "cancel-mission") {
-				cityMissionSelection = null;
-				updateCityMissionUI();
-				return;
-			}
-			if (action === "start-mission") {
-				if (!cityMissionSelection) return;
-				cityMissionOpen = false;
-				cityMissionSelection = null;
-				syncCityMissionVisibility();
-				resetGame();
-				if (bannerEl) bannerEl.textContent = "Mission gestartet";
-				return;
-			}
-			const missionBtn = target.closest(".city-mission-item");
-			const mission = missionBtn ? missionBtn.dataset.mission : null;
-			if (mission) {
-				cityMissionSelection = mission;
-				updateCityMissionUI();
-			}
-		});
-	}
+
+	// ============================================================
+	// CITY UI - aus Modul initialisieren
+	// ============================================================
+	const cityUI = createCityUI({
+		elements: {
+			inventoryEl: cityInventoryEl,
+			merchantEl: cityMerchantEl,
+			missionEl: cityMissionEl,
+			bannerEl
+		},
+		getState: () => state,
+		getInventory: () => cityInventory,
+		getItemData: getCityItemData,
+		shopItems: cityShopItems,
+		missions: cityMissions,
+		onResetGame: () => resetGame(),
+		onUpdateHUD: () => updateHUD(),
+		armorItemName: ARMOR_ITEM_NAME
+	});
+
+	// Für Rückwärtskompatibilität: Wrapper-Funktionen
+	const syncCityInventoryVisibility = () => cityUI.syncInventoryVisibility();
+	const syncCityShopVisibility = () => cityUI.syncShopVisibility();
+	const syncCityMissionVisibility = () => cityUI.syncMissionVisibility();
+	const updateCityInventoryUI = () => cityUI.updateInventoryUI();
+	const updateCityShopUI = () => cityUI.updateShopUI();
+	const updateCityMissionUI = () => cityUI.updateMissionUI();
+	const tryAddCityItem = (itemName) => cityUI.tryAddItem(itemName);
+
+	// cityInventoryOpen/cityShopOpen/cityMissionOpen als Getter/Setter
+	const getCityInventoryOpen = () => cityUI.isInventoryOpen();
+	const setCityInventoryOpen = (v) => cityUI.setInventoryOpen(v);
+	const getCityShopOpen = () => cityUI.isShopOpen();
+	const setCityShopOpen = (v) => cityUI.setShopOpen(v);
+	const getCityMissionOpen = () => cityUI.isMissionOpen();
+	const setCityMissionOpen = (v) => cityUI.setMissionOpen(v);
+
+	// Event-Listener über das Modul einrichten
+	cityUI.setupEventListeners();
+
+	// Initial UI aktualisieren
+	cityUI.updateAllUI();
+
 	function seedBubbles() {
 		const count = 24;
 		state.bubbles = Array.from({ length: count }, () => ({
@@ -3842,14 +3609,7 @@ function bootGame() {
 		state.player.shieldUnlocked = false;
 		state.player.shieldActive = false;
 		state.armorShieldCharges = cityInventory.equipment.armor === ARMOR_ITEM_NAME ? 1 : 0;
-		cityInventoryOpen = false;
-		cityShopOpen = false;
-		cityShopSelection = null;
-		cityMissionOpen = false;
-		cityMissionSelection = null;
-		syncCityInventoryVisibility();
-		syncCityShopVisibility();
-		syncCityMissionVisibility();
+		cityUI.reset();
 		state.player.shieldTimer = 0;
 		state.player.shieldCooldown = 0;
 		state.player.shieldLastActivation = 0;
@@ -8280,9 +8040,8 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		if (state.mode === "city") {
 			// Inventar öffnen/schließen
 			if (event.key === "i" || event.key === "I") {
-				cityInventoryOpen = !cityInventoryOpen;
-				syncCityInventoryVisibility();
-				if (bannerEl) bannerEl.textContent = cityInventoryOpen ? "Inventar geöffnet (I)" : "Inventar geschlossen";
+				cityUI.setInventoryOpen(!cityUI.isInventoryOpen());
+				if (bannerEl) bannerEl.textContent = cityUI.isInventoryOpen() ? "Inventar geöffnet (I)" : "Inventar geschlossen";
 				event.preventDefault();
 				return;
 			}
