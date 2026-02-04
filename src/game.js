@@ -87,6 +87,9 @@ import { renderCity as renderCityModule } from './city/render.js';
 // Stadt State-Modul importieren
 import { buildCityState as buildCityStateModule } from './city/state.js';
 
+// Stadt Sprite-Debug-Modul importieren
+import { createCitySpriteDebug } from './city/spriteDebug.js';
+
 let canvas = null;
 let ctx = null;
 
@@ -1081,277 +1084,41 @@ function bootGame() {
 		`;
 		document.body.appendChild(cityMissionEl);
 	}
-	const CITY_DEBUG_ROWS = 3;
-	const CITY_DEBUG_COLS = 5;
-	const CITY_DEBUG_STORAGE_KEY = "cashfish.citySpriteOffsets.v1";
-	const CITY_DEBUG_CROP_KEY = "cashfish.citySpriteCropShift.v1";
-	const CITY_DEBUG_STORAGE_VERSION_KEY = "cashfish.citySpriteOffsets.version";
-	const CITY_DEBUG_STORAGE_VERSION = "2026-01-29-8";
-	let citySpriteOffsets = [
-		[
-			{ x: 71.33333333333334, y: 9.999999999999996 },
-			{ x: 76.66666666666663, y: 22.000000000000004 },
-			{ x: 75.3333333333334, y: 13.999999999999996 },
-			{ x: 63.33333333333358, y: 17.333333333333 },
-			{ x: 82.00000000000018, y: 23.33333333333332 }
-		],
-		[
-			{ x: 68.66666666666659, y: -2.00000000000003 },
-			{ x: 80, y: -6.000000000000012 },
-			{ x: 87.99999999999999, y: -3.108624468950438e-14 },
-			{ x: 64.66666666666659, y: -16.66666666666667 },
-			{ x: 74.6666666666667, y: 15.333333333333321 }
-		],
-		[
-			{ x: 75.33333333333334, y: -21.333333333333357 },
-			{ x: 60.00000000000002, y: -17.33333333333337 },
-			{ x: 68.6666666666667, y: -17.999999999999996 },
-			{ x: 48, y: -16.666666666666654 },
-			{ x: 65.33333333333336, y: -19.999999999999968 }
-		]
-	];
-	setCitySpriteCropShift(Array.from(
-		{ length: CITY_DEBUG_ROWS },
-		() => Array.from(
-			{ length: CITY_DEBUG_COLS },
-			() => ({ x: 42.66666666666667, y: 13.333333333333336 })
-		)
-	));
-	try {
-		const storedVersion = localStorage.getItem(CITY_DEBUG_STORAGE_VERSION_KEY);
-		if (storedVersion !== CITY_DEBUG_STORAGE_VERSION) {
-			localStorage.removeItem(CITY_DEBUG_STORAGE_KEY);
-			localStorage.setItem(CITY_DEBUG_STORAGE_VERSION_KEY, CITY_DEBUG_STORAGE_VERSION);
-		}
-		const stored = localStorage.getItem(CITY_DEBUG_STORAGE_KEY);
-		const storedCrop = localStorage.getItem(CITY_DEBUG_CROP_KEY);
-		if (stored) {
-			const parsed = JSON.parse(stored);
-			if (Array.isArray(parsed) && parsed.length >= CITY_DEBUG_ROWS) {
-				citySpriteOffsets = parsed.map((row, r) => (
-					Array.isArray(row) ? row.slice(0, CITY_DEBUG_COLS).map(cell => ({
-						x: Number(cell && cell.x) || 0,
-						y: Number(cell && cell.y) || 0
-					})) : Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 }))
-				)).slice(0, CITY_DEBUG_ROWS);
-			}
-		}
-		if (storedCrop) {
-			const parsed = JSON.parse(storedCrop);
-			if (Array.isArray(parsed) && parsed.length >= CITY_DEBUG_ROWS) {
-				setCitySpriteCropShift(parsed.map((row, r) => (
-					Array.isArray(row) ? row.slice(0, CITY_DEBUG_COLS).map(cell => ({
-						x: Number(cell && cell.x) || 0,
-						y: Number(cell && cell.y) || 0
-					})) : Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 }))
-				)).slice(0, CITY_DEBUG_ROWS));
-			}
-		}
-	} catch (err) {
-		console.warn("Failed to load city sprite offsets", err);
-	}
-	const persistCitySpriteOffsets = () => {
-		try {
-			localStorage.setItem(CITY_DEBUG_STORAGE_KEY, JSON.stringify(citySpriteOffsets));
-			localStorage.setItem(CITY_DEBUG_CROP_KEY, JSON.stringify(getCitySpriteCropShiftArray()));
-		} catch (err) {
-			console.warn("Failed to persist city sprite offsets", err);
-		}
-	};
-	const getCitySpriteOffset = (row, col) => {
-		const r = citySpriteOffsets[row];
-		const entry = r && r[col];
-		return entry ? entry : { x: 0, y: 0 };
-	};
-	const updateCitySpriteOffset = (row, col, dx, dy) => {
-		if (!citySpriteOffsets[row] || !citySpriteOffsets[row][col]) return;
-		citySpriteOffsets[row][col].x += dx;
-		citySpriteOffsets[row][col].y += dy;
-		persistCitySpriteOffsets();
-	};
-	let citySpriteDrag = null;
-	const getDebugCanvasMetrics = () => {
-		if (!citySpriteDebugCanvas) return null;
-		const sprite = SPRITES.cityPlayer;
-		if (!spriteReady(sprite)) return null;
-		const frameSize = CITY_SPRITE_FRAME_SIZE;
-		const rows = CITY_DEBUG_ROWS;
-		const cols = CITY_DEBUG_COLS;
-		const scale = Math.min(
-			citySpriteDebugCanvas.width / (frameSize * cols),
-			citySpriteDebugCanvas.height / (frameSize * rows)
-		);
-		const sheetW = frameSize * cols * scale;
-		const sheetH = frameSize * rows * scale;
-		const originX = (citySpriteDebugCanvas.width - sheetW) * 0.5;
-		const originY = (citySpriteDebugCanvas.height - sheetH) * 0.5;
-		return { frameSize, rows, cols, scale, originX, originY };
-	};
-	if (citySpriteDebugCanvas) {
-		citySpriteDebugCanvas.addEventListener("contextmenu", event => {
-			event.preventDefault();
-		});
-		citySpriteDebugCanvas.addEventListener("mousedown", event => {
-			if (!CITY_SPRITE_DEBUG) return;
-			const metrics = getDebugCanvasMetrics();
-			if (!metrics) return;
-			const rect = citySpriteDebugCanvas.getBoundingClientRect();
-			const x = event.clientX - rect.left;
-			const y = event.clientY - rect.top;
-			const localX = x - metrics.originX;
-			const localY = y - metrics.originY;
-			if (localX < 0 || localY < 0 || localX >= metrics.frameSize * metrics.cols * metrics.scale || localY >= metrics.frameSize * metrics.rows * metrics.scale) return;
-			const col = Math.floor(localX / (metrics.frameSize * metrics.scale));
-			const row = Math.floor(localY / (metrics.frameSize * metrics.scale));
-			if (cityCropMode) {
-				const shift = getCitySpriteCropShift(row, col);
-				cityCropDrag = {
-					row,
-					col,
-					startX: x,
-					startY: y,
-					origX: shift.x,
-					origY: shift.y,
-					scale: metrics.scale
-				};
-				return;
-			}
-			if (cityAlignMode || cityCropMode) {
-				cityAlignSelectedFrame = { row, col };
-				currentCityFrame = { row, col, flip: false };
-			}
-			const offset = getCitySpriteOffset(row, col);
-			citySpriteDrag = {
-				row,
-				col,
-				startX: x,
-				startY: y,
-				origX: offset.x,
-				origY: offset.y,
-				scale: metrics.scale
-			};
-		});
-		citySpriteDebugCanvas.addEventListener("mousemove", event => {
-			if (!citySpriteDrag && !cityCropDrag) return;
-			const rect = citySpriteDebugCanvas.getBoundingClientRect();
-			const x = event.clientX - rect.left;
-			const y = event.clientY - rect.top;
-			if (citySpriteDrag) {
-				const dx = (x - citySpriteDrag.startX) / citySpriteDrag.scale;
-				const dy = (y - citySpriteDrag.startY) / citySpriteDrag.scale;
-				const row = citySpriteDrag.row;
-				const col = citySpriteDrag.col;
-				if (citySpriteOffsets[row] && citySpriteOffsets[row][col]) {
-					citySpriteOffsets[row][col].x = citySpriteDrag.origX + dx;
-					citySpriteOffsets[row][col].y = citySpriteDrag.origY + dy;
-					persistCitySpriteOffsets();
-				}
-			}
-			if (cityCropDrag) {
-				const dx = (x - cityCropDrag.startX) / cityCropDrag.scale;
-				const dy = (y - cityCropDrag.startY) / cityCropDrag.scale;
-				const row = cityCropDrag.row;
-				const col = cityCropDrag.col;
-				const cropShiftArr = getCitySpriteCropShiftArray();
-				if (cropShiftArr[row] && cropShiftArr[row][col]) {
-					cropShiftArr[row][col].x = cityCropDrag.origX + dx;
-					cropShiftArr[row][col].y = cityCropDrag.origY + dy;
-					CITY_SPRITE_CACHE.ready = false;
-					persistCitySpriteOffsets();
-				}
-			}
-		});
-		const endDrag = () => {
-			citySpriteDrag = null;
-			cityCropDrag = null;
-		};
-		citySpriteDebugCanvas.addEventListener("mouseup", endDrag);
-		citySpriteDebugCanvas.addEventListener("mouseleave", endDrag);
-	}
-	if (canvas) {
-		canvas.addEventListener("mousedown", event => {
-			if (!cityAlignMode || state.mode !== "city") return;
-			const rect = canvas.getBoundingClientRect();
-			const x = (event.clientX - rect.left) * (canvas.width / rect.width);
-			const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-			cityAlignDrag = {
-				startX: x,
-				startY: y,
-				row: currentCityFrame.row,
-				col: currentCityFrame.col,
-				flip: currentCityFrame.flip
-			};
-		});
-		canvas.addEventListener("mousemove", event => {
-			if (!cityAlignDrag || !cityAlignMode || state.mode !== "city") return;
-			const rect = canvas.getBoundingClientRect();
-			const x = (event.clientX - rect.left) * (canvas.width / rect.width);
-			const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-			const dx = (x - cityAlignDrag.startX) / CITY_SPRITE_SCALE;
-			const dy = (y - cityAlignDrag.startY) / CITY_SPRITE_SCALE;
-			cityAlignDrag.startX = x;
-			cityAlignDrag.startY = y;
-			updateCitySpriteOffset(cityAlignDrag.row, cityAlignDrag.col, dx, dy);
-		});
-		const endAlignDrag = () => {
-			cityAlignDrag = null;
-		};
-		canvas.addEventListener("mouseup", endAlignDrag);
-		canvas.addEventListener("mouseleave", endAlignDrag);
-	}
-	if (citySpriteDebugReset) {
-		citySpriteDebugReset.addEventListener("click", () => {
-			citySpriteOffsets = Array.from({ length: CITY_DEBUG_ROWS }, () => Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 })));
-			persistCitySpriteOffsets();
-			if (citySpriteDebugOutput) citySpriteDebugOutput.value = "";
-		});
-	}
-	if (citySpriteDebugExport) {
-		citySpriteDebugExport.addEventListener("click", () => {
-			const payload = JSON.stringify({ offsets: citySpriteOffsets, cropShift: getCitySpriteCropShiftArray() }, null, 2);
-			if (citySpriteDebugOutput) {
-				citySpriteDebugOutput.value = payload;
-				citySpriteDebugOutput.focus();
-				citySpriteDebugOutput.select();
-			}
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(payload).catch(() => {
-					// ignore clipboard errors, selection fallback is active
-				});
-			}
-		});
-	}
-	if (citySpriteDebugCopy) {
-		citySpriteDebugCopy.addEventListener("click", async () => {
-			if (!citySpriteDebugCurrent) return;
-			const text = citySpriteDebugCurrent.textContent || "";
-			try {
-				await navigator.clipboard.writeText(text);
-			} catch (err) {
-				if (citySpriteDebugOutput) citySpriteDebugOutput.value = text;
-			}
-		});
-	}
-	if (citySpriteDebugOutput) {
-		citySpriteDebugOutput.addEventListener("click", () => {
-			citySpriteDebugOutput.focus();
-			citySpriteDebugOutput.select();
-		});
-		citySpriteDebugOutput.addEventListener("focus", () => {
-			citySpriteDebugOutput.select();
-		});
-	}
+
+	// State-Variablen für Debug-Modi (werden vom Modul gelesen)
+	let cityAlignMode = false;
+	let cityCropMode = false;
+	let currentCityFrame = { row: 0, col: 0, flip: false };
+	let cityAlignSelectedFrame = null;
+
+	// City Sprite Debug-Modul initialisieren
+	const citySpriteDebug = createCitySpriteDebug({
+		debugCanvas: citySpriteDebugCanvas,
+		debugReset: citySpriteDebugReset,
+		debugExport: citySpriteDebugExport,
+		debugOutput: citySpriteDebugOutput,
+		debugCurrent: citySpriteDebugCurrent,
+		debugCopy: citySpriteDebugCopy,
+		canvas,
+		getSprites: () => SPRITES,
+		getState: () => state,
+		getCurrentFrame: () => currentCityFrame,
+		setCurrentFrame: (f) => { currentCityFrame = f; },
+		getAlignMode: () => cityAlignMode,
+		getCropMode: () => cityCropMode,
+		setAlignSelectedFrame: (f) => { cityAlignSelectedFrame = f; }
+	});
+
+	// Wrapper-Funktionen für Rückwärtskompatibilität
+	const getCitySpriteOffset = (row, col) => citySpriteDebug.getOffset(row, col);
+	const updateCitySpriteOffset = (row, col, dx, dy) => citySpriteDebug.updateOffset(row, col, dx, dy);
+	const CITY_DEBUG_ROWS = citySpriteDebug.DEBUG_ROWS;
+	const CITY_DEBUG_COLS = citySpriteDebug.DEBUG_COLS;
 
 	const keys = new Set();
 	const pointer = { down: false, shoot: false };
 	let controlsArmed = false;
 	const DEBUG_SHORTCUTS = true;
-	let cityAlignMode = false;
-	let cityAlignDrag = null;
-	let currentCityFrame = { row: 0, col: 0, flip: false };
-	let cityAlignSelectedFrame = null;
-	let cityCropDrag = null;
-	let cityCropMode = false;
 	// cityInventoryOpen, cityShopOpen, cityMissionOpen, cityDragState, cityDragGhost 
 	// werden jetzt vom cityUI-Modul verwaltet
 	const cityInventory = {
