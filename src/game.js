@@ -28,6 +28,7 @@ import itemsData from './data/items.json';
 import shopData from './data/shop.json';
 import missionsData from './data/missions.json';
 import cityData from './data/city.json';
+import symbolsData from './data/symbols.json';
 
 // Stadt Sprite-Cache importieren
 import { 
@@ -187,26 +188,10 @@ window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
 window.CITY_GRID_COLS = CITY_GRID_COLS;
 window.CITY_GRID_ROWS = CITY_GRID_ROWS;
 
-const SYMBOL_DATA = {
-	pferd: {
-		spriteKey: "symbolSchluessel",
-		label: "Schlüssel-Symbol",
-		asset: "./src/Schlüsselsymbol.png"
-	},
-	sprinter: {
-		spriteKey: "symbolGeldschein",
-		label: "Geldschein-Symbol",
-		asset: "./src/Geldscheinsymbol.png"
-	},
-	yacht: {
-		spriteKey: "symbolYacht",
-		label: "Yacht-Symbol",
-		asset: "./src/Yachtsymbol.png"
-	}
-};
-
-const LEVEL_SYMBOL_SEQUENCE = ["pferd", "sprinter", "yacht"];
-const SYMBOL_AUTOCOLLECT_MS = 10000;
+// Symbol-Daten aus JSON laden
+const SYMBOL_DATA = symbolsData.symbols;
+const LEVEL_SYMBOL_SEQUENCE = symbolsData.levelSequence;
+const SYMBOL_AUTOCOLLECT_MS = symbolsData.autocollectMs;
 
 function getHealSprite() {
 	if (!processedHealSprite && spriteReady(SPRITES.heal)) {
