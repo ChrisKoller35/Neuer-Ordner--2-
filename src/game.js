@@ -29,6 +29,16 @@ import shopData from './data/shop.json';
 import missionsData from './data/missions.json';
 import cityData from './data/city.json';
 
+// Stadt Sprite-Cache importieren
+import { 
+	CITY_SPRITE_CACHE, 
+	getCitySpriteCropShift, 
+	updateCitySpriteCropShift,
+	setCitySpriteCropShift,
+	getCitySpriteCropShiftArray,
+	buildCitySpriteCache as buildCitySpriteCacheModule
+} from './city/spriteCache.js';
+
 // Stadt-Konstanten importieren
 import {
 	USE_CITY_SPRITE,
@@ -106,20 +116,7 @@ function getLevel3GroundLine() {
 const USE_CLASSIC_OKTOPUS_PROJECTILE = true; // Toggle to compare new blowdart prototype with classic sprite
 const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallback
 
-// Stadt-Sprite-Zustand (mutable, nicht in constants.js)
-let citySpriteCropShift = Array.from({ length: 3 }, () => Array.from({ length: 5 }, () => ({ x: 0, y: 0 })));
-const getCitySpriteCropShift = (row, col) => {
-	const r = citySpriteCropShift[row];
-	const entry = r && r[col];
-	return entry ? entry : { x: 0, y: 0 };
-};
-const updateCitySpriteCropShift = (row, col, dx, dy) => {
-	if (!citySpriteCropShift[row] || !citySpriteCropShift[row][col]) return;
-	citySpriteCropShift[row][col].x += dx;
-	citySpriteCropShift[row][col].y += dy;
-		CITY_SPRITE_CACHE.ready = false;
-};
-const CITY_SPRITE_CACHE = { ready: false, frames: [] };
+// Stadt-Sprite-Cache kommt aus ./city/spriteCache.js (importiert oben)
 const DEBUG_BUILD_LABEL = "BUILD v3";
 
 // Asset Loader konfigurieren (nutzt import.meta.url für relative Pfade)
@@ -128,146 +125,9 @@ configureAssetLoader({
 	baseUrl: import.meta.url 
 });
 
+// Wrapper für buildCitySpriteCache - nutzt das importierte Modul
 function buildCitySpriteCache() {
-	if (CITY_SPRITE_CACHE.ready) return;
-	const sprite = SPRITES.cityPlayer;
-	if (!spriteReady(sprite)) return;
-	const frameSize = CITY_SPRITE_FRAME_SIZE;
-	const rows = 3;
-	const cols = 5;
-	const pad = CITY_SPRITE_PADDING;
-	const temp = document.createElement("canvas");
-	temp.width = frameSize;
-	temp.height = frameSize;
-	const tctx = temp.getContext("2d");
-	CITY_SPRITE_CACHE.frames = Array.from({ length: rows }, () => Array(cols).fill(null));
-	for (let r = 0; r < rows; r += 1) {
-		for (let c = 0; c < cols; c += 1) {
-			tctx.clearRect(0, 0, frameSize, frameSize);
-			tctx.drawImage(sprite, c * frameSize, r * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
-			const img = tctx.getImageData(0, 0, frameSize, frameSize);
-			const data = img.data;
-			const alphaAt = (x, y) => data[(y * frameSize + x) * 4 + 3];
-			let seedX = Math.floor(frameSize / 2);
-			let seedY = Math.floor(frameSize / 2);
-			if (alphaAt(seedX, seedY) <= CITY_SPRITE_ALPHA_THRESHOLD) {
-				let found = false;
-				for (let radius = 1; radius < frameSize / 2 && !found; radius += 1) {
-					for (let dy = -radius; dy <= radius && !found; dy += 1) {
-						for (let dx = -radius; dx <= radius && !found; dx += 1) {
-							const x = seedX + dx;
-							const y = seedY + dy;
-							if (x < 0 || y < 0 || x >= frameSize || y >= frameSize) continue;
-							if (alphaAt(x, y) > CITY_SPRITE_ALPHA_THRESHOLD) {
-								seedX = x;
-								seedY = y;
-								found = true;
-							}
-						}
-					}
-				}
-				if (!found) {
-					CITY_SPRITE_CACHE.frames[r][c] = null;
-					continue;
-				}
-			}
-			const visited = new Uint8Array(frameSize * frameSize);
-			const queue = [[seedX, seedY]];
-			visited[seedY * frameSize + seedX] = 1;
-			let minX = seedX;
-			let maxX = seedX;
-			let minY = seedY;
-			let maxY = seedY;
-			while (queue.length) {
-				const [x, y] = queue.pop();
-				if (x < minX) minX = x;
-				if (x > maxX) maxX = x;
-				if (y < minY) minY = y;
-				if (y > maxY) maxY = y;
-				const neighbors = [
-					[x - 1, y],
-					[x + 1, y],
-					[x, y - 1],
-					[x, y + 1]
-				];
-				for (const [nx, ny] of neighbors) {
-					if (nx < 0 || ny < 0 || nx >= frameSize || ny >= frameSize) continue;
-					const idx = ny * frameSize + nx;
-					if (visited[idx]) continue;
-					if (alphaAt(nx, ny) > CITY_SPRITE_ALPHA_THRESHOLD) {
-						visited[idx] = 1;
-						queue.push([nx, ny]);
-					}
-				}
-			}
-			const inset = CITY_SPRITE_CROP_INSET;
-			const outsetX = CITY_SPRITE_CROP_OUTSET_X;
-			const outsetY = CITY_SPRITE_CROP_OUTSET_Y;
-			const frameKey = `${r},${c}`;
-			const frameOutset = CITY_SPRITE_FRAME_OUTSET[frameKey] || { left: 0, right: 0, top: 0, bottom: 0 };
-			const frameShift = getCitySpriteCropShift(r, c);
-			minX = Math.min(maxX, minX + inset);
-			minY = Math.min(maxY, minY + inset);
-			maxX = Math.max(minX, maxX - inset);
-			maxY = Math.max(minY, maxY - inset);
-			const baseMinX = Math.max(0, minX - outsetX - frameOutset.left);
-			const baseMinY = Math.max(0, minY - outsetY - frameOutset.top);
-			const baseMaxX = Math.min(frameSize - 1, maxX + outsetX + frameOutset.right);
-			const baseMaxY = Math.min(frameSize - 1, maxY + outsetY + frameOutset.bottom);
-			const baseCenterX = (baseMinX + baseMaxX) / 2;
-			const baseCenterY = (baseMinY + baseMaxY) / 2;
-			const desiredMinX = Math.floor(baseMinX + frameShift.x);
-			const desiredMinY = Math.floor(baseMinY + frameShift.y);
-			const desiredMaxX = Math.ceil(baseMaxX + frameShift.x);
-			const desiredMaxY = Math.ceil(baseMaxY + frameShift.y);
-			minX = desiredMinX;
-			minY = desiredMinY;
-			maxX = desiredMaxX;
-			maxY = desiredMaxY;
-			const cropW = maxX - minX + 1;
-			const cropH = maxY - minY + 1;
-			const centerX = baseCenterX;
-			const centerY = baseCenterY;
-			const frameCanvas = document.createElement("canvas");
-			frameCanvas.width = cropW + pad * 2;
-			frameCanvas.height = cropH + pad * 2;
-			const fctx = frameCanvas.getContext("2d");
-			fctx.imageSmoothingEnabled = false;
-			fctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
-			const srcMinX = clamp(minX, 0, frameSize - 1);
-			const srcMinY = clamp(minY, 0, frameSize - 1);
-			const srcMaxX = clamp(maxX, 0, frameSize - 1);
-			const srcMaxY = clamp(maxY, 0, frameSize - 1);
-			const srcW = Math.max(0, srcMaxX - srcMinX + 1);
-			const srcH = Math.max(0, srcMaxY - srcMinY + 1);
-			if (srcW > 0 && srcH > 0) {
-				const destX = pad + (srcMinX - minX);
-				const destY = pad + (srcMinY - minY);
-				fctx.drawImage(
-					sprite,
-					c * frameSize + srcMinX,
-					r * frameSize + srcMinY,
-					srcW,
-					srcH,
-					destX,
-					destY,
-					srcW,
-					srcH
-				);
-			}
-			const anchorX = baseCenterX - minX + pad;
-			const anchorY = baseCenterY - minY + pad;
-			CITY_SPRITE_CACHE.frames[r][c] = {
-				canvas: frameCanvas,
-				centerX,
-				centerY,
-				anchorX,
-				anchorY,
-				crop: { minX, minY, maxX, maxY }
-			};
-		}
-	}
-	CITY_SPRITE_CACHE.ready = true;
+	buildCitySpriteCacheModule(SPRITES.cityPlayer);
 }
 
 
@@ -1253,13 +1113,13 @@ function bootGame() {
 			{ x: 65.33333333333336, y: -19.999999999999968 }
 		]
 	];
-	citySpriteCropShift = Array.from(
+	setCitySpriteCropShift(Array.from(
 		{ length: CITY_DEBUG_ROWS },
 		() => Array.from(
 			{ length: CITY_DEBUG_COLS },
 			() => ({ x: 42.66666666666667, y: 13.333333333333336 })
 		)
-	);
+	));
 	try {
 		const storedVersion = localStorage.getItem(CITY_DEBUG_STORAGE_VERSION_KEY);
 		if (storedVersion !== CITY_DEBUG_STORAGE_VERSION) {
@@ -1282,12 +1142,12 @@ function bootGame() {
 		if (storedCrop) {
 			const parsed = JSON.parse(storedCrop);
 			if (Array.isArray(parsed) && parsed.length >= CITY_DEBUG_ROWS) {
-				citySpriteCropShift = parsed.map((row, r) => (
+				setCitySpriteCropShift(parsed.map((row, r) => (
 					Array.isArray(row) ? row.slice(0, CITY_DEBUG_COLS).map(cell => ({
 						x: Number(cell && cell.x) || 0,
 						y: Number(cell && cell.y) || 0
 					})) : Array.from({ length: CITY_DEBUG_COLS }, () => ({ x: 0, y: 0 }))
-				)).slice(0, CITY_DEBUG_ROWS);
+				)).slice(0, CITY_DEBUG_ROWS));
 			}
 		}
 	} catch (err) {
@@ -1296,7 +1156,7 @@ function bootGame() {
 	const persistCitySpriteOffsets = () => {
 		try {
 			localStorage.setItem(CITY_DEBUG_STORAGE_KEY, JSON.stringify(citySpriteOffsets));
-			localStorage.setItem(CITY_DEBUG_CROP_KEY, JSON.stringify(citySpriteCropShift));
+			localStorage.setItem(CITY_DEBUG_CROP_KEY, JSON.stringify(getCitySpriteCropShiftArray()));
 		} catch (err) {
 			console.warn("Failed to persist city sprite offsets", err);
 		}
@@ -1395,9 +1255,10 @@ function bootGame() {
 				const dy = (y - cityCropDrag.startY) / cityCropDrag.scale;
 				const row = cityCropDrag.row;
 				const col = cityCropDrag.col;
-				if (citySpriteCropShift[row] && citySpriteCropShift[row][col]) {
-					citySpriteCropShift[row][col].x = cityCropDrag.origX + dx;
-					citySpriteCropShift[row][col].y = cityCropDrag.origY + dy;
+				const cropShiftArr = getCitySpriteCropShiftArray();
+				if (cropShiftArr[row] && cropShiftArr[row][col]) {
+					cropShiftArr[row][col].x = cityCropDrag.origX + dx;
+					cropShiftArr[row][col].y = cityCropDrag.origY + dy;
 					CITY_SPRITE_CACHE.ready = false;
 					persistCitySpriteOffsets();
 				}
@@ -1450,7 +1311,7 @@ function bootGame() {
 	}
 	if (citySpriteDebugExport) {
 		citySpriteDebugExport.addEventListener("click", () => {
-			const payload = JSON.stringify({ offsets: citySpriteOffsets, cropShift: citySpriteCropShift }, null, 2);
+			const payload = JSON.stringify({ offsets: citySpriteOffsets, cropShift: getCitySpriteCropShiftArray() }, null, 2);
 			if (citySpriteDebugOutput) {
 				citySpriteDebugOutput.value = payload;
 				citySpriteDebugOutput.focus();
