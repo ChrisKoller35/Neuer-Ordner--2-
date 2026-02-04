@@ -84,6 +84,9 @@ import { updateCity as updateCityModule } from './city/update.js';
 // Stadt Render-Modul importieren
 import { renderCity as renderCityModule } from './city/render.js';
 
+// Stadt State-Modul importieren
+import { buildCityState as buildCityStateModule } from './city/state.js';
+
 let canvas = null;
 let ctx = null;
 
@@ -3447,92 +3450,14 @@ function bootGame() {
 	}
 	// --- End tsunami block ---
 
+	// Context für Stadt-State-Erstellung
+	const cityStateCtx = {
+		get canvas() { return canvas; },
+		cityData
+	};
+
 	function buildCityState() {
-		// SEITENANSICHT Stadt wie Level 1-4
-		// Gebäude mit 10 Stockwerken, von unten nach oben - VERDOPPELT
-		const width = canvas.width;
-		const height = canvas.height;
-		
-		// Gebäude-Position (beginnt links, größer als Canvas)
-		const buildingX = 100; // Fester Startpunkt links
-		const buildingY = -CITY_BUILDING_HEIGHT + height; // Gebäude ragt nach oben über Canvas
-		
-		// Boden-Offset für Spieler/NPC-Positionierung (muss mit updateCity übereinstimmen)
-		const FLOOR_OFFSET = CITY_FLOOR_THICKNESS + 0;
-		
-		// Individuelle Offsets pro Stockwerk - aus JSON laden
-		const FLOOR_INDIVIDUAL_OFFSETS = cityData.floorOffsets;
-		
-		// Berechne Stockwerk-Positionen (Y-Koordinate für jeden Stock)
-		// Stock 0 = Erdgeschoss (unten), Stock 9 = oben
-		const floors = [];
-		for (let i = 0; i < CITY_FLOOR_COUNT; i++) {
-			const floorY = buildingY + CITY_BUILDING_HEIGHT - (i + 1) * CITY_FLOOR_HEIGHT;
-			floors.push({
-				index: i,
-				y: floorY,
-				// Luke-Position (mittig im Stockwerk)
-				hatchX: buildingX + CITY_BUILDING_WIDTH / 2 - CITY_HATCH_WIDTH / 2,
-				hatchY: floorY, // Luke ist am oberen Rand des Stockwerks
-				hasHatch: i < CITY_FLOOR_COUNT - 1 // Oberstes Stockwerk hat keine Luke nach oben
-			});
-		}
-		
-		// Hilfsfunktion für Boden-Y-Position (mit individuellen Offsets)
-		const getFloorGroundY = (floorIndex) => {
-			const indivOffset = FLOOR_INDIVIDUAL_OFFSETS[floorIndex] || 0;
-			return floors[floorIndex].y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET + indivOffset;
-		};
-		
-		// Spieler startet aus JSON-Config
-		const playerStart = cityData.playerStart;
-		const player = {
-			x: buildingX + playerStart.xOffset,
-			y: getFloorGroundY(playerStart.floorIndex),
-			r: CITY_PLAYER_RADIUS,
-			dir: 1, // Blickrichtung (1 = rechts, -1 = links)
-			floor: playerStart.floorIndex,
-			moving: false,
-			animTime: 0,
-			swimming: false // true wenn durch Luke schwimmend
-		};
-		
-		// NPCs aus JSON-Config laden
-		const npcs = cityData.npcs.map(npcDef => {
-			const xPos = npcDef.fromRight 
-				? buildingX + CITY_BUILDING_WIDTH + npcDef.xOffset
-				: buildingX + npcDef.xOffset;
-			return {
-				id: npcDef.id,
-				label: npcDef.label,
-				x: xPos,
-				y: getFloorGroundY(npcDef.floorIndex) + (npcDef.yOffset || 0),
-				floor: npcDef.floorIndex
-			};
-		});
-		
-		// Kamera folgt dem Spieler
-		const cameraY = Math.max(0, Math.min(
-			player.y - height / 2,
-			CITY_BUILDING_HEIGHT - height
-		));
-		
-		return {
-			width,
-			height,
-			buildingX,
-			buildingY,
-			buildingWidth: CITY_BUILDING_WIDTH,
-			buildingHeight: CITY_BUILDING_HEIGHT,
-			floors,
-			player,
-			camera: { x: 0, y: cameraY },
-			npcs,
-			floorHeight: CITY_FLOOR_HEIGHT,
-			hatchWidth: CITY_HATCH_WIDTH,
-			wallThickness: CITY_WALL_THICKNESS,
-			floorThickness: CITY_FLOOR_THICKNESS
-		};
+		return buildCityStateModule(cityStateCtx);
 	}
 
 	function enterCity() {
