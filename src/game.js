@@ -78,6 +78,9 @@ import {
 // Stadt UI-Modul importieren
 import { createCityUI } from './city/ui.js';
 
+// Stadt Update-Modul importieren
+import { updateCity as updateCityModule } from './city/update.js';
+
 let canvas = null;
 let ctx = null;
 
@@ -3904,128 +3907,21 @@ function bootGame() {
 		resolvePlayerCoverCollision(player, prevX, prevY);
 	}
 
+	// City Update Context - für das ausgelagerte Modul
+	const cityUpdateCtx = {
+		getState: () => state,
+		hasKey,
+		keys: {
+			left: KEY_LEFT,
+			right: KEY_RIGHT,
+			up: KEY_UP,
+			down: KEY_DOWN
+		}
+	};
+
+	// Wrapper für updateCity - nutzt das importierte Modul
 	function updateCity(dt) {
-		const city = state.city;
-		if (!city) return;
-		const player = city.player;
-		const floors = city.floors;
-		
-		// ===== BEWEGUNGSEINGABE =====
-		let moveX = 0;
-		let moveY = 0;
-		if (hasKey(KEY_LEFT)) moveX -= 1;
-		if (hasKey(KEY_RIGHT)) moveX += 1;
-		if (hasKey(KEY_UP)) moveY -= 1;
-		if (hasKey(KEY_DOWN)) moveY += 1;
-		
-		player.moving = !!(moveX || moveY);
-		
-		// ===== GRID-BASIERTE KOLLISION =====
-		// Prüft ob eine Position im begehbaren Grid liegt
-		// WICHTIG: y ist die Füße-Position, aber wir prüfen die Mitte des Spielers
-		const PLAYER_VISUAL_OFFSET = 71; // Spieler wird ca. 71px oberhalb von y gezeichnet
-		
-		const isPositionWalkable = (x, y) => {
-			// Position relativ zum Gebäude
-			// Wir prüfen die MITTE des Spielers, nicht die Füße
-			const relX = x - city.buildingX;
-			const relY = (y - PLAYER_VISUAL_OFFSET) - city.buildingY;
-			
-			// Grid-Zelle berechnen
-			const col = Math.floor(relX / CITY_GRID_CELL_SIZE);
-			const row = Math.floor(relY / CITY_GRID_CELL_SIZE);
-			
-			// Außerhalb des Grids = blockiert (Spieler bleibt im Haus)
-			if (col < 0 || col >= CITY_GRID_COLS || row < 0 || row >= CITY_GRID_ROWS) {
-				return false;
-			}
-			
-			// Prüfe Grid
-			const key = `${col},${row}`;
-			const grid = window.CITY_WALKABLE_GRID || {};
-			
-			// Wenn Grid leer ist, erlaube alles (noch nicht konfiguriert)
-			if (Object.keys(grid).length === 0) {
-				return true;
-			}
-			
-			return grid[key] === true;
-		};
-		
-		// ===== BEWEGUNG IM WASSER - GRID-BASIERT =====
-		// Der Fisch kann sich nur auf markierten Grid-Zellen bewegen
-		
-		if (player.moving) {
-			player.animTime += dt;
-			
-			// Berechne neue Position
-			let newX = player.x;
-			let newY = player.y;
-			
-			if (moveX !== 0) {
-				newX += moveX * CITY_SPEED * dt;
-				player.dir = moveX > 0 ? 1 : -1;
-			}
-			if (moveY !== 0) {
-				newY += moveY * CITY_SPEED * dt;
-			}
-			
-			// Gebäude-Grenzen
-			const minX = city.buildingX + city.wallThickness + player.r;
-			const maxX = city.buildingX + city.buildingWidth - city.wallThickness - player.r;
-			const minY = city.buildingY + player.r;
-			const maxY = city.buildingY + city.buildingHeight - player.r;
-			
-			newX = clamp(newX, minX, maxX);
-			newY = clamp(newY, minY, maxY);
-			
-			// Prüfe ob neue Position begehbar ist
-			if (isPositionWalkable(newX, newY)) {
-				player.x = newX;
-				player.y = newY;
-			} else {
-				// Versuche nur horizontale Bewegung
-				if (moveX !== 0 && isPositionWalkable(newX, player.y)) {
-					player.x = newX;
-				}
-				// Versuche nur vertikale Bewegung
-				else if (moveY !== 0 && isPositionWalkable(player.x, newY)) {
-					player.y = newY;
-				}
-			}
-		} else {
-			player.animTime = 0;
-		}
-		
-		// ===== KAMERA UPDATE - folgt dem Spieler =====
-		// Im Grid-Editor-Modus: Kamera wird extern gesteuert
-		if (!window.CITY_GRID_EDIT_MODE) {
-			// Kamera Y-Offset so dass Spieler im sichtbaren Bereich bleibt
-			const targetCamY = player.y - city.height / 2;
-			// Kamera-Grenzen: nicht über das Gebäude hinaus scrollen (vertikal)
-			const minCamY = city.buildingY;
-			const maxCamY = city.buildingY + city.buildingHeight - city.height;
-			city.camera.y = clamp(targetCamY, minCamY, maxCamY);
-			
-			// Kamera X für horizontales Scrollen - ERWEITERT um Wasser zu sehen
-			// Kamera folgt dem Spieler immer, auch über Gebäudegrenzen hinaus
-			const targetCamX = player.x - city.width / 2;
-			// Erweiterte Grenzen: 200px links und rechts vom Gebäude sichtbar
-			const waterPadding = 200;
-			const minCamX = city.buildingX - waterPadding;
-			const maxCamX = city.buildingX + city.buildingWidth - city.width + waterPadding;
-			city.camera.x = clamp(targetCamX, minCamX, maxCamX);
-		} else {
-			// Grid-Editor-Modus: Kamera-Werte von außen übernehmen
-			if (typeof window.CITY_CAMERA_X_DEBUG === 'number') {
-				city.camera.x = window.CITY_CAMERA_X_DEBUG;
-			}
-			if (typeof window.CITY_CAMERA_Y_DEBUG === 'number') {
-				city.camera.y = window.CITY_CAMERA_Y_DEBUG;
-			}
-		}
-		
-		state.elapsed += dt;
+		updateCityModule(cityUpdateCtx, dt);
 	}
 
 function isPointInsideCover(rock, x, y, padX = 0, padY = 0) {
