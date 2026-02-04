@@ -90,6 +90,12 @@ import { buildCityState as buildCityStateModule } from './city/state.js';
 // Stadt Sprite-Debug-Modul importieren
 import { createCitySpriteDebug } from './city/spriteDebug.js';
 
+// Foes-Module importieren
+import { createFoeSpawnSystem } from './foes/spawn.js';
+import { createFoeUpdateSystem } from './foes/update.js';
+import { createFoeRenderSystem } from './foes/render.js';
+import { createFoeArrowsSystem } from './foes/arrows.js';
+
 let canvas = null;
 let ctx = null;
 
