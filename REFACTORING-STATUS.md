@@ -17,40 +17,42 @@ game.js von ~8.800 auf ~1.000 Zeilen reduzieren (professionelle Code-Struktur)
 | city/spriteDebug.js | ~320 | ✅ |
 | **Gesamt** | **~1.687** | ✅ |
 
-### Boss-Render (vollständig integriert)
-| Modul | Zeilen | Status |
-|-------|--------|--------|
-| boss/render.js | ~620 | ✅ |
-
-**Funktionen:** renderBossTorpedoes, renderBossPerfumeOrbs, renderBossFragranceClouds, renderBossWakeWaves, renderBossWhirlpools, renderBossKatapultShots, renderBossCoinBursts, renderBossCoinExplosions, renderBossDiamondBeams, renderBossCardBoomerangs, renderBossShockwaves, renderBossSpeedboats, renderBossFinSweeps
-
 ## 📦 Erstellt (noch nicht integriert)
 
-### Foes-Module
+### Boss-Module (5 Module, 2.417 Zeilen)
+| Modul | Zeilen | Funktionen | Status |
+|-------|--------|------------|--------|
+| boss/render.js | 697 | 13 Render-Funktionen | ✅ integriert |
+| boss/spawn.js | 574 | 16 Spawn-Funktionen | 📦 bereit |
+| boss/update.js | 678 | updateBoss, updateBossAttacks | 📦 bereit |
+| boss/collision.js | 396 | 16 Collision-Handler | 📦 bereit |
+| boss/ui.js | 72 | renderBossHpBar, renderBoss | 📦 bereit |
+
+### Foes-Module (bereit)
 | Modul | Zeilen | Funktionen |
 |-------|--------|------------|
 | foes/spawn.js | ~140 | spawnFoe, scheduleNextFoeSpawn, spawnLevelFoe, getFoeHitbox, getCoinValueForFoe |
 | foes/update.js | ~290 | updateFoes (bogenschreck, oktopus, ritterfisch, jelly AI) |
 | foes/render.js | ~45 | renderFoes |
 | foes/arrows.js | ~130 | spawnOktopusBolt, spawnBogenschreckArrow, updateFoeArrows |
-| **Gesamt** | **~605** | 📦 Bereit für Integration |
+| **Gesamt** | **~605** | 📦 |
 
 ## 📊 Aktueller Stand
-- **game.js**: 6.775 Zeilen (von 8.800, -23%)
-- **Ausgelagert**: ~2.912 Zeilen (Stadt + Boss + Foes-Module)
+- **game.js**: 6.779 Zeilen (von 8.800, -23%)
+- **Boss-Module erstellt**: 2.417 Zeilen in 5 Modulen
+- **Davon integriert**: boss/render.js (697 Zeilen)
+- **Foes-Module bereit**: ~605 Zeilen in 4 Modulen
 
-## 🔜 Nächste Schritte
+## 🔜 Nächster Schritt: Integration
+Die Boss-Module sind erstellt, jetzt brauchen wir eine Integrationsstrategie wegen JavaScript-Hoisting:
 
-### 1. Foes-Module integrieren
-- Context-Objekte erstellen für jedes Modul
-- Original-Funktionen durch Modul-Aufrufe ersetzen
-- ~400 Zeilen aus game.js entfernen
+**Problem:** Module werden mit `const` initialisiert, aber `updateBoss()` ruft Spawn-Funktionen auf bevor das Modul initialisiert ist.
 
-### 2. Weitere Module (Vorschläge)
-- Boss-System (~500 Zeilen)
-- Player-System (~400 Zeilen)
-- Collision-System (~300 Zeilen)
-- Shots/Projectiles (~200 Zeilen)
+**Lösungsoptionen:**
+1. Lazy Initialization (beim ersten Aufruf erstellen)
+2. Wrapper-Funktionen (alte Funktionen rufen Modul auf)
+3. Modul-Init nach vorne verschieben
+4. Alle Module gleichzeitig integrieren
 
 ## 📁 Ordnerstruktur
 ```
