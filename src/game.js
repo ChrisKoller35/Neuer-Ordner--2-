@@ -27,6 +27,7 @@ import { loadSprite, spriteReady, configureAssetLoader } from './core/assets.js'
 import itemsData from './data/items.json';
 import shopData from './data/shop.json';
 import missionsData from './data/missions.json';
+import cityData from './data/city.json';
 
 // Stadt-Konstanten importieren
 import {
@@ -3840,14 +3841,8 @@ function bootGame() {
 		// Boden-Offset für Spieler/NPC-Positionierung (muss mit updateCity übereinstimmen)
 		const FLOOR_OFFSET = CITY_FLOOR_THICKNESS + 0;
 		
-		// Individuelle Offsets pro Stockwerk (gemessen mit Debug-Tool)
-		// Stock 0: -32px, Stock 1: +40px, Stock 2: +133px, Stock 3: +220px
-		const FLOOR_INDIVIDUAL_OFFSETS = {
-			0: -32,
-			1: 40,
-			2: 133,
-			3: 220
-		};
+		// Individuelle Offsets pro Stockwerk - aus JSON laden
+		const FLOOR_INDIVIDUAL_OFFSETS = cityData.floorOffsets;
 		
 		// Berechne Stockwerk-Positionen (Y-Koordinate für jeden Stock)
 		// Stock 0 = Erdgeschoss (unten), Stock 9 = oben
@@ -3870,36 +3865,32 @@ function bootGame() {
 			return floors[floorIndex].y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET + indivOffset;
 		};
 		
-		// Spieler startet links im Erdgeschoss (ursprüngliche Position)
+		// Spieler startet aus JSON-Config
+		const playerStart = cityData.playerStart;
 		const player = {
-			x: buildingX + 150,
-			y: getFloorGroundY(0), // Korrekte Boden-Position
+			x: buildingX + playerStart.xOffset,
+			y: getFloorGroundY(playerStart.floorIndex),
 			r: CITY_PLAYER_RADIUS,
 			dir: 1, // Blickrichtung (1 = rechts, -1 = links)
-			floor: 0, // Aktuelles Stockwerk (nur für Referenz, nicht für Kollision)
+			floor: playerStart.floorIndex,
 			moving: false,
 			animTime: 0,
 			swimming: false // true wenn durch Luke schwimmend
 		};
 		
-		// NPCs auf verschiedenen Stockwerken - verteilt über das größere Gebäude
-		// Missionen auf Stock 1, Händler auf Stock 2
-		const npcs = [
-			{ 
-				id: "quest", 
-				label: "Missionen", 
-				x: buildingX + 400, 
-				y: getFloorGroundY(1), // Korrekte Boden-Position
-				floor: 1
-			},
-			{ 
-				id: "merchant", 
-				label: "Händler", 
-				x: buildingX + CITY_BUILDING_WIDTH - 500, 
-				y: getFloorGroundY(2) + 10, // Etwas nach unten verschoben
-				floor: 2
-			}
-		];
+		// NPCs aus JSON-Config laden
+		const npcs = cityData.npcs.map(npcDef => {
+			const xPos = npcDef.fromRight 
+				? buildingX + CITY_BUILDING_WIDTH + npcDef.xOffset
+				: buildingX + npcDef.xOffset;
+			return {
+				id: npcDef.id,
+				label: npcDef.label,
+				x: xPos,
+				y: getFloorGroundY(npcDef.floorIndex) + (npcDef.yOffset || 0),
+				floor: npcDef.floorIndex
+			};
+		});
 		
 		// Kamera folgt dem Spieler
 		const cameraY = Math.max(0, Math.min(
