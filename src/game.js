@@ -1,48 +1,71 @@
+// ============================================================
+// CASHFISCH - Hauptspiel
+// ============================================================
 "use strict";
+
+// Imports aus Modulen
+import { 
+	TAU, 
+	DEFAULT_BOSS_STATS,
+	KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
+	KEY_SHIELD, CODE_SHIELD,
+	KEY_CORAL, CODE_CORAL,
+	KEY_TSUNAMI, CODE_TSUNAMI,
+	KEY_SHOOT, CODE_SHOOT,
+	CITY_SCALE, CITY_VIEW_ZOOM, CITY_SPEED, CITY_PLAYER_RADIUS,
+	FOE_BASE_SCORE,
+	SHIELD_DURATION, SHIELD_COOLDOWN,
+	LEVEL2_FLOOR_OFFSET, LEVEL3_FLOOR_OFFSET, LEVEL4_FLOOR_OFFSET,
+	LEVEL3_FLOOR_MIN_VISIBLE, LEVEL3_FLOOR_COLLISION_RATIO, LEVEL3_FLOOR_COLLISION_PAD
+} from './core/constants.js';
+
+import { clamp, clamp01, easeOutCubic, lerp, distance, randomRange } from './core/utils.js';
+
+import { loadSprite, spriteReady, configureAssetLoader } from './core/assets.js';
+
+// JSON-Daten importieren (Vite unterstützt JSON-Imports)
+import itemsData from './data/items.json';
+import shopData from './data/shop.json';
+import missionsData from './data/missions.json';
+
+// Stadt-Konstanten importieren
+import {
+	USE_CITY_SPRITE,
+	CITY_ANIM_SOURCE,
+	CITY_SPRITE_FRAME_SIZE,
+	CITY_SPRITE_SCALE,
+	CITY_SPRITE_OFFSET_X_SIDE,
+	CITY_SPRITE_OFFSET_X_VERTICAL,
+	CITY_SPRITE_OFFSET_Y,
+	CITY_SPRITE_PADDING,
+	CITY_SPRITE_CROP_INSET,
+	CITY_SPRITE_ALPHA_THRESHOLD,
+	CITY_SPRITE_CROP_OUTSET_X,
+	CITY_SPRITE_CROP_OUTSET_Y,
+	CITY_SPRITE_DEBUG,
+	CITY_ANIM_FRAME_TIME,
+	CITY_PERSPECTIVE_ENABLED,
+	CITY_PERSPECTIVE_SKEW_X,
+	CITY_PERSPECTIVE_SCALE_Y,
+	CITY_PERSPECTIVE_ORIGIN_Y,
+	CITY_SPRITE_PERSPECTIVE_STRETCH,
+	CITY_SPRITE_FRAME_OUTSET,
+	CITY_FLOOR_COUNT,
+	CITY_FLOOR_HEIGHT,
+	CITY_BUILDING_WIDTH,
+	CITY_BUILDING_HEIGHT,
+	CITY_HATCH_WIDTH,
+	CITY_WALL_THICKNESS,
+	CITY_FLOOR_THICKNESS,
+	CITY_GRID_CELL_SIZE,
+	CITY_GRID_COLS,
+	CITY_GRID_ROWS,
+	CITY_SPRITE_DEBUG_LABEL
+} from './city/constants.js';
 
 let canvas = null;
 let ctx = null;
 
-const TAU = Math.PI * 2;
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const clamp01 = value => clamp(value, 0, 1);
-const easeOutCubic = value => {
-	const t = clamp01(value);
-	return 1 - Math.pow(1 - t, 3);
-};
-
-const DEFAULT_BOSS_STATS = {
-	maxHp: 20,
-	speed: 0.18,
-	firstAttackDelay: 2400
-};
-
-const KEY_LEFT = new Set(["ArrowLeft", "a", "A"]);
-const KEY_RIGHT = new Set(["ArrowRight", "d", "D"]);
-const KEY_UP = new Set(["ArrowUp", "w", "W"]);
-const KEY_DOWN = new Set(["ArrowDown", "s", "S"]);
-const KEY_SHIELD = new Set(["Shift", "e", "E"]);
-const CODE_SHIELD = new Set(["ShiftLeft", "ShiftRight", "KeyE"]);
-const KEY_CORAL = new Set(["r", "R"]);
-const CODE_CORAL = new Set(["KeyR"]);
-const KEY_TSUNAMI = new Set(["t", "T"]);
-const CODE_TSUNAMI = new Set(["KeyT"]);
-const KEY_SHOOT = new Set([" ", "Space"]);
-const CODE_SHOOT = new Set(["Space"]);
-const CITY_SCALE = 3;
-const CITY_VIEW_ZOOM = 0.85;
-const CITY_SPEED = 0.26;
-const CITY_PLAYER_RADIUS = 18;
-const FOE_BASE_SCORE = 5;
-
-
-const SHIELD_DURATION = 3000;
-const LEVEL2_FLOOR_OFFSET = 275;
-const LEVEL3_FLOOR_OFFSET = 120;
-const LEVEL4_FLOOR_OFFSET = 320;
-const LEVEL3_FLOOR_MIN_VISIBLE = 60;
-const LEVEL3_FLOOR_COLLISION_RATIO = 1;
-const LEVEL3_FLOOR_COLLISION_PAD = 0;
 function getLevel2FloorTop() {
 	if (typeof canvas === "undefined" || !canvas) return null;
 	if (!LEVEL2_FLOOR_SPRITE) return null;
@@ -78,32 +101,11 @@ function getLevel3GroundLine() {
 	const maxLine = canvas.height - LEVEL3_FLOOR_COLLISION_PAD;
 	return clamp(target, floorTop, maxLine);
 }
-const SHIELD_COOLDOWN = 9000;
+
 const USE_CLASSIC_OKTOPUS_PROJECTILE = true; // Toggle to compare new blowdart prototype with classic sprite
 const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallback
-const USE_CITY_SPRITE = true;
-const CITY_ANIM_SOURCE = "rotate"; // "rotate", "png" or "sheet"
-const CITY_SPRITE_FRAME_SIZE = 256;
-const CITY_SPRITE_SCALE = 0.15;
-const CITY_SPRITE_OFFSET_X_SIDE = -4;
-const CITY_SPRITE_OFFSET_X_VERTICAL = -4;
-const CITY_SPRITE_OFFSET_Y = -4;
-const CITY_SPRITE_PADDING = 8;
-const CITY_SPRITE_CROP_INSET = 0;
-const CITY_SPRITE_ALPHA_THRESHOLD = 10;
-const CITY_SPRITE_CROP_OUTSET_X = 48;
-const CITY_SPRITE_CROP_OUTSET_Y = 20;
-// Isometrische Perspektive für 3D-Eindruck (jetzt via CSS)
-const CITY_PERSPECTIVE_ENABLED = false;
-const CITY_PERSPECTIVE_SKEW_X = 0.0;    // Horizontale Scherung
-const CITY_PERSPECTIVE_SCALE_Y = 0.7;   // Y-Stauchung (0.7 = 30% gestaucht)
-const CITY_PERSPECTIVE_ORIGIN_Y = 0.5;  // Ursprung der Transformation (0.5 = Mitte)
-// Sprite-Korrektur für 3D-Perspektive (streckt Sprites vertikal)
-const CITY_SPRITE_PERSPECTIVE_STRETCH = 1.0; // Faktor für vertikale Streckung (1.0 = keine) - 2D Top-Down
-const CITY_SPRITE_FRAME_OUTSET = {
-	"0,0": { left: 0, right: 14, top: 0, bottom: 0 }
-};
 
+// Stadt-Sprite-Zustand (mutable, nicht in constants.js)
 let citySpriteCropShift = Array.from({ length: 3 }, () => Array.from({ length: 5 }, () => ({ x: 0, y: 0 })));
 const getCitySpriteCropShift = (row, col) => {
 	const r = citySpriteCropShift[row];
@@ -117,30 +119,13 @@ const updateCitySpriteCropShift = (row, col, dx, dy) => {
 		CITY_SPRITE_CACHE.ready = false;
 };
 const CITY_SPRITE_CACHE = { ready: false, frames: [] };
-const CITY_SPRITE_DEBUG_LABEL = "CITY SPRITE v3";
 const DEBUG_BUILD_LABEL = "BUILD v3";
-const CITY_SPRITE_DEBUG = false;
-const CITY_ANIM_FRAME_TIME = 140;
 
-function loadSprite(relativePath) {
-	const img = new Image();
-	let fallbackApplied = false;
-	const primaryPath = USE_WEBP_ASSETS ? relativePath.replace(/\.png$/i, ".webp") : relativePath;
-	const primarySrc = new URL(primaryPath, import.meta.url).href;
-	img.addEventListener("error", () => {
-		if (fallbackApplied) return;
-		fallbackApplied = true;
-		const normalized = relativePath.startsWith("./") ? relativePath.slice(2) : relativePath;
-		const fallbackPath = USE_WEBP_ASSETS ? normalized.replace(/\.png$/i, ".png") : normalized;
-		img.src = new URL(`./src/${fallbackPath}`, document.baseURI).href;
-	});
-	img.src = primarySrc;
-	return img;
-}
-
-function spriteReady(img) {
-	return !!(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
-}
+// Asset Loader konfigurieren (nutzt import.meta.url für relative Pfade)
+configureAssetLoader({ 
+	useWebP: USE_WEBP_ASSETS, 
+	baseUrl: import.meta.url 
+});
 
 function buildCitySpriteCache() {
 	if (CITY_SPRITE_CACHE.ready) return;
@@ -331,21 +316,7 @@ let pickupHideTimer = null;
 const coverRockMaskCache = new Map();
 
 // ========== STADT SEITENANSICHT SYSTEM ==========
-// Stadt ist jetzt in Seitenansicht wie Level 1-4
-// Gebäude mit 4 Stockwerken (Test mit Stadt.png)
-const CITY_FLOOR_COUNT = 4; // Anzahl Stockwerke (0 = Erdgeschoss)
-const CITY_FLOOR_HEIGHT = 360; // Höhe pro Stockwerk in Pixel - NOCHMALS ERHÖHT
-const CITY_BUILDING_WIDTH = 1600; // Gebäudebreite
-const CITY_BUILDING_HEIGHT = CITY_FLOOR_HEIGHT * CITY_FLOOR_COUNT; // 3600px
-const CITY_HATCH_WIDTH = 120; // Breite der Luke zum Hochschwimmen
-const CITY_WALL_THICKNESS = 30; // Wandstärke
-const CITY_FLOOR_THICKNESS = 25; // Bodendicke für Kollision
-
-// ========== GRID KOLLISIONS-SYSTEM ==========
-// Grid für begehbare Bereiche - Zellen die markiert sind können betreten werden
-const CITY_GRID_CELL_SIZE = 50; // Größe einer Zelle in Pixel
-const CITY_GRID_COLS = Math.ceil(CITY_BUILDING_WIDTH / CITY_GRID_CELL_SIZE); // 32 Spalten
-const CITY_GRID_ROWS = Math.ceil(CITY_BUILDING_HEIGHT / CITY_GRID_CELL_SIZE); // 72 Zeilen
+// Konstanten importiert aus ./city/constants.js
 
 // Globales Grid - true = begehbar, false = blockiert
 // Wird über window exportiert für Debug-Editor
@@ -1533,39 +1504,27 @@ function bootGame() {
 		equipment: { weapon: null, armor: null, armor2: null },
 		items: Array.from({ length: 9 }, () => null)
 	};
+
+	// ============================================================
+	// ITEM DEFINITIONS - aus JSON geladen
+	// ============================================================
+	const CITY_ITEM_DATA = itemsData.items;
+
+	// Konstanten für spezielle Items (Rückwärtskompatibilität)
 	const ARMOR_ITEM_NAME = "Rüstung der Meeresbewohner";
-	const ARMOR_ITEM_EFFECT = "Ein Treffer wird neutralisiert (pro Level 1x). In der Stadt wird der Effekt wieder aufgeladen.";
-	// Icon-Pfad für CSS background-image (relativer Pfad von index.html aus)
-	const ARMOR_ITEM_ICON = "./src/Ruestungmeer.png";
-	const CITY_ITEM_DATA = {
-		[ARMOR_ITEM_NAME]: {
-			label: ARMOR_ITEM_NAME,
-			type: "armor",
-			icon: ARMOR_ITEM_ICON,
-			effect: ARMOR_ITEM_EFFECT
-		}
-	};
+	const ARMOR_ITEM_EFFECT = CITY_ITEM_DATA[ARMOR_ITEM_NAME].effect;
+	const ARMOR_ITEM_ICON = CITY_ITEM_DATA[ARMOR_ITEM_NAME].icon;
+
 	const getCityItemData = name => {
 		if (!name) return null;
-		return CITY_ITEM_DATA[name] || { label: name, type: "misc", icon: null, effect: "" };
+		return CITY_ITEM_DATA[name] || { label: name, type: "misc", icon: null, effect: "", price: 0, stats: {} };
 	};
-	const cityShopItems = [
-		"Schwert",
-		"Schild",
-		"Orb der Zerstörung",
-		"Düsenantrieb",
-		"Schwanzflosse",
-		ARMOR_ITEM_NAME,
-		"Tiefsee-Laterne",
-		"Perlenring",
-		"Harpunen-Klinge",
-		"Stahlhelm",
-		"Algenmantel",
-		"Seestern-Amulett"
-	];
-	const cityMissions = [
-		{ id: "mission-1", label: "Mission 1", description: "Level 1-4 erneut spielen" }
-	];
+
+	// Shop-Inventar aus JSON laden
+	const cityShopItems = shopData.inventory;
+
+	// Missionen aus JSON laden
+	const cityMissions = missionsData.missions;
 
 	const state = {
 		mode: "game",
@@ -2317,6 +2276,11 @@ function bootGame() {
 		};
 	}
 
+	// ============================================================
+	// LEVEL CONFIGURATIONS
+	// Die Level-Daten sind auch als JSON in src/data/levels/ gespeichert
+	// für zukünftige Erweiterungen mit einem Build-System (Vite)
+	// ============================================================
 	const LEVEL_CONFIGS = [
 		{
 			id: 1,

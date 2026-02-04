@@ -1,0 +1,59 @@
+{
+  "id": 2,
+  "banner": "Level 2: Pfeilhagelriff",
+  "unlockBossScore": 120,
+  "spawnInterval": { "min": 1100, "max": 1800 },
+  "initialSpawnDelay": 460,
+  "spawnTable": [
+    {
+      "type": "bogenschreck",
+      "weight": 0.42,
+      "optionsTemplate": {
+        "scaleBase": 0.8,
+        "scaleRandom": 0.18,
+        "anchorXMinFactor": 0.62,
+        "anchorXRandomFactor": 0.08,
+        "shootCooldownBase": 2200,
+        "shootCooldownRandom": 600,
+        "shootTimerBase": 1200,
+        "shootTimerRandom": 600,
+        "hoverAmplitudeBase": 15,
+        "hoverAmplitudeRandom": 6
+      }
+    },
+    {
+      "type": "jelly",
+      "weight": 0.58,
+      "optionsTemplate": {
+        "scaleBase": 0.7,
+        "scaleRandom": 0.24
+      }
+    }
+  ],
+  "introFlash": { 
+    "text": "Level 2 – Aquischer Bogenschreck", 
+    "duration": 1600, 
+    "opacity": 0.82 
+  },
+  "heal": { "initialTimer": 5400 },
+  "boss": {
+    "type": "arrowVolley",
+    "pattern": "arrowVolley",
+    "maxHp": 26,
+    "speed": 0.22,
+    "firstAttackDelay": 2000,
+    "spriteKey": "parfumKraken",
+    "spriteScale": 0.36,
+    "spriteOffsetX": -18,
+    "spriteOffsetY": -10,
+    "shadowRadius": 54,
+    "shadowOffsetX": 10,
+    "shadowOffsetY": 58,
+    "volleyCooldown": 2200,
+    "cloudCooldown": 3000,
+    "perfumeSpeed": 0.3,
+    "perfumeSpread": 44,
+    "cloudDuration": 4200,
+    "cloudRadius": 68
+  }
+}
