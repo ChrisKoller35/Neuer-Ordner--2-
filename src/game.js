@@ -8138,10 +8138,8 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			if (merchant) {
 				const dist = Math.hypot(worldX - merchant.x, worldY - merchant.y);
 				if (dist <= npcClickRadius) {
-					cityShopOpen = true;
-					cityShopSelection = null;
+					cityUI.setShopOpen(true);
 					updateCityShopUI();
-					syncCityShopVisibility();
 					if (bannerEl) bannerEl.textContent = "Händler geöffnet";
 					return;
 				}
@@ -8150,10 +8148,8 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			if (questGiver) {
 				const dist = Math.hypot(worldX - questGiver.x, worldY - questGiver.y);
 				if (dist <= npcClickRadius) {
-					cityMissionOpen = true;
-					cityMissionSelection = null;
+					cityUI.setMissionOpen(true);
 					updateCityMissionUI();
-					syncCityMissionVisibility();
 					if (bannerEl) bannerEl.textContent = "Missionen geöffnet";
 					return;
 				}
