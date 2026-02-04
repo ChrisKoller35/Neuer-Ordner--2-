@@ -2146,8 +2146,9 @@ function bootGame() {
 		hidePickupMessage();
 	}
 
-	function debugJumpToLevel(targetIndex) {
+	function debugJumpToLevel(targetIndex, options = {}) {
 		if (!DEBUG_SHORTCUTS) return;
+		const skipToBoss = options.skipToBoss === true;
 		const levelIndex = Math.max(0, Math.min(LEVEL_CONFIGS.length - 1, targetIndex | 0));
 		resetGame();
 		state.eventFlash = null;
@@ -2162,9 +2163,15 @@ function bootGame() {
 			state.player.shieldLastActivation = 0;
 			state.player.shieldLastBlock = 0;
 		}
+		// Boss-Test-Modus: Direkt zum Boss springen
+		if (skipToBoss) {
+			state.levelScore = state.unlockBossScore;
+			activateBoss();
+		}
 		updateHUD();
 		if (bannerEl && state.levelConfig && state.levelConfig.banner) bannerEl.textContent = state.levelConfig.banner;
-		triggerEventFlash("debug", { text: `Debug: Level ${state.level}`, duration: 1000, opacity: 0.52 });
+		const label = skipToBoss ? `Debug: Level ${state.level} (BOSS)` : `Debug: Level ${state.level}`;
+		triggerEventFlash("debug", { text: label, duration: 1000, opacity: 0.52 });
 	}
 
 	function spawnBossTorpedoBurst() {
@@ -6553,24 +6560,25 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			return;
 		}
 		if (DEBUG_SHORTCUTS && event.altKey && event.shiftKey) {
+			// Alt+Shift+1-4: Direkt zum Boss des Levels springen
 			if (event.code === "Digit1") {
 				event.preventDefault();
-				debugJumpToLevel(0);
+				debugJumpToLevel(0, { skipToBoss: true });
 				return;
 			}
 			if (event.code === "Digit2") {
 				event.preventDefault();
-				debugJumpToLevel(1);
+				debugJumpToLevel(1, { skipToBoss: true });
 				return;
 			}
 			if (event.code === "Digit3") {
 				event.preventDefault();
-				debugJumpToLevel(2);
+				debugJumpToLevel(2, { skipToBoss: true });
 				return;
 			}
 			if (event.code === "Digit4") {
 				event.preventDefault();
-				debugJumpToLevel(3);
+				debugJumpToLevel(3, { skipToBoss: true });
 				return;
 			}
 			if (event.code === "Digit5") {
