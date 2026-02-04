@@ -17,6 +17,13 @@ game.js von ~8.800 auf ~1.000 Zeilen reduzieren (professionelle Code-Struktur)
 | city/spriteDebug.js | ~320 | ✅ |
 | **Gesamt** | **~1.687** | ✅ |
 
+### Boss-Render (vollständig integriert)
+| Modul | Zeilen | Status |
+|-------|--------|--------|
+| boss/render.js | ~620 | ✅ |
+
+**Funktionen:** renderBossTorpedoes, renderBossPerfumeOrbs, renderBossFragranceClouds, renderBossWakeWaves, renderBossWhirlpools, renderBossKatapultShots, renderBossCoinBursts, renderBossCoinExplosions, renderBossDiamondBeams, renderBossCardBoomerangs, renderBossShockwaves, renderBossSpeedboats, renderBossFinSweeps
+
 ## 📦 Erstellt (noch nicht integriert)
 
 ### Foes-Module
@@ -29,8 +36,8 @@ game.js von ~8.800 auf ~1.000 Zeilen reduzieren (professionelle Code-Struktur)
 | **Gesamt** | **~605** | 📦 Bereit für Integration |
 
 ## 📊 Aktueller Stand
-- **game.js**: 7.435 Zeilen (von 8.800, -16%)
-- **Ausgelagert**: ~2.292 Zeilen (Stadt + Foes-Module)
+- **game.js**: 6.775 Zeilen (von 8.800, -23%)
+- **Ausgelagert**: ~2.912 Zeilen (Stadt + Boss + Foes-Module)
 
 ## 🔜 Nächste Schritte
 
