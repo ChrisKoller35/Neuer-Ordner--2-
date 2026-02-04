@@ -98,6 +98,7 @@ import { createFoeArrowsSystem } from './foes/arrows.js';
 
 // Boss-Module importieren
 import { createBossRenderSystem } from './boss/render.js';
+// Boss-Spawn-Modul existiert aber ist noch nicht integriert: ./boss/spawn.js
 
 let canvas = null;
 let ctx = null;
@@ -6460,6 +6461,9 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		get state() { return state; }
 	};
 	const bossRenderer = createBossRenderSystem(bossRenderCtx);
+
+	// Boss-Spawn-Modul (boss/spawn.js) ist bereit aber noch nicht integriert
+	// Integration erfordert Refactoring der Aufruf-Stellen in updateBoss()
 
 	function renderCity() {
 		renderCityModule(cityRenderCtx);
