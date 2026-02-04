@@ -3567,14 +3567,7 @@ function bootGame() {
 		state.eventFlash = null;
 		pointer.shoot = false;
 		state.armorShieldCharges = cityInventory.equipment.armor === ARMOR_ITEM_NAME ? 1 : 0;
-		cityInventoryOpen = false;
-		cityShopOpen = false;
-		cityShopSelection = null;
-		cityMissionOpen = false;
-		cityMissionSelection = null;
-		syncCityInventoryVisibility();
-		syncCityShopVisibility();
-		syncCityMissionVisibility();
+		cityUI.reset();
 		if (bannerEl) bannerEl.textContent = "Unterwasserstadt";
 		if (endOverlay) endOverlay.style.display = "none";
 		const gameWrap = document.getElementById("gameWrap");
