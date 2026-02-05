@@ -95,9 +95,35 @@ import { createFoeSpawnSystem } from './foes/spawn.js';
 import { createFoeUpdateSystem } from './foes/update.js';
 import { createFoeRenderSystem } from './foes/render.js';
 import { createFoeArrowsSystem } from './foes/arrows.js';
+import { createFoeCollisionSystem } from './foes/collision.js';
+
+// Game-Render-Modul importieren
+import { createGameRenderSystem } from './game/render.js';
+
+// Player-Abilities-Modul importieren
+import { createAbilitiesSystem } from './player/abilities.js';
+
+// Player-Update-Modul importieren
+import { createPlayerUpdateSystem } from './player/update.js';
+
+// Game-Level-Modul importieren
+import { createLevelSystem } from './game/levels.js';
+
+// Background-Render-Modul importieren
+import { createBackgroundRenderSystem } from './game/background.js';
+
+// Cover-Rock-Modul importieren
+import { createCoverRockSystem } from './game/coverRocks.js';
+
+// Pickups-Update-Modul importieren
+import { createPickupsSystem } from './game/pickups.js';
 
 // Boss-Module importieren
 import { createBossRenderSystem } from './boss/render.js';
+import { createBossSpawnSystem } from './boss/spawn.js';
+import { createBossUpdateSystem } from './boss/update.js';
+import { createBossCollisionSystem } from './boss/collision.js';
+import { createBossUISystem } from './boss/ui.js';
 // Boss-Spawn-Modul existiert aber ist noch nicht integriert: ./boss/spawn.js
 
 let canvas = null;
@@ -1538,7 +1564,7 @@ function bootGame() {
 		}
 
 		function concludeBossVictory(nextLevelIndex) {
-			if (nextLevelIndex < LEVEL_CONFIGS.length) {
+			if (nextLevelIndex < getLevelConfigsLength()) {
 				advanceLevel(nextLevelIndex, { skipFlash: false, invulnDuration: 1800 });
 				return;
 			}
@@ -1681,260 +1707,18 @@ function bootGame() {
 	// Die Level-Daten sind auch als JSON in src/data/levels/ gespeichert
 	// für zukünftige Erweiterungen mit einem Build-System (Vite)
 	// ============================================================
-	const LEVEL_CONFIGS = [
-		{
-			id: 1,
-			banner: "Level 1: Freischwimmen",
-			unlockBossScore: 50,
-			spawnInterval: { min: 1400, max: 2100 },
-			initialSpawnDelay: 520,
-			spawnTable: [{ type: "jelly", weight: 1 }],
-			introFlash: { text: "Level 1 – Freischwimmen", duration: 1400, opacity: 0.78 },
-			heal: { initialTimer: 6200 },
-			boss: {
-				maxHp: DEFAULT_BOSS_STATS.maxHp,
-				speed: DEFAULT_BOSS_STATS.speed,
-				firstAttackDelay: DEFAULT_BOSS_STATS.firstAttackDelay,
-				horizontalTracking: 0.0017,
-				horizontalMin: canvas.width * 0.38,
-				horizontalMax: canvas.width * 0.92,
-				horizontalOscAmp: canvas.width * 0.11,
-				horizontalOscSpeed: 0.0019,
-				horizontalForwardBoost: 2,
-				horizontalBackBoost: 2.4,
-				horizontalForwardBias: canvas.width * 0.02,
-				horizontalEdgePad: 0
-			}
-		},
-		{
-			id: 2,
-			banner: "Level 2: Pfeilhagelriff",
-			unlockBossScore: 120,
-			spawnInterval: { min: 1100, max: 1800 },
-			initialSpawnDelay: 460,
-			spawnTable: [
-				{
-					type: "bogenschreck",
-					weight: 0.42,
-					options: () => ({
-						scale: 0.8 + Math.random() * 0.18,
-						anchorX: canvas.width * (0.62 + Math.random() * 0.08),
-						shootCooldown: 2200 + Math.random() * 600,
-						shootTimer: 1200 + Math.random() * 600,
-						hoverAmplitude: 15 + Math.random() * 6
-					})
-				},
-				{
-					type: "jelly",
-					weight: 0.58,
-					options: () => ({
-						scale: 0.7 + Math.random() * 0.24
-					})
-				}
-			],
-			introFlash: { text: "Level 2 – Aquischer Bogenschreck", duration: 1600, opacity: 0.82 },
-			heal: { initialTimer: 5400 },
-			boss: {
-				maxHp: 26,
-				speed: 0.22,
-				firstAttackDelay: 2000,
-				pattern: "arrowVolley",
-				spriteKey: "parfumKraken",
-				spriteScale: 0.36,
-				spriteOffsetX: -18,
-				spriteOffsetY: -10,
-				shadowRadius: 54,
-				shadowOffsetX: 10,
-				shadowOffsetY: 58,
-				volleyCooldown: 2200,
-				cloudCooldown: 3000,
-				perfumeSpeed: 0.3,
-				perfumeSpread: 44,
-				cloudDuration: 4200,
-				cloudRadius: 68
-			}
-		},
-		{
-			id: 3,
-			banner: "Level 3: Regatta der Tiefe",
-			unlockBossScore: 210,
-			spawnInterval: { min: 900, max: 1600 },
-			initialSpawnDelay: 420,
-			spawnTable: [
-				{
-					type: "ritterfisch",
-					weight: 0.45,
-					options: () => ({
-						scale: 0.9 + Math.random() * 0.22,
-						anchorX: canvas.width * (0.64 + Math.random() * 0.06),
-						patrolRange: 22 + Math.random() * 10,
-						chargeCooldown: 2800 + Math.random() * 400,
-						chargeTimer: 1300 + Math.random() * 400,
-						chargeSpeed: 0.48 + Math.random() * 0.05,
-						cruiseSpeed: 0.19 + Math.random() * 0.05
-					})
-				},
-				{
-					type: "bogenschreck",
-					weight: 0.24,
-					options: () => ({
-						scale: 0.82 + Math.random() * 0.18,
-						anchorX: canvas.width * (0.6 + Math.random() * 0.08),
-						shootCooldown: 2100 + Math.random() * 560,
-						shootTimer: 1000 + Math.random() * 480,
-						hoverAmplitude: 16 + Math.random() * 6
-					})
-				},
-				{
-					type: "jelly",
-					weight: 0.31,
-					options: () => ({
-						scale: 0.78 + Math.random() * 0.2,
-						speed: 0.14 + Math.random() * 0.06
-					})
-				}
-			],
-			introFlash: { text: "Level 3 – Regatta der Tiefe", duration: 1700, opacity: 0.82 },
-			heal: { initialTimer: 5200 },
-			boss: {
-				maxHp: 30,
-				speed: 0.26,
-				firstAttackDelay: 2200,
-				pattern: "regatta",
-				spriteKey: "yachtwal",
-				spriteScale: 0.24,
-				spriteOffsetX: -16,
-				spriteOffsetY: -16,
-				spriteFlip: false,
-				shadowRadius: 52,
-				shadowOffsetX: 14,
-				shadowOffsetY: 56,
-				entryTargetX: canvas.width * 0.8,
-				horizontalMin: canvas.width * 0.8,
-				horizontalMax: canvas.width * 0.8,
-				horizontalTracking: 0,
-				horizontalOscAmp: 0,
-				horizontalForwardBias: 0,
-				horizontalEdgePad: 0,
-				verticalMin: canvas.height * 0.0,
-				verticalMax: canvas.height * 0.9,
-				verticalTracking: 0.0036,
-				verticalOffset: -canvas.height * 0.1,
-				verticalOscAmp: canvas.height * 0.4,
-				verticalOscSpeed: 0.0024,
-				wakeCooldown: 3200,
-				broadsideCooldown: 2500,
-				wakeCount: 4,
-				broadsideBursts: 2,
-				harborCooldown: 4800,
-				katapultCooldown: 3600,
-				anchorCooldown: 5400,
-				regattaRushCooldown: 4400
-			}
-		},
-		{
-			id: 4,
-			banner: "Level 4: Schatzkammer-Showdown",
-			unlockBossScore: 320,
-			spawnInterval: { min: 760, max: 1380 },
-			initialSpawnDelay: 360,
-			spawnTable: [
-				{
-					type: "oktopus",
-					weight: 0.48,
-					options: () => ({
-						scale: 0.92 + Math.random() * 0.16,
-						anchorX: canvas.width * (0.62 + Math.random() * 0.1),
-						shootCooldown: 3200 + Math.random() * 620,
-						shootTimer: 1500 + Math.random() * 420,
-						burstCount: Math.random() < 0.6 ? 2 : 1,
-						volleySpacing: 240 + Math.random() * 140,
-						projectileSpeed: 0.38 + Math.random() * 0.05,
-						orbitRadius: 26 + Math.random() * 12,
-						orbitVertical: 32 + Math.random() * 12,
-						orbitSpeed: 0.0013 + Math.random() * 0.0005,
-						laneShiftCooldown: 2200 + Math.random() * 520,
-						laneShiftTimer: 1600 + Math.random() * 360,
-						dashDuration: 420 + Math.random() * 120,
-						dashDistance: 46 + Math.random() * 18
-					})
-				},
-				{
-					type: "ritterfisch",
-					weight: 0.3,
-					options: () => ({
-						scale: 0.94 + Math.random() * 0.18,
-						anchorX: canvas.width * (0.64 + Math.random() * 0.05),
-						patrolRange: 22 + Math.random() * 12,
-						chargeCooldown: 2800 + Math.random() * 360,
-						chargeTimer: 1100 + Math.random() * 360,
-						chargeSpeed: 0.5 + Math.random() * 0.05,
-						cruiseSpeed: 0.2 + Math.random() * 0.05
-					})
-				},
-				{
-					type: "bogenschreck",
-					weight: 0.22,
-					options: () => ({
-						scale: 0.88 + Math.random() * 0.16,
-						anchorX: canvas.width * (0.62 + Math.random() * 0.08),
-						shootCooldown: 2200 + Math.random() * 520,
-						shootTimer: 1000 + Math.random() * 420,
-						hoverAmplitude: 16 + Math.random() * 6
-					})
-				}
-			],
-			introFlash: { text: "Level 4 – Schatzkammer des Cashfish", duration: 1700, opacity: 0.86 },
-			heal: { initialTimer: 5000 },
-			boss: {
-				maxHp: 40,
-				speed: 0.24,
-				firstAttackDelay: 2200,
-				pattern: "cashfish",
-				spriteKey: "cashfish",
-				spriteScale: 0.425,
-				spriteOffsetX: -16,
-				spriteOffsetY: -14,
-				spriteFlip: false,
-				shadowRadius: 72,
-				shadowOffsetX: 14,
-				shadowOffsetY: 62,
-				salvoCooldown: 2700,
-				salvoCoinCount: 6,
-				salvoKnockback: 0.18,
-				latticeCooldown: 3600,
-				latticeTelegraph: 1080,
-				latticeLaserWidth: 52,
-				cardCooldown: 3200,
-				cardRingCount: 2,
-				cardSpiralDelay: 560,
-				cardBoomerangSpeed: 0.36,
-				tsunamiCooldown: 5600,
-				tsunamiLock: 6400,
-				tsunamiWaveCount: 3,
-				tsunamiTelegraph: 1200,
-				tsunamiActive: 2100,
-				tsunamiFade: 520,
-				tsunamiSpeed: 0.44,
-				tsunamiRadiusX: 124,
-				tsunamiRadiusY: 52,
-				tsunamiAmplitude: 36,
-				tsunamiKnockback: 0.24,
-				crownCooldown: 6500,
-				crownLock: 7200,
-				crownColumnCount: 4,
-				crownColumnWidth: 92,
-				crownTelegraph: 1300,
-				crownActive: 1500,
-				crownFade: 520,
-				crownKnockback: 0.23
-			}
-		}
-	];
+	// ============================================================
+	// LEVEL_CONFIGS ausgelagert nach src/game/levels.js
+	// Wrapper-Funktionen delegieren ans levels-Modul
+	// ============================================================
+
+	// Getter für LEVEL_CONFIGS.length (wird vom levels-Modul bereitgestellt)
+	function getLevelConfigsLength() {
+		return levels.getLevelConfigsLength();
+	}
 
 	function getLevelConfig(index) {
-		if (index < 0) return LEVEL_CONFIGS[0];
-		return LEVEL_CONFIGS[index] || LEVEL_CONFIGS[LEVEL_CONFIGS.length - 1];
+		return levels.getLevelConfig(index);
 	}
 
 	function scheduleNextFoeSpawn(initial = false) {
@@ -1971,185 +1755,17 @@ function bootGame() {
 	}
 
 	function applyLevelConfig(index, opts = {}) {
-		const config = getLevelConfig(index);
-		state.levelIndex = index;
-		state.level = config.id == null ? index + 1 : config.id;
-		state.levelConfig = config;
-		if (state.level >= 3) unlockCoralAllies();
-		if (state.level >= 4) unlockTsunamiAbility();
-		else {
-			state.tsunamiWave = null;
-			if (state.tsunamiAbility) {
-				state.tsunamiAbility.unlocked = false;
-				state.tsunamiAbility.used = false;
-				state.tsunamiAbility.active = false;
-			}
-		}
-		state.unlockBossScore = config.unlockBossScore == null ? state.unlockBossScore : config.unlockBossScore;
-		state.foeSpawnInterval = {
-			min: config.spawnInterval && config.spawnInterval.min != null ? config.spawnInterval.min : 1400,
-			max: config.spawnInterval && config.spawnInterval.max != null ? config.spawnInterval.max : 2100
-		};
-		const healTimer = config.heal && config.heal.initialTimer != null ? config.heal.initialTimer : 6200;
-		state.healSpawnTimer = healTimer;
-		const bossCfg = config.boss || {};
-		state.boss.maxHp = bossCfg.maxHp == null ? DEFAULT_BOSS_STATS.maxHp : bossCfg.maxHp;
-		state.boss.hp = state.boss.maxHp;
-		state.boss.speed = bossCfg.speed == null ? DEFAULT_BOSS_STATS.speed : bossCfg.speed;
-		state.boss.attackTimer = bossCfg.firstAttackDelay == null ? DEFAULT_BOSS_STATS.firstAttackDelay : bossCfg.firstAttackDelay;
-		state.boss.spriteKey = bossCfg.spriteKey || null;
-		state.boss.spriteScale = bossCfg.spriteScale == null ? null : bossCfg.spriteScale;
-		state.boss.spriteOffsetX = bossCfg.spriteOffsetX == null ? null : bossCfg.spriteOffsetX;
-		state.boss.spriteOffsetY = bossCfg.spriteOffsetY == null ? null : bossCfg.spriteOffsetY;
-		state.boss.spriteFlip = bossCfg.spriteFlip === false ? false : true;
-		state.boss.shadowRadius = bossCfg.shadowRadius == null ? 48 : bossCfg.shadowRadius;
-		state.boss.shadowOffsetX = bossCfg.shadowOffsetX == null ? 16 : bossCfg.shadowOffsetX;
-		state.boss.shadowOffsetY = bossCfg.shadowOffsetY == null ? 52 : bossCfg.shadowOffsetY;
-		state.boss.dir = -1;
-		state.boss.pulse = 0;
-		state.boss.lastAttack = null;
-		state.boss.finFlip = false;
-		state.boss.active = false;
-		state.boss.entrySpeed = bossCfg.entrySpeed == null ? Math.max(0.22, state.boss.speed * 1.25) : bossCfg.entrySpeed;
-		state.boss.entryTargetX = bossCfg.entryTargetX == null ? canvas.width * 0.72 : bossCfg.entryTargetX;
-		state.boss.entryTargetY = bossCfg.entryTargetY == null ? canvas.height * 0.48 : bossCfg.entryTargetY;
-		state.boss.entering = false;
-		state.boss.entryProgress = 0;
-		state.boss.oscPhase = 0;
-		state.boss.verticalTracking = bossCfg.verticalTracking == null ? 0.0024 : bossCfg.verticalTracking;
-		state.boss.verticalMin = bossCfg.verticalMin == null ? canvas.height * 0.24 : bossCfg.verticalMin;
-		state.boss.verticalMax = bossCfg.verticalMax == null ? canvas.height * 0.68 : bossCfg.verticalMax;
-		state.boss.verticalOffset = bossCfg.verticalOffset == null ? -canvas.height * 0.12 : bossCfg.verticalOffset;
-		state.boss.verticalOscAmp = bossCfg.verticalOscAmp == null ? 0 : bossCfg.verticalOscAmp;
-		state.boss.verticalOscSpeed = bossCfg.verticalOscSpeed == null ? 0 : bossCfg.verticalOscSpeed;
-		state.boss.verticalOscPhase = bossCfg.verticalOscPhase == null ? Math.random() * TAU : bossCfg.verticalOscPhase;
-		state.boss.horizontalTracking = bossCfg.horizontalTracking == null ? 0.0024 : bossCfg.horizontalTracking;
-		state.boss.horizontalMin = bossCfg.horizontalMin == null ? canvas.width * 0.52 : bossCfg.horizontalMin;
-		state.boss.horizontalMax = bossCfg.horizontalMax == null ? canvas.width * 0.9 : bossCfg.horizontalMax;
-		state.boss.horizontalOffset = bossCfg.horizontalOffset == null ? canvas.width * 0.12 : bossCfg.horizontalOffset;
-		state.boss.horizontalOscAmp = bossCfg.horizontalOscAmp == null ? canvas.width * 0.08 : bossCfg.horizontalOscAmp;
-		state.boss.horizontalOscSpeed = bossCfg.horizontalOscSpeed == null ? 0.0026 : bossCfg.horizontalOscSpeed;
-		state.boss.horizontalForwardBoost = bossCfg.horizontalForwardBoost == null ? 2.2 : bossCfg.horizontalForwardBoost;
-		state.boss.horizontalBackBoost = bossCfg.horizontalBackBoost == null ? 1.25 : bossCfg.horizontalBackBoost;
-		state.boss.horizontalForwardBias = bossCfg.horizontalForwardBias == null ? canvas.width * 0.1 : bossCfg.horizontalForwardBias;
-		state.boss.horizontalEdgePad = bossCfg.horizontalEdgePad == null ? null : bossCfg.horizontalEdgePad;
-		state.boss.oscPhase = 0;
-		state.coverRocks.length = 0;
-		state.coverRockSpawned = false;
-
-		if (bannerEl && config.banner) bannerEl.textContent = config.banner;
-		if (!opts.skipFlash && config.introFlash && config.introFlash.text) {
-			triggerEventFlash("level", {
-				text: config.introFlash.text,
-				duration: config.introFlash.duration,
-				opacity: config.introFlash.opacity == null ? 0.82 : config.introFlash.opacity
-			});
-		}
-
-		if (typeof config.initialSpawnDelay === "number") state.foeSpawnTimer = config.initialSpawnDelay;
-		else scheduleNextFoeSpawn(true);
+		return levels.applyLevelConfig(index, opts);
 	}
 
 	function advanceLevel(nextIndex, opts = {}) {
-		state.win = false;
-		state.over = false;
-		state.paused = false;
-		state.started = true;
-
-		state.foes.length = 0;
-		state.foeArrows.length = 0;
-		state.shots.length = 0;
-		state.healPickups.length = 0;
-		state.healBursts.length = 0;
-		state.symbolDrops.length = 0;
-		state.coinDrops.length = 0;
-		state.coralAllies.length = 0;
-		state.coralAbility.active = false;
-		state.coralAbility.timer = 0;
-		state.tsunamiWave = null;
-		state.tsunamiAbility.active = false;
-		state.tsunamiAbility.used = false;
-		state.pendingSymbolAdvance = null;
-		state.eventFlash = null;
-		state.bossTorpedoes.length = 0;
-		state.bossSweeps.length = 0;
-		state.bossWakeWaves.length = 0;
-		state.bossPerfumeOrbs.length = 0;
-		state.bossFragranceClouds.length = 0;
-		state.bossCoinBursts.length = 0;
-		state.bossCoinExplosions.length = 0;
-		state.bossDiamondBeams.length = 0;
-		state.bossCardBoomerangs.length = 0;
-		state.bossTreasureWaves.length = 0;
-		state.bossCrownColumns.length = 0;
-		state.coverRocks.length = 0;
-		state.coverRockSpawned = false;
-		state.cashfishUltLock = 0;
-		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
-		state.bossTreasureWaves.length = 0;
-		state.bossCrownColumns.length = 0;
-		state.bossTreasureWaves.length = 0;
-		state.bossCrownColumns.length = 0;
-		state.bossTreasureWaves.length = 0;
-		state.bossCrownColumns.length = 0;
-		state.cashfishUltLock = 0;
-		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
-		state.bossWhirlpools.length = 0;
-		state.bossKatapultShots.length = 0;
-		state.bossShockwaves.length = 0;
-		state.bossSpeedboats.length = 0;
-		state.bossCoinBursts.length = 0;
-		state.bossCoinExplosions.length = 0;
-		state.bossDiamondBeams.length = 0;
-		state.bossCardBoomerangs.length = 0;
-		state.bossTreasureWaves.length = 0;
-		state.bossCrownColumns.length = 0;
-		state.cashfishUltLock = 0;
-		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
-		state.bossTreasureWaves.length = 0;
-		state.bossCrownColumns.length = 0;
-		state.cashfishUltLock = 0;
-		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
-
-		state.player.x = canvas.width * 0.28;
-		state.player.y = canvas.height * 0.6;
-		state.player.dir = 1;
-		state.player.baseSpeed = state.player.baseSpeed == null ? 0.32 : state.player.baseSpeed;
-		state.player.speed = state.player.baseSpeed;
-		state.player.perfumeSlowTimer = 0;
-		state.player.shieldActive = false;
-		state.player.shieldTimer = 0;
-		if (state.player.shieldUnlocked) state.player.shieldCooldown = 0;
-		state.player.shieldLastActivation = 0;
-		state.player.shieldLastBlock = 0;
-		state.player.invulnFor = opts.invulnDuration == null ? 1600 : opts.invulnDuration;
-		state.player.shotCooldown = 0;
-		state.player.energyMax = state.player.energyMax == null ? 100 : state.player.energyMax;
-		state.player.energy = state.player.energyMax;
-		state.player.energyRegenTimer = 0;
-		if (opts.healHeart !== false) state.hearts = Math.min(state.hearts + 1, state.maxHearts);
-
-		applyLevelConfig(nextIndex, opts);
-		state.levelScore = 0;
-		primeFoes();
-		const nextEntryX = state.boss.entryTargetX == null ? canvas.width * 0.72 : state.boss.entryTargetX;
-		const nextEntryY = state.boss.entryTargetY == null ? canvas.height * 0.48 : state.boss.entryTargetY;
-		state.boss.x = nextEntryX;
-		state.boss.y = nextEntryY;
-		state.boss.dir = -1;
-		state.boss.pulse = 0;
-		state.boss.entering = false;
-		state.boss.entryProgress = 0;
-		state.lastTick = performance.now();
-		seedBubbles();
-		updateHUD();
-		hidePickupMessage();
+		return levels.advanceLevel(nextIndex, opts);
 	}
 
 	function debugJumpToLevel(targetIndex, options = {}) {
 		if (!DEBUG_SHORTCUTS) return;
 		const skipToBoss = options.skipToBoss === true;
-		const levelIndex = Math.max(0, Math.min(LEVEL_CONFIGS.length - 1, targetIndex | 0));
+		const levelIndex = Math.max(0, Math.min(getLevelConfigsLength() - 1, targetIndex | 0));
 		resetGame();
 		state.eventFlash = null;
 		advanceLevel(levelIndex, { skipFlash: true, healHeart: false, invulnDuration: 800 });
@@ -2174,739 +1790,21 @@ function bootGame() {
 		triggerEventFlash("debug", { text: label, duration: 1000, opacity: 0.52 });
 	}
 
-	function spawnBossTorpedoBurst() {
-		const boss = state.boss;
-		const enraged = boss.hp <= boss.maxHp * 0.35;
-		const count = enraged ? 4 : 3;
-		const spread = enraged ? 22 : 18;
-		for (let i = 0; i < count; i += 1) {
-			const offsetIndex = i - (count - 1) / 2;
-			state.bossTorpedoes.push({
-				x: boss.x - 90,
-				y: boss.y + offsetIndex * spread,
-				vx: -0.46 - Math.random() * 0.06,
-				vy: offsetIndex * 0.05,
-				life: 5200,
-				sway: Math.random() * TAU,
-				radius: 18
-			});
-		}
-	}
+	// ============================================================
+	// Boss-Spawn-Funktionen ausgelagert nach src/boss/spawn.js
+	// ============================================================
 
-	function spawnYachtwalBroadside() {
-		// Launch staggered, angled torpedoes that mimic a naval broadside.
-		const boss = state.boss;
-		const config = state.levelConfig && state.levelConfig.boss;
-		const bursts = config && config.broadsideBursts != null ? config.broadsideBursts : 2;
-		const enraged = boss.hp <= boss.maxHp * 0.45;
-		const lanes = enraged ? 5 : 4;
-		for (let b = 0; b < bursts; b += 1) {
-			for (let lane = 0; lane < lanes; lane += 1) {
-				const offsetIndex = lane - (lanes - 1) / 2;
-				const angle = (offsetIndex * 0.14) + (Math.random() - 0.5) * 0.04;
-				const speed = 0.52 + b * 0.05 + Math.random() * 0.05 + (enraged ? 0.06 : 0);
-				const vx = -Math.cos(angle) * speed;
-				const vy = Math.sin(angle) * speed;
-				state.bossTorpedoes.push({
-					x: boss.x - 80 - b * 18,
-					y: boss.y + offsetIndex * 32 + (enraged ? offsetIndex * 6 : 0),
-					vx,
-					vy,
-					life: 5600,
-					sway: Math.random() * TAU,
-					radius: 20,
-					kind: "broadside"
-				});
-			}
-		}
-		triggerEventFlash("boss", { text: "Breitseite!", duration: 900, opacity: 0.7 });
-	}
+	// renderFoeArrows ausgelagert nach src/foes/render.js
 
-	function spawnYachtwalWakeWall() {
-		// Generate rolling wake segments that sweep across the arena.
-		const boss = state.boss;
-		const config = state.levelConfig && state.levelConfig.boss;
-		const count = config && config.wakeCount != null ? config.wakeCount : 4;
-		const enraged = boss.hp <= boss.maxHp * 0.45;
-		for (let i = 0; i < count; i += 1) {
-			const offsetIndex = i - (count - 1) / 2;
-			const baseY = clamp(
-				boss.y + offsetIndex * (enraged ? 46 : 36),
-				canvas.height * 0.22,
-				canvas.height * 0.78
-			);
-			const amplitude = (18 + Math.abs(offsetIndex) * 4) * (enraged ? 1.4 : 1);
-			const radiusX = 78 + Math.abs(offsetIndex) * 18;
-			const radiusY = 26 + Math.abs(offsetIndex) * 6;
-			const life = 3600 + Math.random() * 600 + (enraged ? 500 : 0);
-			state.bossWakeWaves.push({
-				x: boss.x - 96 - i * 18,
-				y: baseY,
-				baseY,
-				amplitude,
-				radiusX,
-				radiusY,
-				vx: -0.32 - Math.abs(offsetIndex) * 0.03 - (enraged ? 0.05 : 0),
-				life,
-				initialLife: life,
-				phase: Math.random() * TAU,
-				freq: 0.0032 + Math.random() * 0.0016,
-				hurtCooldown: 0
-			});
-		}
-		triggerEventFlash("boss", { text: "Bugwelle!", duration: 900, opacity: 0.68 });
-	}
+	// ============================================================
+	// Weitere Boss-Spawn-Funktionen ausgelagert nach src/boss/spawn.js
+	// (spawnBossFinSweep, spawnFragranceCloud, spawnBossPerfumeVolley, spawnBossFragranceWave)
+	// ============================================================
 
-	function spawnYachtwalHarborSog() {
-		const player = state.player;
-		const boss = state.boss;
-		const minX = canvas.width * 0.18;
-		const maxX = canvas.width * 0.6;
-		const minY = canvas.height * 0.3;
-		const maxY = canvas.height * 0.76;
-		const leftBias = canvas.width * 0.06;
-		const centerX = clamp(player.x * 0.75 + boss.x * 0.25 - leftBias, minX, maxX);
-		const centerY = clamp(player.y, minY, maxY);
-		const initialLife = 3200 + Math.random() * 400;
-		state.bossWhirlpools.push({
-			x: centerX,
-			y: centerY,
-			minRadius: 52,
-			maxRadius: 128,
-			radius: 52,
-			life: initialLife,
-			initialLife,
-			spin: Math.random() * TAU,
-			pull: 0.0011,
-			damageTimer: 0,
-			telegraph: 720,
-			releaseTriggered: false,
-			explosionTimer: 0,
-			explosionRadius: 0,
-			explosionApplied: false,
-			dead: false
-		});
-		triggerEventFlash("boss", { text: "Hafen-Sog!", duration: 1000, opacity: 0.72 });
-	}
+	// spawnOktopusBolt und spawnBogenschreckArrow → ausgelagert nach src/foes/arrows.js
+	// Werden über foeArrows.spawnOktopusBolt() und foeArrows.spawnBogenschreckArrow() aufgerufen
 
-	function spawnYachtwalKielwasserKatapult() {
-		const boss = state.boss;
-		const enraged = boss.hp <= boss.maxHp * 0.45;
-		const count = enraged ? 4 : 3;
-		const coverRock = state.coverRocks.find(rock => rock.landed);
-		const clearanceY = coverRock
-			? coverRock.y - (coverRock.radiusY == null ? 60 : coverRock.radiusY) - 40
-			: null;
-		for (let i = 0; i < count; i += 1) {
-			const delay = i * 160;
-			const speedBoost = Math.random() * 0.08;
-			const launchY = clearanceY == null ? boss.y + 8 : Math.min(boss.y + 8, clearanceY);
-			state.bossKatapultShots.push({
-				x: boss.x - 70,
-				y: launchY,
-				vx: -0.46 - speedBoost,
-				vy: -0.5 - Math.random() * 0.06,
-				gravity: 0.0009 + Math.random() * 0.0002,
-				life: 4600 + Math.random() * 400,
-				delay,
-				radius: 26,
-				spin: Math.random() * TAU,
-				exploding: false,
-				explosionLife: 0,
-				explosionRadius: 110,
-				damageDone: false,
-				dead: false
-			});
-		}
-		triggerEventFlash("boss", { text: "Kielwasser-Katapult!", duration: 1000, opacity: 0.7 });
-	}
-
-	function spawnYachtwalAnchorDonner() {
-		const boss = state.boss;
-		const player = state.player;
-		const centerX = clamp((boss.x + player.x) / 2, canvas.width * 0.4, canvas.width * 0.8);
-		const centerY = clamp(player.y, canvas.height * 0.32, canvas.height * 0.68);
-		state.bossShockwaves.push({
-			x: centerX,
-			y: centerY,
-			stage: "telegraph",
-			telegraphTimer: 1040,
-			waveOneRadius: 0,
-			waveTwoRadius: 0,
-			waveSpeedOne: 0.28,
-			waveSpeedTwo: 0.22,
-			waveThicknessOne: 110,
-			waveThicknessTwo: 150,
-			waitTimer: 560,
-			maxRadius: Math.max(canvas.width, canvas.height) * 1.2,
-			damageWaveOne: false,
-			damageWaveTwo: false,
-			anchorPulse: Math.random() * TAU,
-			cleanupTimer: 820,
-			dead: false
-		});
-		triggerEventFlash("boss", { text: "Anker-Donner!", duration: 1020, opacity: 0.74 });
-	}
-
-	function spawnYachtwalRegattaRaserei() {
-		const boss = state.boss;
-		const lanes = 10;
-		const baseY = canvas.height * 0.24;
-		const span = canvas.height * 0.5;
-		for (let i = 0; i < lanes; i += 1) {
-			const t = lanes <= 1 ? 0.5 : i / (lanes - 1);
-			const jitter = (Math.random() - 0.5) * 28;
-			const posY = clamp(baseY + span * t + jitter, canvas.height * 0.22, canvas.height * 0.78);
-			state.bossSpeedboats.push({
-				x: canvas.width + 60 + i * 26,
-				y: posY,
-				baseY: posY,
-				vx: -0.7 - Math.random() * 0.08 - (boss.hp <= boss.maxHp * 0.45 ? 0.06 : 0),
-				sway: Math.random() * TAU,
-				swaySpeed: 0.0026 + Math.random() * 0.0014,
-				swayAmplitude: 14 + Math.random() * 12,
-				life: 4200 + Math.random() * 400,
-				damageCooldown: 0,
-				dead: false
-			});
-		}
-		triggerEventFlash("boss", { text: "Regatta-Raserei!", duration: 1050, opacity: 0.7 });
-	}
-
-	function spawnCashfishCoinSalvo() {
-		const boss = state.boss;
-		const config = (state.levelConfig && state.levelConfig.boss) || {};
-		const count = config.salvoCoinCount == null ? 6 : Math.max(3, config.salvoCoinCount);
-		const knockback = config.salvoKnockback == null ? 0.16 : config.salvoKnockback;
-		for (let i = 0; i < count; i += 1) {
-			const t = count <= 1 ? 0.5 : i / (count - 1);
-			const angle = (-0.22 + t * 0.52) + (Math.random() - 0.5) * 0.12;
-			const speed = 0.34 + Math.random() * 0.08;
-			const vx = -Math.cos(angle) * speed;
-			const vy = -Math.sin(angle) * speed - 0.06;
-			state.bossCoinBursts.push({
-				x: boss.x - 42,
-				y: boss.y + 18,
-				vx,
-				vy,
-				gravity: 0.00032 + Math.random() * 0.00008,
-				life: 2600 + Math.random() * 420,
-				scale: 0.88 + Math.random() * 0.22,
-				knockback,
-				damage: 1,
-				exploded: false,
-				spin: Math.random() * TAU
-			});
-		}
-		triggerEventFlash("boss", { text: "Goldgier-Salve!", duration: 1000, opacity: 0.78 });
-	}
-
-	function spawnCashfishDiamondLattice() {
-		const boss = state.boss;
-		const config = (state.levelConfig && state.levelConfig.boss) || {};
-		const telegraph = config.latticeTelegraph == null ? 1100 : config.latticeTelegraph;
-		const active = config.latticeActive == null ? 1200 : config.latticeActive;
-		const fade = config.latticeFade == null ? 320 : config.latticeFade;
-		const width = config.latticeLaserWidth == null ? 48 : config.latticeLaserWidth;
-		const knockback = config.latticeKnockback == null ? 0.16 : config.latticeKnockback;
-		const baseOriginX = boss.x - 36;
-		const baseOriginY = boss.y + 18;
-		const angles = [-0.55, 0, 0.55];
-		const splitOffset = 0.24;
-		for (const baseAngle of angles) {
-			state.bossDiamondBeams.push({
-				originX: baseOriginX,
-				originY: baseOriginY,
-				angle: baseAngle,
-				width,
-				knockback,
-				stage: "telegraph",
-				telegraphTimer: telegraph,
-				telegraphTotal: telegraph,
-				activeTimer: active,
-				activeDuration: active,
-				fadeTimer: fade,
-				fadeDuration: fade,
-				damageCooldown: 0
-			});
-			if (baseAngle !== 0) {
-				state.bossDiamondBeams.push({
-					originX: baseOriginX,
-					originY: baseOriginY + (baseAngle > 0 ? 42 : -42),
-					angle: baseAngle + splitOffset * (baseAngle > 0 ? 1 : -1),
-					width: width * 0.82,
-					knockback,
-					stage: "telegraph",
-					telegraphTimer: telegraph + 220,
-					telegraphTotal: telegraph + 220,
-					activeTimer: active * 0.92,
-					activeDuration: active * 0.92,
-					fadeTimer: fade,
-					fadeDuration: fade,
-					damageCooldown: 0
-				});
-			}
-		}
-		triggerEventFlash("boss", { text: "Diamant-Gitter!", duration: 1100, opacity: 0.82 });
-	}
-
-	function spawnCashfishCardShock() {
-		const boss = state.boss;
-		const config = (state.levelConfig && state.levelConfig.boss) || {};
-		const ringCount = config.cardRingCount == null ? 2 : Math.max(1, config.cardRingCount);
-		const baseCount = Math.max(4, ringCount * 4);
-		const speed = config.cardBoomerangSpeed == null ? 0.34 : config.cardBoomerangSpeed;
-		const bounceX = canvas.width * 0.26;
-		const orbitDelay = config.cardSpiralDelay == null ? 560 : config.cardSpiralDelay;
-		for (let i = 0; i < baseCount; i += 1) {
-			const t = i / baseCount;
-			const angle = t * TAU;
-			const verticalOffset = Math.sin(angle) * 42;
-			const vx = -(speed + 0.12 + Math.random() * 0.04);
-			const vy = Math.sin(angle) * speed * 0.65;
-			state.bossCardBoomerangs.push({
-				phase: "outbound",
-				x: boss.x - 36,
-				y: boss.y + verticalOffset * 0.4,
-				vx,
-				vy,
-				speed,
-				bounceX,
-				orbitAngle: angle,
-				orbitRadius: 70 + (i % ringCount) * 14,
-				orbitTimer: orbitDelay,
-				life: 6400,
-				damage: 1,
-				knockback: 0.14,
-				elapsed: 0,
-				stageTimer: 0,
-				ringIndex: i,
-				ringTotal: baseCount
-			});
-		}
-		triggerEventFlash("boss", { text: "Kreditkarten-Schock!", duration: 1040, opacity: 0.8 });
-	}
-
-	function spawnCashfishTreasureTsunami() {
-		const boss = state.boss;
-		const config = (state.levelConfig && state.levelConfig.boss) || {};
-		const waveCount = config.tsunamiWaveCount == null ? 3 : Math.max(2, config.tsunamiWaveCount);
-		const telegraph = config.tsunamiTelegraph == null ? 1100 : config.tsunamiTelegraph;
-		const active = config.tsunamiActive == null ? 2000 : config.tsunamiActive;
-		const fade = config.tsunamiFade == null ? 420 : config.tsunamiFade;
-		const radiusX = config.tsunamiRadiusX == null ? 120 : config.tsunamiRadiusX;
-		const radiusY = config.tsunamiRadiusY == null ? 48 : config.tsunamiRadiusY;
-		const baseSpeed = config.tsunamiSpeed == null ? 0.42 : config.tsunamiSpeed;
-		const amplitude = config.tsunamiAmplitude == null ? 34 : config.tsunamiAmplitude;
-		const knockback = config.tsunamiKnockback == null ? 0.22 : config.tsunamiKnockback;
-		const damage = config.tsunamiDamage == null ? 1 : config.tsunamiDamage;
-		const minY = canvas.height * 0.24;
-		const maxY = canvas.height * 0.78;
-		for (let i = 0; i < waveCount; i += 1) {
-			const t = waveCount <= 1 ? 0.5 : i / (waveCount - 1);
-			const jitter = (Math.random() - 0.5) * canvas.height * 0.06;
-			const posY = clamp(minY + (maxY - minY) * t + jitter, minY + 28, maxY - 28);
-			const speed = baseSpeed + Math.random() * 0.08 + i * 0.02;
-			state.bossTreasureWaves.push({
-				stage: "telegraph",
-				telegraphTimer: telegraph + i * 120,
-				telegraphTotal: telegraph + i * 120,
-				surgeTimer: active,
-				surgeDuration: active,
-				fadeTimer: fade,
-				fadeDuration: fade,
-				x: boss.x + 80 + i * 42,
-				y: posY,
-				baseY: posY,
-				radiusX,
-				radiusY,
-				vx: -(speed),
-				amplitude: amplitude * (0.9 + Math.random() * 0.2),
-				wobblePhase: Math.random() * TAU,
-				wobbleSpeed: 0.003 + Math.random() * 0.0014,
-				damageCooldown: 0,
-				knockback,
-				damage,
-				foamPhase: Math.random() * TAU
-			});
-		}
-		triggerEventFlash("boss", { text: "Schatzkammer-Tsunami!", duration: 1200, opacity: 0.84 });
-	}
-
-	function spawnCashfishCrownFinale() {
-		const config = (state.levelConfig && state.levelConfig.boss) || {};
-		const columnCount = config.crownColumnCount == null ? 4 : Math.max(2, config.crownColumnCount);
-		const telegraph = config.crownTelegraph == null ? 1300 : config.crownTelegraph;
-		const active = config.crownActive == null ? 1500 : config.crownActive;
-		const fade = config.crownFade == null ? 520 : config.crownFade;
-		const halfWidth = (config.crownColumnWidth == null ? 92 : config.crownColumnWidth) * 0.5;
-		const knockback = config.crownKnockback == null ? 0.24 : config.crownKnockback;
-		const damage = config.crownDamage == null ? 1 : config.crownDamage;
-		const top = canvas.height * 0.22;
-		const bottom = canvas.height * 0.82;
-		const left = canvas.width * 0.4;
-		const right = canvas.width * 0.84;
-		for (let i = 0; i < columnCount; i += 1) {
-			const t = columnCount <= 1 ? 0.5 : (i + 0.5) / columnCount;
-			let x = left + (right - left) * t + (Math.random() - 0.5) * 40;
-			x = clamp(x, canvas.width * 0.36 + halfWidth, canvas.width * 0.88 - halfWidth);
-			const delay = (i % 2) * 220 + Math.random() * 140;
-			state.bossCrownColumns.push({
-				stage: "telegraph",
-				telegraphTimer: telegraph + delay,
-				telegraphTotal: telegraph + delay,
-				activeTimer: active,
-				activeDuration: active,
-				fadeTimer: fade,
-				fadeDuration: fade,
-				x,
-				top,
-				bottom,
-				halfWidth,
-				damageCooldown: 0,
-				knockback,
-				damage,
-				sparklePhase: Math.random() * TAU,
-				pillarPulse: Math.random() * TAU
-			});
-		}
-		triggerEventFlash("boss", { text: "Kronen-Schlusskonto!", duration: 1280, opacity: 0.84 });
-	}
-
-	function renderFoeArrows() {
-		if (state.foeArrows.length === 0) return;
-		ctx.save();
-		for (const arrow of state.foeArrows) {
-			const sprite = arrow.spriteKey ? SPRITES[arrow.spriteKey] : null;
-			if (sprite && spriteReady(sprite)) {
-				const scale = arrow.spriteScale == null ? 0.18 : arrow.spriteScale;
-				const drawW = sprite.naturalWidth * scale;
-				const drawH = sprite.naturalHeight * scale;
-				const offsetX = arrow.spriteOffsetX == null ? 0 : arrow.spriteOffsetX;
-				const offsetY = arrow.spriteOffsetY == null ? 0 : arrow.spriteOffsetY;
-				ctx.save();
-				ctx.translate(arrow.x, arrow.y);
-				ctx.rotate(arrow.rotation || 0);
-				if (arrow.flip) ctx.scale(-1, 1);
-				ctx.drawImage(sprite, -drawW / 2 + offsetX, -drawH / 2 + offsetY, drawW, drawH);
-				ctx.restore();
-				continue;
-			}
-			ctx.save();
-			ctx.translate(arrow.x, arrow.y);
-			ctx.rotate(arrow.rotation || 0);
-			const variant = arrow.type || "arrow";
-			if (variant === "octo-bolt") {
-				const shaftLength = 26;
-				const shaftWidth = 6;
-				const grad = ctx.createLinearGradient(-shaftLength * 0.5, 0, shaftLength * 0.5, 0);
-				grad.addColorStop(0, "rgba(90,140,255,0.25)");
-				grad.addColorStop(0.5, "rgba(180,230,255,0.8)");
-				grad.addColorStop(1, "rgba(90,140,255,0.25)");
-				ctx.fillStyle = grad;
-				ctx.beginPath();
-				ctx.ellipse(0, 0, shaftLength * 0.55, shaftWidth, 0, 0, TAU);
-				ctx.fill();
-			}
-			else if (variant === "octo-blowdart") {
-				const bodyLength = 34;
-				const bodyRadius = 3.4;
-				const tipLength = 9;
-				const tailLength = 6;
-				const glow = ctx.createRadialGradient(bodyLength * 0.32, 0, 0, bodyLength * 0.32, 0, 12);
-				glow.addColorStop(0, "rgba(140,255,240,0.45)");
-				glow.addColorStop(1, "rgba(40,120,140,0)");
-				ctx.save();
-				ctx.globalCompositeOperation = "lighter";
-				ctx.globalAlpha = 0.35;
-				ctx.fillStyle = glow;
-				ctx.beginPath();
-				ctx.ellipse(bodyLength * 0.34, 0, 14, 6, 0, 0, TAU);
-				ctx.fill();
-				ctx.restore();
-
-				const bodyGrad = ctx.createLinearGradient(-bodyLength * 0.5, 0, bodyLength * 0.5, 0);
-				bodyGrad.addColorStop(0, "rgba(20,40,80,0.65)");
-				bodyGrad.addColorStop(0.45, "rgba(24,140,180,0.95)");
-				bodyGrad.addColorStop(1, "rgba(180,255,255,0.9)");
-				ctx.fillStyle = bodyGrad;
-				ctx.beginPath();
-				ctx.moveTo(-bodyLength * 0.5, -bodyRadius * 0.9);
-				ctx.lineTo(bodyLength * 0.5 - tipLength, -bodyRadius * 0.9);
-				ctx.quadraticCurveTo(bodyLength * 0.5 - bodyRadius * 0.2, -bodyRadius * 0.4, bodyLength * 0.5, 0);
-				ctx.quadraticCurveTo(bodyLength * 0.5 - bodyRadius * 0.2, bodyRadius * 0.4, bodyLength * 0.5 - tipLength, bodyRadius * 0.9);
-				ctx.lineTo(-bodyLength * 0.5, bodyRadius * 0.9);
-				ctx.quadraticCurveTo(-bodyLength * 0.5 - tailLength * 0.5, bodyRadius * 0.6, -bodyLength * 0.5 - tailLength, 0);
-				ctx.quadraticCurveTo(-bodyLength * 0.5 - tailLength * 0.5, -bodyRadius * 0.6, -bodyLength * 0.5, -bodyRadius * 0.9);
-				ctx.closePath();
-				ctx.fill();
-
-				const spineGrad = ctx.createLinearGradient(-bodyLength * 0.4, 0, bodyLength * 0.38, 0);
-				spineGrad.addColorStop(0, "rgba(220,255,255,0)");
-				spineGrad.addColorStop(0.6, "rgba(240,255,255,0.68)");
-				spineGrad.addColorStop(1, "rgba(255,255,255,0.95)");
-				ctx.fillStyle = spineGrad;
-				ctx.beginPath();
-				ctx.moveTo(-bodyLength * 0.32, -bodyRadius * 0.45);
-				ctx.quadraticCurveTo(bodyLength * 0.12, -bodyRadius * 0.15, bodyLength * 0.42, 0);
-				ctx.quadraticCurveTo(bodyLength * 0.12, bodyRadius * 0.15, -bodyLength * 0.32, bodyRadius * 0.45);
-				ctx.closePath();
-				ctx.fill();
-
-				ctx.fillStyle = "rgba(24,70,110,0.85)";
-				ctx.beginPath();
-				ctx.moveTo(-bodyLength * 0.5 - tailLength * 0.2, 0);
-				ctx.lineTo(-bodyLength * 0.5 - tailLength, bodyRadius * 1.3);
-				ctx.lineTo(-bodyLength * 0.5 - tailLength, -bodyRadius * 1.3);
-				ctx.closePath();
-				ctx.fill();
-
-				ctx.fillStyle = "rgba(180,255,255,0.9)";
-				ctx.beginPath();
-				ctx.moveTo(bodyLength * 0.5, 0);
-				ctx.lineTo(bodyLength * 0.5 - tipLength * 0.6, bodyRadius * 0.95);
-				ctx.lineTo(bodyLength * 0.5 - tipLength * 0.6, -bodyRadius * 0.95);
-				ctx.closePath();
-				ctx.fill();
-
-				ctx.globalAlpha = 0.75;
-				ctx.strokeStyle = "rgba(15,50,90,0.55)";
-				ctx.lineWidth = 1.2;
-				ctx.beginPath();
-				ctx.moveTo(-bodyLength * 0.48, -bodyRadius * 0.8);
-				ctx.lineTo(bodyLength * 0.45, -bodyRadius * 0.2);
-				ctx.moveTo(-bodyLength * 0.48, bodyRadius * 0.8);
-				ctx.lineTo(bodyLength * 0.45, bodyRadius * 0.2);
-				ctx.stroke();
-				ctx.globalAlpha = 1;
-			} else {
-				const shaftLength = 32;
-				const shaftWidth = 3;
-				ctx.fillStyle = "#e6d6b8";
-				ctx.fillRect(-shaftLength * 0.5, -shaftWidth * 0.5, shaftLength, shaftWidth);
-				ctx.fillStyle = "#c9a86f";
-				ctx.fillRect(-shaftLength * 0.5, -shaftWidth * 0.5, shaftLength * 0.7, shaftWidth);
-				ctx.fillStyle = "#f0f6ff";
-				ctx.beginPath();
-				ctx.moveTo(shaftLength * 0.5, 0);
-				ctx.lineTo(shaftLength * 0.5 - 6, 4);
-				ctx.lineTo(shaftLength * 0.5 - 6, -4);
-				ctx.closePath();
-				ctx.fill();
-				ctx.fillStyle = "#b0c6ff";
-				ctx.beginPath();
-				ctx.moveTo(-shaftLength * 0.5, 0);
-				ctx.lineTo(-shaftLength * 0.5 - 6, 4);
-				ctx.lineTo(-shaftLength * 0.5 - 6, -4);
-				ctx.closePath();
-				ctx.fill();
-			}
-			ctx.restore();
-		}
-		ctx.restore();
-	}
-
-	function spawnBossFinSweep() {
-		const boss = state.boss;
-		boss.finFlip = !boss.finFlip;
-		const downward = boss.finFlip;
-		const baseY = downward ? canvas.height * 0.28 : canvas.height * 0.72;
-		const dirY = downward ? 1 : -1;
-		const enraged = boss.hp <= boss.maxHp * 0.35;
-		const segments = enraged ? 6 : 5;
-		for (let i = 0; i < segments; i += 1) {
-			state.bossSweeps.push({
-				x: canvas.width + 160 + i * 40,
-				y: baseY + dirY * i * 34,
-				vx: -0.56,
-				vy: dirY * 0.14,
-				radius: 38,
-				life: 3600,
-				delay: i * 160,
-				phase: Math.random() * TAU
-			});
-		}
-	}
-
-	function spawnFragranceCloud(x, y, opts = {}) {
-		const bossCfg = state.levelConfig && state.levelConfig.boss;
-		const duration = opts.duration == null ? (bossCfg && bossCfg.cloudDuration != null ? bossCfg.cloudDuration : 3800) : opts.duration;
-		const radius = opts.radius == null ? (bossCfg && bossCfg.cloudRadius != null ? bossCfg.cloudRadius : 60) : opts.radius;
-		state.bossFragranceClouds.push({
-			x,
-			y,
-			radius,
-			baseRadius: radius,
-			life: duration,
-			duration,
-			growth: opts.growth == null ? 0.015 : opts.growth,
-			driftX: opts.driftX == null ? -0.02 : opts.driftX,
-			driftY: opts.driftY == null ? -0.01 : opts.driftY,
-			swirl: Math.random() * TAU,
-			pulse: Math.random() * TAU
-		});
-	}
-
-	function spawnBossPerfumeVolley() {
-		const boss = state.boss;
-		const config = state.levelConfig && state.levelConfig.boss;
-		const spread = config && config.perfumeSpread != null ? config.perfumeSpread : 38;
-		const baseSpeed = config && config.perfumeSpeed != null ? config.perfumeSpeed : 0.32;
-		const count = 3;
-		const player = state.player;
-		const targetX = player.x;
-		const targetY = player.y;
-		const originBaseX = boss.x - 62;
-		const originBaseY = boss.y;
-		const baseAngle = Math.atan2(targetY - originBaseY, targetX - originBaseX);
-		const angleStep = (spread * Math.PI) / 360; // convert spread degrees-ish into radians
-		for (let i = 0; i < count; i += 1) {
-			const offsetIndex = i - (count - 1) / 2;
-			const angle = baseAngle + offsetIndex * angleStep + (Math.random() - 0.5) * 0.05;
-			const speed = baseSpeed + Math.random() * 0.06;
-			const dirX = Math.cos(angle);
-			const dirY = Math.sin(angle);
-			const perpendicularX = -dirY;
-			const perpendicularY = dirX;
-			const lateralOffset = offsetIndex * (spread * 0.32);
-			const forwardOffset = 28;
-			const spawnX = originBaseX + dirX * forwardOffset + perpendicularX * lateralOffset * 0.1;
-			const spawnY = originBaseY + dirY * forwardOffset + perpendicularY * lateralOffset * 0.1;
-			const life = 5200 + Math.random() * 800;
-			state.bossPerfumeOrbs.push({
-				x: spawnX,
-				y: spawnY,
-				vx: dirX * speed,
-				vy: dirY * speed,
-				life,
-				initialLife: life,
-				sway: Math.random() * TAU,
-				spin: Math.random() * TAU,
-				trailTimer: 360 + Math.random() * 160,
-				trailInterval: 420 + Math.random() * 160,
-				radius: 18,
-				spawnedAt: performance.now(),
-				dead: false
-			});
-		}
-		triggerEventFlash("boss", { text: "Duftsalve!", duration: 1000, opacity: 0.7 });
-	}
-
-	function spawnBossFragranceWave() {
-		const config = state.levelConfig && state.levelConfig.boss;
-		const cloudCount = 4;
-		const positions = [];
-		const xMin = canvas.width * 0.32;
-		const xMax = canvas.width * 0.9;
-		const yMin = canvas.height * 0.22;
-		const yMax = canvas.height * 0.78;
-		const baseRadius = config && config.cloudRadius ? config.cloudRadius * 0.7 : 48;
-		const minDistance = baseRadius * 1.4;
-		for (let i = 0; i < cloudCount; i += 1) {
-			let posX = 0;
-			let posY = 0;
-			let attempts = 0;
-			do {
-				posX = xMin + Math.random() * (xMax - xMin);
-				posY = yMin + Math.random() * (yMax - yMin);
-				attempts += 1;
-			} while (
-				attempts < 12 &&
-				positions.some(p => Math.hypot(p.x - posX, p.y - posY) < minDistance)
-			);
-			positions.push({ x: posX, y: posY });
-			spawnFragranceCloud(posX, posY, {
-				growth: 0.018,
-				driftX: -0.035 + (Math.random() - 0.5) * 0.015,
-				driftY: (Math.random() - 0.5) * 0.03,
-				radius: baseRadius,
-				duration: config && config.cloudDuration ? config.cloudDuration * 0.85 : 3200
-			});
-		}
-		triggerEventFlash("boss", { text: "Duftwolken!", duration: 1100, opacity: 0.75 });
-	}
-
-	function spawnOktopusBolt(foe) {
-		const player = state.player;
-		const originX = foe.x - 28;
-		const originY = foe.y - 6;
-		const targetX = player.x + (Math.random() - 0.5) * 26;
-		const targetY = player.y + (Math.random() - 0.5) * 20;
-		const dx = targetX - originX;
-		const dy = targetY - originY;
-		const dist = Math.hypot(dx, dy) || 1;
-		const speed = foe.projectileSpeed == null ? 0.38 + Math.random() * 0.04 : foe.projectileSpeed;
-		const vx = (dx / dist) * speed;
-		const vy = (dy / dist) * speed;
-		const wobbleSpeed = 0.0036 + Math.random() * 0.0014;
-		const useClassic = !!USE_CLASSIC_OKTOPUS_PROJECTILE;
-		state.foeArrows.push({
-			type: useClassic ? "octo-bolt" : "octo-blowdart",
-			x: originX,
-			y: originY,
-			vx,
-			vy,
-			life: 4200,
-			rotation: Math.atan2(vy, vx) + Math.PI,
-			damage: 1,
-			spriteKey: useClassic ? "oktopusProjectile" : null,
-			spriteScale: useClassic ? 0.15 : undefined,
-			spriteOffsetX: useClassic ? 4 : undefined,
-			spriteOffsetY: useClassic ? -1 : undefined,
-			flip: useClassic ? true : undefined,
-			wobblePhase: Math.random() * TAU,
-			wobbleSpeed,
-			wobbleAmplitude: 12 + Math.random() * 6,
-			hitRadius: useClassic ? 18 : 26,
-			parryRadius: useClassic ? 13 : 18
-		});
-	}
-
-	function spawnBogenschreckArrow(foe) {
-		const player = state.player;
-		const originX = foe.x - 34;
-		const originY = foe.y - 10;
-		const dx = player.x - originX;
-		const dy = player.y - originY;
-		const dist = Math.hypot(dx, dy) || 1;
-		const speed = 0.46 + Math.random() * 0.06;
-		const vx = (dx / dist) * speed;
-		const vy = (dy / dist) * speed;
-		state.foeArrows.push({
-			type: "arrow",
-			x: originX,
-			y: originY,
-			vx,
-			vy,
-			life: 4800,
-			rotation: Math.atan2(vy, vx),
-			damage: 1,
-			hitRadius: 24,
-			parryRadius: 16
-		});
-	}
-
-	function playerShoot() {
-		if (state.over || state.paused || !state.started) return;
-		const player = state.player;
-		if (player.shotCooldown > 0) return;
-		const energyMax = player.energyMax == null ? 100 : player.energyMax;
-		const energyCost = player.energyCost == null ? 35 : player.energyCost;
-		if ((player.energy == null ? energyMax : player.energy) < energyCost) return;
-		state.shots.push({
-			x: player.x + 26,
-			y: player.y - 6,
-			vx: 0.64,
-			vy: -0.02,
-			life: 900,
-			spriteScale: 0.1,
-			spriteOffsetX: 6,
-			spriteOffsetY: 0
-		});
-		player.energy = Math.max(0, (player.energy == null ? energyMax : player.energy) - energyCost);
-		if (player.energy <= 0) player.energyRegenTimer = player.energyRegenDelay == null ? 1200 : player.energyRegenDelay;
-		player.shotCooldown = 220;
-	}
+	// playerShoot ist jetzt in src/player/update.js ausgelagert
 
 	function hasKey(keySet) {
 		for (const key of keySet) {
@@ -2947,293 +1845,6 @@ function bootGame() {
 		return event.code === "Digit5" || event.code === "Numpad5" || event.key === "5" || event.key === "%";
 	}
 
-	function tryActivateShield() {
-		const player = state.player;
-		if (!player.shieldUnlocked || player.shieldActive || player.shieldCooldown > 0) return;
-		if (state.over || state.paused || !state.started) return;
-		player.shieldActive = true;
-		player.shieldTimer = player.shieldDuration || SHIELD_DURATION;
-		player.shieldCooldown = 0;
-		player.shieldLastActivation = performance.now();
-		player.perfumeSlowTimer = 0;
-		triggerEventFlash("shield", { text: "Schild aktiv!", duration: 900, opacity: 0.7 });
-		updateHUD();
-	}
-
-	// --- Coral allies ability (test block for easy removal) ---
-	function unlockCoralAllies() {
-		const ability = state.coralAbility;
-		if (!ability || ability.unlocked) return;
-		ability.unlocked = true;
-		ability.active = false;
-		ability.timer = 0;
-		ability.cooldown = 0;
-		triggerEventFlash("ally", { text: "Korallenverbündete bereit (R)", duration: 1400, opacity: 0.75 });
-	}
-
-	function spawnCoralAppearanceFx(x, y) {
-		state.coralEffects.push({
-			kind: "ring",
-			mode: "spawn",
-			x,
-			y,
-			life: 520,
-			maxLife: 520,
-			startRadius: 10,
-			endRadius: 58,
-			startAlpha: 0.65,
-			endAlpha: 0,
-			startLine: 6,
-			endLine: 1.2
-		});
-		state.coralEffects.push({
-			kind: "spark",
-			mode: "spawn",
-			x,
-			y,
-			life: 660,
-			maxLife: 660,
-			radiusStart: 12,
-			radiusEnd: 30,
-			rotation: Math.random() * TAU,
-			rotationSpeed: (Math.random() - 0.5) * 0.004
-		});
-	}
-
-	function spawnCoralFadeFx(x, y) {
-		state.coralEffects.push({
-			kind: "ring",
-			mode: "fade",
-			x,
-			y,
-			life: 520,
-			maxLife: 520,
-			startRadius: 46,
-			endRadius: 10,
-			startAlpha: 0.55,
-			endAlpha: 0,
-			startLine: 4,
-			endLine: 0.8
-		});
-		state.coralEffects.push({
-			kind: "spark",
-			mode: "fade",
-			x,
-			y,
-			life: 520,
-			maxLife: 520,
-			radiusStart: 26,
-			radiusEnd: 6,
-			rotation: Math.random() * TAU,
-			rotationSpeed: (Math.random() - 0.5) * 0.0035
-		});
-	}
-
-	function spawnCoralAlliesFormation() {
-		const player = state.player;
-		const allies = [];
-		const count = 2;
-		for (let i = 0; i < count; i += 1) {
-			const orbitDir = i === 0 ? 1 : -1;
-			const baseAngle = orbitDir === 1 ? Math.PI * 0.12 : Math.PI * 0.88;
-			const radius = 128 + i * 8;
-			const bobPhase = Math.random() * TAU;
-			const ally = {
-				angle: baseAngle,
-				radius,
-				turnSpeed: 0.0016 + i * 0.0003,
-				orbitDir,
-				shootTimer: 120 + i * 80,
-				shootInterval: 420 + i * 60,
-				bobPhase,
-				contactRadius: 42,
-				spriteKey: i === 0 ? "coralAllyOne" : "coralAllyTwo",
-				spriteScale: 0.16,
-				spriteOffsetX: -4,
-				spriteOffsetY: -10,
-				spriteRotationOffset: 0
-			};
-			const verticalOffset = Math.sin(bobPhase) * 6;
-			ally.x = player.x + Math.cos(baseAngle) * radius;
-			ally.y = player.y + Math.sin(baseAngle) * (radius * 0.42) + verticalOffset - 24;
-			allies.push(ally);
-			spawnCoralAppearanceFx(ally.x, ally.y);
-		}
-		state.coralAllies = allies;
-	}
-
-	function spawnCoralAllyShot(origin) {
-		state.shots.push({
-			x: (origin && origin.x) == null ? state.player.x + 24 : origin.x + 18,
-			y: (origin && origin.y) == null ? state.player.y - 8 : origin.y - 6,
-			vx: 0.7,
-			vy: -0.02 + Math.sin(origin && origin.angle != null ? origin.angle : 0) * 0.015,
-			life: 1300,
-			spriteScale: 0.085,
-			spriteOffsetX: 5,
-			spriteOffsetY: 0,
-			coralShot: true
-		});
-	}
-
-	function tryActivateCoralAllies() {
-		const ability = state.coralAbility;
-		if (!ability || !ability.unlocked) return false;
-		if (ability.active || ability.cooldown > 0) return false;
-		if (state.level < 3) return false;
-		if (state.over || state.paused || !state.started) return false;
-		spawnCoralAlliesFormation();
-		ability.active = true;
-		ability.timer = ability.duration == null ? 6000 : ability.duration;
-		triggerEventFlash("ally", { text: "Korallenverbündete aktiv!", duration: 900, opacity: 0.65 });
-		return true;
-	}
-
-	function updateCoralAllies(dt) {
-		const ability = state.coralAbility;
-		if (!ability) return;
-		if (!ability.active) {
-			if (state.coralAllies.length) {
-				for (const ally of state.coralAllies) {
-					if (ally && ally.x != null && ally.y != null) spawnCoralFadeFx(ally.x, ally.y);
-				}
-			}
-			state.coralAllies.length = 0;
-			if (ability.cooldown > 0) ability.cooldown = Math.max(0, ability.cooldown - dt);
-			return;
-		}
-		const player = state.player;
-		ability.timer = Math.max(0, ability.timer - dt);
-		for (const ally of state.coralAllies) {
-			const orbitDir = ally.orbitDir == null ? 1 : ally.orbitDir;
-			const turnSpeed = ally.turnSpeed == null ? 0.0018 : ally.turnSpeed;
-			ally.angle = (ally.angle == null ? (orbitDir > 0 ? Math.PI * 0.2 : Math.PI * 0.8) : ally.angle) + turnSpeed * dt * orbitDir;
-			ally.bobPhase = (ally.bobPhase || 0) + dt * 0.0042;
-			const radius = ally.radius == null ? 120 : ally.radius;
-			const offsetY = Math.sin(ally.bobPhase) * 6;
-			ally.x = player.x + Math.cos(ally.angle) * radius;
-			ally.y = player.y + Math.sin(ally.angle) * (radius * 0.42) + offsetY - 24;
-			ally.shotTimer = (ally.shotTimer == null ? 0 : ally.shotTimer) - dt;
-			if (ally.shotTimer <= 0) {
-				spawnCoralAllyShot(ally);
-				ally.shotTimer = ally.shootInterval == null ? 420 : ally.shootInterval;
-			}
-			const contactRadius = ally.contactRadius == null ? 40 : ally.contactRadius;
-			for (const foe of state.foes) {
-				if (foe.dead) continue;
-				const dx = foe.x - ally.x;
-				const dy = foe.y - ally.y;
-				if (Math.hypot(dx, dy) < contactRadius) {
-					foe.dead = true;
-					awardFoeDefeat(foe);
-					if (ally.x != null && ally.y != null) spawnCoralFadeFx(ally.x, ally.y);
-					ally.destroyed = true;
-					break;
-				}
-			}
-		}
-		if (state.coralAllies.length) state.coralAllies = state.coralAllies.filter(ally => !ally.destroyed);
-		if (ability.timer <= 0) {
-			if (state.coralAllies.length) {
-				for (const ally of state.coralAllies) {
-					if (ally && ally.x != null && ally.y != null) spawnCoralFadeFx(ally.x, ally.y);
-				}
-			}
-			ability.active = false;
-			ability.timer = 0;
-			ability.cooldown = ability.cooldownMax == null ? 14000 : ability.cooldownMax;
-			state.coralAllies.length = 0;
-		}
-	}
-	// --- End coral allies block ---
-
-	// --- Tsunami ability (Level 4 single-use) ---
-	function unlockTsunamiAbility(opts = {}) {
-		const ability = state.tsunamiAbility;
-		if (!ability) return;
-		const firstUnlock = !ability.unlocked;
-		ability.unlocked = true;
-		ability.used = false;
-		ability.active = false;
-		state.tsunamiWave = null;
-		if (!opts.silent && firstUnlock) {
-			triggerEventFlash("tsunami", { text: "Neue Kraft: Tsunami (T)", duration: 1400, opacity: 0.78 });
-		}
-	}
-
-	function tryActivateTsunamiAbility() {
-		const ability = state.tsunamiAbility;
-		if (!ability || !ability.unlocked) return false;
-		if (ability.used || ability.active) return false;
-		if (state.level < 4) return false;
-		if (state.over || state.paused || !state.started) return false;
-		ability.active = true;
-		ability.used = true;
-		const waveWidth = Math.max(canvas.width * 0.24, 240);
-		const bubbleCount = 26;
-		const bubbles = [];
-		for (let i = 0; i < bubbleCount; i += 1) {
-			bubbles.push({
-				x: Math.random(),
-				y: Math.random(),
-				radius: 10 + Math.random() * 20,
-				speed: 0.00016 + Math.random() * 0.00022,
-				drift: 0.6 + Math.random() * 1.6,
-				alpha: 0.16 + Math.random() * 0.22
-			});
-		}
-		state.tsunamiWave = {
-			x: -waveWidth - 140,
-			width: waveWidth,
-			speed: 0.46,
-			energy: 1,
-			elapsed: 0,
-			crestY: canvas.height * 0.58,
-			amplitude: canvas.height * 0.18,
-			bubbles,
-			detailOffset: Math.random() * TAU
-		};
-		triggerEventFlash("tsunami", { text: "Tsunami der Stille!", duration: 1100, opacity: 0.8 });
-		return true;
-	}
-
-	function updateTsunamiWave(dt) {
-		const wave = state.tsunamiWave;
-		if (!wave) return;
-		wave.elapsed = (wave.elapsed || 0) + dt;
-		wave.x += (wave.speed || 0.4) * dt;
-		wave.energy = Math.max(0, (wave.energy == null ? 1 : wave.energy) - dt * 0.00004);
-		const width = wave.width == null ? 220 : wave.width;
-		const left = wave.x;
-		const right = wave.x + width;
-		for (const foe of state.foes) {
-			if (foe.dead) continue;
-			if (foe.x <= right + 8) {
-				foe.dead = true;
-				awardFoeDefeat(foe);
-			}
-		}
-		state.foes = state.foes.filter(foe => !foe.dead);
-		state.foeArrows = state.foeArrows.filter(arrow => arrow.x > right + 12);
-		state.bossTorpedoes = state.bossTorpedoes.filter(torpedo => torpedo.x > right + 24);
-		state.bossKatapultShots = state.bossKatapultShots.filter(shot => shot.x > right + 16);
-		state.bossSpeedboats = state.bossSpeedboats.filter(boat => boat.x > right + 32);
-		state.bossCoinBursts = state.bossCoinBursts.filter(coin => coin.x > right + 18);
-		state.bossCardBoomerangs = state.bossCardBoomerangs.filter(card => card.x > right + 20);
-		state.bossPerfumeOrbs = state.bossPerfumeOrbs.filter(orb => orb.x > right + 18);
-		state.bossFragranceClouds = state.bossFragranceClouds.filter(cloud => cloud.x > right + 18);
-		state.bossWhirlpools = state.bossWhirlpools.filter(whirl => whirl.x > right + 18 || whirl.dead);
-		const boss = state.boss;
-		if (boss.active && !state.over && right >= boss.x - 60) {
-			boss.stunTimer = Math.max(boss.stunTimer || 0, 2600);
-		}
-		if (left > canvas.width + width + 20) {
-			state.tsunamiWave = null;
-			if (state.tsunamiAbility) state.tsunamiAbility.active = false;
-		}
-	}
-	// --- End tsunami block ---
-
 	// Context für Stadt-State-Erstellung
 	const cityStateCtx = {
 		get canvas() { return canvas; },
@@ -3251,7 +1862,7 @@ function bootGame() {
 		state.over = false;
 		state.win = false;
 		state.level = 5;
-		state.levelIndex = LEVEL_CONFIGS.length;
+		state.levelIndex = getLevelConfigsLength();
 		state.elapsed = 0;
 		state.lastTick = performance.now();
 		state.eventFlash = null;
@@ -3572,52 +2183,7 @@ function bootGame() {
 		}
 	}
 
-	function updatePlayer(dt) {
-		const player = state.player;
-		const prevX = player.x;
-		const prevY = player.y;
-		if (player.invulnFor > 0) player.invulnFor = Math.max(0, player.invulnFor - dt);
-		if (player.shotCooldown > 0) player.shotCooldown = Math.max(0, player.shotCooldown - dt);
-		const energyMax = player.energyMax == null ? 100 : player.energyMax;
-		if (player.energy == null) player.energy = energyMax;
-		if (player.energyRegenTimer == null) player.energyRegenTimer = 0;
-		if (player.energyRegenTimer > 0) {
-			player.energyRegenTimer = Math.max(0, player.energyRegenTimer - dt);
-		} else if (player.energy < energyMax) {
-			const regenRate = player.energyRegenRate == null ? 0.04 : player.energyRegenRate;
-			player.energy = Math.min(energyMax, player.energy + regenRate * dt);
-		}
-		if (player.perfumeSlowTimer > 0) player.perfumeSlowTimer = Math.max(0, player.perfumeSlowTimer - dt);
-		if (pointer.shoot) playerShoot();
-		if (player.shieldActive) {
-			player.shieldTimer = Math.max(0, player.shieldTimer - dt);
-			if (player.shieldTimer <= 0) {
-				player.shieldActive = false;
-				player.shieldTimer = 0;
-				player.shieldCooldown = player.shieldCooldownMax == null ? SHIELD_COOLDOWN : player.shieldCooldownMax;
-			}
-		} else if (player.shieldCooldown > 0) {
-			player.shieldCooldown = Math.max(0, player.shieldCooldown - dt);
-		}
-		const baseSpeed = player.baseSpeed == null ? player.speed : player.baseSpeed;
-		const effectiveSpeed = player.perfumeSlowTimer > 0 ? baseSpeed * 0.72 : baseSpeed;
-		let moveX = 0;
-		let moveY = 0;
-		if (hasKey(KEY_LEFT)) moveX -= 1;
-		if (hasKey(KEY_RIGHT)) moveX += 1;
-		if (hasKey(KEY_UP)) moveY -= 1;
-		if (hasKey(KEY_DOWN)) moveY += 1;
-		if (pointer.down) moveY -= 0.4;
-		if (moveX || moveY) {
-			const len = Math.hypot(moveX, moveY) || 1;
-			const dx = (moveX / len) * effectiveSpeed * dt;
-			const dy = (moveY / len) * effectiveSpeed * dt;
-			player.x = clamp(player.x + dx, 60, canvas.width - 60);
-			player.y = clamp(player.y + dy, 60, canvas.height - 60);
-			if (Math.abs(moveX) > 0.1) player.dir = moveX > 0 ? 1 : -1;
-		}
-		resolvePlayerCoverCollision(player, prevX, prevY);
-	}
+	// updatePlayer ist jetzt in src/player/update.js ausgelagert
 
 	// City Update Context - für das ausgelagerte Modul
 	const cityUpdateCtx = {
@@ -3636,1472 +2202,98 @@ function bootGame() {
 		updateCityModule(cityUpdateCtx, dt);
 	}
 
-function isPointInsideCover(rock, x, y, padX = 0, padY = 0) {
-		if (rock.collisionMask) {
-			const mask = rock.collisionMask;
-			const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-			const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-			const width = mask.worldWidth;
-			const height = mask.worldHeight;
-			const localX = x - centerX + width * 0.5;
-			const localY = y - centerY + height * 0.5;
-			if (localX < 0 || localY < 0 || localX > width || localY > height) return false;
-			const px = Math.floor(localX * mask.scaleX);
-			const py = Math.floor(localY * mask.scaleY);
-			if (px < 0 || px >= mask.width || py < 0 || py >= mask.height) return false;
-			const expandX = Math.max(0, Math.ceil(Math.max(0, padX) * mask.scaleX));
-			const expandY = Math.max(0, Math.ceil(Math.max(0, padY) * mask.scaleY));
-			const startX = Math.max(0, px - expandX);
-			const endX = Math.min(mask.width - 1, px + expandX);
-			const startY = Math.max(0, py - expandY);
-			const endY = Math.min(mask.height - 1, py + expandY);
-			for (let iy = startY; iy <= endY; iy++) {
-				const rowOffset = iy * mask.width;
-				for (let ix = startX; ix <= endX; ix++) {
-					if (mask.data[rowOffset + ix]) return true;
-				}
-			}
-			return false;
-		}
-		const baseRadiusX = rock.radiusX == null ? 80 : rock.radiusX;
-		const baseRadiusY = rock.radiusY == null ? 60 : rock.radiusY;
-		const padBaseX = rock.padX == null ? 0 : rock.padX;
-		const padBaseY = rock.padY == null ? 0 : rock.padY;
-		const radiusX = Math.max(1, baseRadiusX + padBaseX + padX);
-		const radiusY = Math.max(1, baseRadiusY + padBaseY + padY);
-		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-		const dx = x - centerX;
-		const dy = y - centerY;
-		const nx = dx / radiusX;
-		const ny = dy / radiusY;
-		return nx * nx + ny * ny < 1;
+	// Cover-Rock-Funktionen - delegieren an das Cover-Rock-Modul (Wrapper für Hoisting)
+	function isPointInsideCover(rock, x, y, padX = 0, padY = 0) {
+		return coverRocks.isPointInsideCover(rock, x, y, padX, padY);
 	}
-
-function computeCoverSurfaceNormal(rock, x, y) {
-		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-		if (rock.collisionMask) {
-			const mask = rock.collisionMask;
-			const localX = x - centerX + mask.worldWidth * 0.5;
-			const localY = y - centerY + mask.worldHeight * 0.5;
-			const px = Math.floor(localX * mask.scaleX);
-			const py = Math.floor(localY * mask.scaleY);
-			const sample = (ix, iy) => {
-				if (ix < 0 || ix >= mask.width || iy < 0 || iy >= mask.height) return 0;
-				return mask.data[iy * mask.width + ix] ? 1 : 0;
-			};
-			let dx = sample(px + 1, py) - sample(px - 1, py);
-			let dy = sample(px, py + 1) - sample(px, py - 1);
-			let nx = -dx;
-			let ny = -dy;
-			let len = Math.hypot(nx, ny);
-			if (len < 1e-3) {
-				nx = x - centerX;
-				ny = y - centerY;
-				len = Math.hypot(nx, ny);
-			}
-			if (len < 1e-3) return { x: 1, y: 0 };
-			return { x: nx / len, y: ny / len };
-		}
-		const nx = x - centerX;
-		const ny = y - centerY;
-		const len = Math.hypot(nx, ny);
-		if (len < 1e-3) return { x: 1, y: 0 };
-		return { x: nx / len, y: ny / len };
+	function computeCoverSurfaceNormal(rock, x, y) {
+		return coverRocks.computeCoverSurfaceNormal(rock, x, y);
 	}
-
-function resolveCoverCollisionForPoint(rock, currX, currY, prevX, prevY) {
-		// Project the moving point back to the first safe position outside the sprite mask.
-		if (!isPointInsideCover(rock, currX, currY)) return null;
-		let insideX = currX;
-		let insideY = currY;
-		let outsideX = prevX;
-		let outsideY = prevY;
-		if (isPointInsideCover(rock, outsideX, outsideY)) {
-			const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-			const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-			const dirX = insideX - centerX;
-			const dirY = insideY - centerY;
-			const len = Math.hypot(dirX, dirY) || 1;
-			let step = 0;
-			let found = false;
-			while (step < 96) {
-				outsideX = insideX + (dirX / len) * (step + 2);
-				outsideY = insideY + (dirY / len) * (step + 2);
-				if (!isPointInsideCover(rock, outsideX, outsideY)) {
-					found = true;
-					break;
-				}
-				step += 4;
-			}
-			if (!found) {
-				const safeRadiusX = Math.max(rock.radiusX == null ? 80 : rock.radiusX, rock.width == null ? 0 : rock.width * 0.5);
-				const safeRadiusY = Math.max(rock.radiusY == null ? 60 : rock.radiusY, rock.height == null ? 0 : rock.height * 0.5);
-				outsideX = centerX + (dirX / len) * (safeRadiusX + 80);
-				outsideY = centerY + (dirY / len) * (safeRadiusY + 80);
-			}
-		}
-		for (let i = 0; i < 8; i++) {
-			const midX = (insideX + outsideX) * 0.5;
-			const midY = (insideY + outsideY) * 0.5;
-			if (isPointInsideCover(rock, midX, midY)) {
-				insideX = midX;
-				insideY = midY;
-			} else {
-				outsideX = midX;
-				outsideY = midY;
-			}
-		}
-		let resolvedX = outsideX;
-		let resolvedY = outsideY;
-		if (isPointInsideCover(rock, resolvedX, resolvedY)) {
-			const fallbackNormal = computeCoverSurfaceNormal(rock, insideX, insideY);
-			resolvedX -= fallbackNormal.x * 2;
-			resolvedY -= fallbackNormal.y * 2;
-		}
-		const normal = computeCoverSurfaceNormal(rock, insideX, insideY);
-		return {
-			collided: true,
-			x: resolvedX,
-			y: resolvedY,
-			normal,
-			hitPointX: insideX,
-			hitPointY: insideY
-		};
+	function resolveCoverCollisionForPoint(rock, currX, currY, prevX, prevY) {
+		return coverRocks.resolveCoverCollisionForPoint(rock, currX, currY, prevX, prevY);
 	}
-
-// Encourage AI agents to step around the rock instead of sticking to its surface.
-function applyCoverAvoidance(entity, opts = {}) {
-	if (state.coverRocks.length === 0) return false;
-	const padX = opts.padX == null ? 60 : opts.padX;
-	const padY = opts.padY == null ? 52 : opts.padY;
-	const detourDuration = opts.detourDuration == null ? 820 : opts.detourDuration;
-	const detourSpeed = opts.detourSpeed;
-	const pushSpeed = opts.pushSpeed;
-	const cooldown = opts.cooldown == null ? 420 : opts.cooldown;
-	const allowHorizontal = opts.allowHorizontal !== false;
-	for (const rock of state.coverRocks) {
-		if (!rock.landed) continue;
-		const alreadyDetouring = entity.coverDetourTimer != null && entity.coverDetourTimer > 0;
-		if (!alreadyDetouring && entity.coverDetourCooldown > 0) continue;
-		if (!isPointInsideCover(rock, entity.x, entity.y, padX, padY)) continue;
-		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-		if (alreadyDetouring && entity.coverDetourRockX != null) {
-			const entrySide = entity.coverDetourEntrySide == null ? (entity.x >= entity.coverDetourRockX ? 1 : -1) : entity.coverDetourEntrySide;
-			const relX = entity.x - entity.coverDetourRockX;
-			const storedPad = entity.coverDetourPadX == null ? padX : Math.max(entity.coverDetourPadX, padX);
-			const padMargin = Math.max(22, storedPad * 0.6);
-			const radius = entity.coverDetourRockRadiusX == null
-				? Math.max(storedPad, rock.radiusX == null ? (rock.width == null ? padX : rock.width * 0.5) : rock.radiusX)
-				: entity.coverDetourRockRadiusX;
-			const clear = radius + padMargin;
-			if ((entrySide < 0 && relX > clear) || (entrySide > 0 && relX < -clear)) continue;
-		}
-		let dirY = entity.y >= centerY ? 1 : -1;
-		if (Math.abs(entity.y - centerY) < 12) dirY = dirY === 0 ? (Math.random() < 0.5 ? -1 : 1) : dirY;
-		const dirX = allowHorizontal ? (entity.x >= centerX ? 1 : -1) : 0;
-		entity.coverDetourTimer = Math.max(entity.coverDetourTimer || 0, detourDuration);
-		entity.coverDetourDirY = dirY === 0 ? (Math.random() < 0.5 ? -1 : 1) : dirY;
-		entity.coverDetourDirX = dirX;
-		entity.coverDetourRockX = centerX;
-		const baseRadiusX = rock.radiusX == null ? (rock.width == null ? padX : rock.width * 0.5) : rock.radiusX;
-		entity.coverDetourRockRadiusX = entity.coverDetourRockRadiusX == null ? Math.max(baseRadiusX, padX) : Math.max(entity.coverDetourRockRadiusX, Math.max(baseRadiusX, padX));
-		entity.coverDetourEntrySide = dirX === 0 ? (entity.x >= centerX ? 1 : -1) : dirX;
-		entity.coverDetourPadX = Math.max(entity.coverDetourPadX == null ? padX : entity.coverDetourPadX, padX);
-		if (detourSpeed != null) entity.coverDetourSpeed = detourSpeed;
-		else if (entity.coverDetourSpeed == null) entity.coverDetourSpeed = Math.max(entity.speed || 0.22, 0.18);
-		if (allowHorizontal) {
-			if (pushSpeed != null) entity.coverDetourPushSpeed = pushSpeed;
-			else if (entity.coverDetourPushSpeed == null) entity.coverDetourPushSpeed = (entity.coverDetourSpeed || 0.22) * 0.6;
-		} else {
-			entity.coverDetourDirX = 0;
-		}
-		if (!alreadyDetouring) {
-			const priorCooldown = entity.coverDetourCooldown == null ? 0 : entity.coverDetourCooldown;
-			entity.coverDetourCooldown = Math.max(priorCooldown, cooldown);
-		} else if (entity.coverDetourCooldown != null && entity.coverDetourCooldown < cooldown) {
-			entity.coverDetourCooldown = cooldown;
-		}
-		return true;
+	function applyCoverAvoidance(entity, opts = {}) {
+		return coverRocks.applyCoverAvoidance(entity, opts);
 	}
-	return false;
-}
-
-function processCoverDetour(entity, dt, bounds = {}) {
-	if (!entity.coverDetourTimer || entity.coverDetourTimer <= 0) return;
-	entity.coverDetourTimer = Math.max(0, entity.coverDetourTimer - dt);
-	const verticalSpeed = entity.coverDetourSpeed == null ? Math.max(entity.speed || 0.22, 0.18) : entity.coverDetourSpeed;
-	const horizontalSpeed = entity.coverDetourPushSpeed == null ? verticalSpeed * 0.6 : entity.coverDetourPushSpeed;
-	let dirX = entity.coverDetourDirX;
-	if (dirX) {
-		const storedPad = entity.coverDetourPadX == null ? 60 : entity.coverDetourPadX;
-		const margin = Math.max(22, storedPad * 0.6);
-		const rockX = entity.coverDetourRockX == null ? null : entity.coverDetourRockX;
-		const rockRadius = entity.coverDetourRockRadiusX == null ? Math.max(72, storedPad) : entity.coverDetourRockRadiusX;
-		if (rockX != null) {
-			const distance = entity.x - rockX;
-			const entrySide = entity.coverDetourEntrySide == null ? (distance >= 0 ? 1 : -1) : entity.coverDetourEntrySide;
-			const clearDistance = rockRadius + margin;
-			if ((entrySide < 0 && distance > clearDistance) || (entrySide > 0 && distance < -clearDistance)) {
-				entity.coverDetourDirX = 0;
-				dirX = 0;
-			}
-		}
+	function processCoverDetour(entity, dt, bounds = {}) {
+		return coverRocks.processCoverDetour(entity, dt, bounds);
 	}
-	if (dirX) entity.x += dirX * horizontalSpeed * dt;
-	if (entity.coverDetourDirY) entity.y += entity.coverDetourDirY * verticalSpeed * dt;
-	if (bounds.minX != null) entity.x = Math.max(bounds.minX, entity.x);
-	if (bounds.maxX != null) entity.x = Math.min(bounds.maxX, entity.x);
-	if (bounds.minY != null) {
-		if (entity.y <= bounds.minY + 2 && entity.coverDetourDirY < 0) entity.coverDetourDirY = 1;
-		entity.y = Math.max(bounds.minY, entity.y);
+	function getRitterfischLaneTarget(foe, rock, minY, maxY) {
+		return coverRocks.getRitterfischLaneTarget(foe, rock, minY, maxY);
 	}
-	if (bounds.maxY != null) {
-		if (entity.y >= bounds.maxY - 2 && entity.coverDetourDirY > 0) entity.coverDetourDirY = -1;
-		entity.y = Math.min(bounds.maxY, entity.y);
+	function resolvePlayerCoverCollision(player, prevX, prevY) {
+		return coverRocks.resolvePlayerCoverCollision(player, prevX, prevY);
 	}
-	if (entity.coverDetourTimer <= 0) {
-		entity.coverDetourDirX = null;
-		entity.coverDetourDirY = null;
-		const minCooldown = entity.type === "ritterfisch" ? 520 : 640;
-		if (entity.coverDetourCooldown == null || entity.coverDetourCooldown < minCooldown) entity.coverDetourCooldown = minCooldown;
+	function resolveFoeCoverCollision(foe, prevX, prevY) {
+		return coverRocks.resolveFoeCoverCollision(foe, prevX, prevY);
 	}
-}
-
-function getRitterfischLaneTarget(foe, rock, minY, maxY) {
-	const baseLane = foe.anchorY == null ? foe.baseY : foe.anchorY;
-	let target = baseLane + Math.sin(foe.sway * 0.45) * canvas.height * 0.035;
-	if (rock && rock.landed) {
-		const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-		const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-		const radiusX = rock.radiusX == null ? (rock.width == null ? 80 : rock.width * 0.5) : rock.radiusX;
-		const radiusY = rock.radiusY == null ? (rock.height == null ? 60 : rock.height * 0.5) : rock.radiusY;
-		const topEdge = centerY - radiusY;
-		const laneA = clamp(topEdge - Math.max(26, radiusY * 0.35), minY, maxY);
-		const laneB = clamp(topEdge - Math.max(50, radiusY * 0.6), minY, maxY);
-		const useUpperLane = foe.lanePick == null ? Math.random() < 0.5 : foe.lanePick === 1;
-		const preferredLane = useUpperLane ? laneB : laneA;
-		const nearRock = foe.x < centerX + radiusX + 110 && foe.x > centerX - radiusX - 60;
-		if (nearRock) target = preferredLane;
-	}
-	return clamp(target, minY, maxY);
-}
-
-function resolvePlayerCoverCollision(player, prevX, prevY) {
-		if (state.coverRocks.length === 0) return;
-		let lastSafeX = prevX;
-		let lastSafeY = prevY;
-		for (const rock of state.coverRocks) {
-			if (!rock.landed) continue;
-			const collision = resolveCoverCollisionForPoint(rock, player.x, player.y, lastSafeX, lastSafeY);
-			if (!collision) continue;
-			player.x = clamp(collision.x, 60, canvas.width - 60);
-			player.y = clamp(collision.y, 60, canvas.height - 60);
-			lastSafeX = player.x;
-			lastSafeY = player.y;
-		}
-	}
-
-function resolveFoeCoverCollision(foe, prevX, prevY) {
-		if (state.coverRocks.length === 0) {
-			foe.coverCollisionDirection = null;
-			return false;
-		}
-		for (const rock of state.coverRocks) {
-			if (!rock.landed) continue;
-			const collision = resolveCoverCollisionForPoint(rock, foe.x, foe.y, prevX, prevY);
-			if (!collision) continue;
-			foe.x = collision.x;
-			foe.y = collision.y;
-			const normal = collision.normal || { x: 0, y: 0 };
-			let direction = null;
-			if (Math.abs(normal.x) > Math.abs(normal.y)) direction = normal.x > 0 ? "right" : "left";
-			else direction = normal.y > 0 ? "bottom" : "top";
-			foe.coverCollisionDirection = direction;
-			return true;
-		}
-		foe.coverCollisionDirection = null;
-		return false;
-	}
-
-	function updateBubbles(dt) {
-		for (const bubble of state.bubbles) {
-			bubble.y -= bubble.spd * dt;
-			if (bubble.y < -10) {
-				bubble.y = canvas.height + 10;
-				bubble.x = Math.random() * canvas.width;
-			}
-		}
-	}
-
-	function updateCoverRocks(dt) {
-		if (state.coverRocks.length === 0) return;
-		const player = state.player;
-		for (const rock of state.coverRocks) {
-			if (!rock.collisionMask && spriteReady(SPRITES.coverRock)) {
-				rock.collisionMask = getCoverRockCollisionMask(SPRITES.coverRock, rock.width, rock.height);
-			}
-			if (!rock.landed && state.levelIndex === 2) {
-				const levelGround = getLevel3GroundLine();
-				if (levelGround != null) {
-					const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
-					const minY = canvas.height * 0.22;
-					rock.groundLine = levelGround;
-					const maxY = Math.max(minY, rock.groundLine - radiusY);
-					rock.targetY = clamp(rock.groundLine - radiusY, minY, maxY);
-				}
-			}
-			if (rock.damageCooldown > 0) rock.damageCooldown = Math.max(0, rock.damageCooldown - dt);
-			if (rock.impactTimer > 0 && rock.landed) rock.impactTimer = Math.max(0, rock.impactTimer - dt);
-			if (rock.hitPulse > 0) rock.hitPulse = Math.max(0, rock.hitPulse - dt);
-			if (rock.landed) continue;
-			if (rock.delay > 0) {
-				rock.delay = Math.max(0, rock.delay - dt);
-				continue;
-			}
-			const gravity = rock.gravity == null ? 0.0011 : rock.gravity;
-			const maxSpeed = rock.maxFallSpeed == null ? 0.68 : rock.maxFallSpeed;
-			rock.vy = (rock.vy || 0) + gravity * dt;
-			if (rock.vy > maxSpeed) rock.vy = maxSpeed;
-			rock.y += rock.vy * dt;
-			const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
-			if (rock.y + radiusY >= rock.groundLine) {
-				rock.y = rock.targetY == null ? rock.groundLine - radiusY : rock.targetY;
-				rock.vy = 0;
-				rock.landed = true;
-				rock.impactTimer = rock.impactTimer == null || rock.impactTimer <= 0 ? 520 : rock.impactTimer;
-				continue;
-			}
-			const baseRadiusX = rock.radiusX == null ? 80 : rock.radiusX;
-			const padX = rock.padX == null ? 42 : rock.padX;
-			const padY = rock.padY == null ? 50 : rock.padY;
-			const padLeft = rock.padLeft == null ? padX : rock.padLeft;
-			const padRight = rock.padRight == null ? padX : rock.padRight;
-			const padTop = rock.padTop == null ? padY : rock.padTop;
-			const padBottom = rock.padBottom == null ? padY : rock.padBottom;
-			const centerX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-			const centerY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-			const dx = player.x - centerX;
-			const dy = player.y - centerY;
-			const guardRadiusX = dx < 0 ? Math.max(20, baseRadiusX + padLeft) : Math.max(20, baseRadiusX + padRight);
-			const guardRadiusY = dy < 0 ? Math.max(20, radiusY + padTop) : Math.max(20, radiusY + padBottom);
-			const guardX = Math.max(46, guardRadiusX * 0.75);
-			const guardY = Math.max(52, guardRadiusY * 0.8);
-			const nx = dx / guardX;
-			const ny = dy / guardY;
-			if (nx * nx + ny * ny < 1) {
-				if ((rock.damageCooldown || 0) <= 0) {
-					damagePlayer(1);
-					rock.damageCooldown = 900;
-				}
-				const pushDir = dx >= 0 ? 1 : -1;
-				const pushRadius = pushDir < 0 ? Math.max(20, baseRadiusX + padLeft) : Math.max(20, baseRadiusX + padRight);
-				player.x = clamp(centerX + pushDir * (pushRadius + 50), 60, canvas.width - 60);
-				player.y = clamp(player.y, 60, canvas.height - 60);
-			}
-		}
-	}
-
 	function findCoverRockHit(x, y, padX = 0, padY = 0) {
-		if (state.coverRocks.length === 0) return null;
-		for (const rock of state.coverRocks) {
-			if (!rock.landed) continue;
-			if (isPointInsideCover(rock, x, y, padX, padY)) return rock;
-		}
-		return null;
+		return coverRocks.findCoverRockHit(x, y, padX, padY);
+	}
+	function registerCoverRockImpact(rock, strength = 1) {
+		return coverRocks.registerCoverRockImpact(rock, strength);
 	}
 
-	function registerCoverRockImpact(rock, strength = 1) {
-		if (!rock) return;
-		const pulse = rock.hitPulse == null ? 0 : rock.hitPulse;
-		const added = 140 * clamp(strength, 0.6, 2.4);
-		rock.hitPulse = Math.min(520, pulse + added);
-	}
+	// updateBubbles ist jetzt in src/game/pickups.js
+	// updateCoverRocks ist jetzt in src/game/coverRocks.js
 
 	function update(dt) {
 		state.frameDt = dt;
-		updatePlayer(dt);
-		updateCoralAllies(dt);
-		updateCoralEffects(dt);
-		updateBubbles(dt);
-		updateCoverRocks(dt);
-		updateFoes(dt);
-		updateShots(dt);
-		updateFoeArrows(dt);
-		updateHealPickups(dt);
-		updateSymbolDrops(dt);
-		updateCoinDrops(dt);
-		updateTsunamiWave(dt);
-		updateBoss(dt);
-		updateBossAttacks(dt);
-		handleShotFoeHits();
-		handleShotFoeArrowHits();
-		handleShotTorpedoHits();
-		handleShotBossHits();
-		handlePlayerFoeCollisions();
-		handlePlayerFoeArrowCollisions();
-		handlePlayerTorpedoCollisions();
-		handlePlayerFinSweepCollisions();
-		handlePlayerWakeWaveCollisions();
-		handlePlayerWhirlpoolEffects();
-		handlePlayerCoinExplosions();
-		handlePlayerDiamondBeams();
-		handlePlayerTreasureWaves();
-		handlePlayerCardBoomerangs();
-		handlePlayerCrownColumns();
-		handlePlayerKatapultCollisions();
-		handlePlayerShockwaveCollisions();
-		handlePlayerSpeedboatCollisions();
-		handlePlayerPerfumeOrbCollisions();
-		handlePlayerFragranceCloudCollisions();
-		handlePlayerHealPickups();
-		handlePlayerCoinDrops();
-		handlePlayerSymbolDrops();
-		handlePlayerBossCollision();
+		playerUpdater.updatePlayer(dt);
+		abilities.updateCoralAllies(dt);
+		pickups.updateCoralEffects(dt);
+		pickups.updateBubbles(dt);
+		coverRocks.updateCoverRocks(dt);
+		foeUpdater.updateFoes(dt);
+		playerUpdater.updateShots(dt);
+		foeArrows.updateFoeArrows(dt);
+		pickups.updateHealPickups(dt);
+		pickups.updateSymbolDrops(dt);
+		pickups.updateCoinDrops(dt);
+		abilities.updateTsunamiWave(dt);
+		bossUpdater.updateBoss(dt);
+		bossUpdater.updateBossAttacks(dt);
+		foeCollision.handleShotFoeHits();
+		foeCollision.handleShotFoeArrowHits();
+		foeCollision.handleShotTorpedoHits();
+		bossCollision.handleShotBossHits();
+		foeCollision.handlePlayerFoeCollisions();
+		foeCollision.handlePlayerFoeArrowCollisions();
+		bossCollision.handlePlayerTorpedoCollisions();
+		bossCollision.handlePlayerFinSweepCollisions();
+		bossCollision.handlePlayerWakeWaveCollisions();
+		bossCollision.handlePlayerWhirlpoolEffects();
+		bossCollision.handlePlayerCoinExplosions();
+		bossCollision.handlePlayerDiamondBeams();
+		bossCollision.handlePlayerTreasureWaves();
+		bossCollision.handlePlayerCardBoomerangs();
+		bossCollision.handlePlayerCrownColumns();
+		bossCollision.handlePlayerKatapultCollisions();
+		bossCollision.handlePlayerShockwaveCollisions();
+		bossCollision.handlePlayerSpeedboatCollisions();
+		bossCollision.handlePlayerPerfumeOrbCollisions();
+		bossCollision.handlePlayerFragranceCloudCollisions();
+		foeCollision.handlePlayerHealPickups();
+		foeCollision.handlePlayerCoinDrops();
+		foeCollision.handlePlayerSymbolDrops();
+		bossCollision.handlePlayerBossCollision();
 		maybeSpawnLevelThreeCoverRock();
 		state.elapsed += dt;
 	}
 
-	function updateBoss(dt) {
-		const boss = state.boss;
-		if (state.pendingSymbolAdvance) return;
-		if (!boss.active) {
-			if (state.levelScore >= state.unlockBossScore) activateBoss();
-			else return;
-		}
+	// ============================================================
+	// updateBoss ausgelagert nach src/boss/update.js
+	// updateFoes ausgelagert nach src/foes/update.js
+	// updateShots ist jetzt in src/player/update.js ausgelagert
+	// ============================================================
 
-		if (boss.coverDetourCooldown > 0) boss.coverDetourCooldown = Math.max(0, boss.coverDetourCooldown - dt);
-		boss.pulse += dt * 0.0032;
-		const targetX = boss.entryTargetX == null ? canvas.width * 0.72 : boss.entryTargetX;
-		const targetY = boss.entryTargetY == null ? canvas.height * 0.48 : boss.entryTargetY;
-		if (boss.entering) {
-			const travelSpeed = boss.entrySpeed == null ? Math.max(boss.speed * 1.2, 0.24) : boss.entrySpeed;
-			const dx = targetX - boss.x;
-			const dy = targetY - boss.y;
-			const dist = Math.hypot(dx, dy);
-			const step = travelSpeed * dt;
-			const sway = Math.sin(boss.pulse * 0.8) * 0.12;
-			if (dist <= step || dist === 0) {
-				boss.x = targetX;
-				boss.y = targetY;
-				boss.entering = false;
-				boss.entryProgress = 1;
-				boss.dir = -1;
-				boss.attackTimer = Math.max(boss.attackTimer, 900);
-			} else {
-				const nx = dx / dist;
-				const ny = dy / dist;
-				boss.x += nx * step;
-				boss.y += ny * step + sway * dt;
-				boss.dir = nx < 0 ? -1 : 1;
-				boss.entryProgress = Math.min(1, (boss.entryProgress || 0) + step / Math.max(dist, 1));
-			}
-			return;
-		}
+	// updateFoeArrows ausgelagert nach src/foes/arrows.js
+	// updateHealPickups, updateCoralEffects, updateSymbolDrops, updateCoinDrops
+	// sind jetzt in src/game/pickups.js ausgelagert
 
-		let verticalMin = boss.verticalMin == null ? canvas.height * 0.24 : boss.verticalMin;
-		if (state.levelIndex === 2) {
-			const hpBarBottom = 26 + 18 + 6;
-			const spriteKey = boss.spriteKey || "boss";
-			const sprite = SPRITES[spriteKey] || SPRITES.boss;
-			const scale = boss.spriteScale == null ? 0.22 : boss.spriteScale;
-			const offsetY = boss.spriteOffsetY == null ? -12 : boss.spriteOffsetY;
-			const drawH = spriteReady(sprite) ? sprite.naturalHeight * scale : 180 * scale;
-			const topSafe = -120;
-			const minYFromBar = hpBarBottom + topSafe + drawH * 0.5 - offsetY;
-			verticalMin = Math.max(verticalMin, minYFromBar);
-		}
-		let verticalMax = boss.verticalMax == null ? canvas.height * 0.68 : boss.verticalMax;
-		const coverRock = state.coverRocks.find(rock => rock.landed);
-		if (coverRock) {
-			const rockRadiusY = coverRock.radiusY == null ? (coverRock.height == null ? 60 : coverRock.height * 0.5) : coverRock.radiusY;
-			const rockBottom = coverRock.y + rockRadiusY;
-			verticalMax = Math.min(verticalMax, rockBottom - 6);
-		}
-		const verticalTracking = boss.verticalTracking == null ? 0.0024 : boss.verticalTracking;
-		const verticalCenter = (verticalMin + verticalMax) * 0.5;
-		let verticalOscSpeed = boss.verticalOscSpeed == null ? 0 : boss.verticalOscSpeed;
-		let verticalOscAmp = boss.verticalOscAmp == null ? 0 : boss.verticalOscAmp;
-		let verticalOffset = boss.verticalOffset == null ? 0 : boss.verticalOffset;
-		if (state.levelIndex === 2) {
-			const span = Math.max(40, verticalMax - verticalMin);
-			verticalOffset = span * 0.06;
-			verticalOscAmp = span * 0.5;
-			if (!verticalOscSpeed) verticalOscSpeed = 0.0024;
-		}
-		boss.verticalOscPhase = (boss.verticalOscPhase == null ? Math.random() * TAU : boss.verticalOscPhase) + verticalOscSpeed * dt;
-		const verticalOsc = verticalOscAmp > 0 ? Math.sin(boss.verticalOscPhase) * verticalOscAmp : 0;
-		const verticalTargetY = clamp(verticalCenter + verticalOffset + verticalOsc, verticalMin, verticalMax);
-		const bob = Math.sin(boss.pulse * 0.8) * 0.04;
-		boss.y = clamp(boss.y + (verticalTargetY - boss.y) * verticalTracking * dt + bob * dt, verticalMin, verticalMax);
-
-		const horizontalMin = boss.horizontalMin == null ? canvas.width * 0.52 : boss.horizontalMin;
-		const horizontalMax = boss.horizontalMax == null ? canvas.width * 0.9 : boss.horizontalMax;
-		const horizontalTracking = boss.horizontalTracking == null ? 0.0024 : boss.horizontalTracking;
-		const oscSpeed = boss.horizontalOscSpeed == null ? 0.0026 : boss.horizontalOscSpeed;
-		const rawOscAmp = boss.horizontalOscAmp == null ? canvas.width * 0.08 : boss.horizontalOscAmp;
-		const span = Math.max(40, horizontalMax - horizontalMin);
-		const baseMax = Math.max(16, span * 0.35);
-		const baseAmp = Math.min(Math.max(Math.abs(rawOscAmp), 16), baseMax);
-		const midCenter = (horizontalMin + horizontalMax) * 0.5;
-		const defaultEdgePad = Math.max(8, span * 0.04);
-		const rawEdgePad = boss.horizontalEdgePad;
-		const edgePad = rawEdgePad == null ? defaultEdgePad : clamp(rawEdgePad, 0, Math.max(0, span * 0.48));
-		const forwardLimit = Math.max(12, horizontalMax - midCenter - edgePad);
-		const backwardLimit = Math.max(12, midCenter - horizontalMin - edgePad);
-		const forwardBoost = boss.horizontalForwardBoost == null ? 2.2 : boss.horizontalForwardBoost;
-		const backwardBoost = boss.horizontalBackBoost == null ? 1.25 : boss.horizontalBackBoost;
-		const scaledForward = Math.min(baseAmp * forwardBoost, Math.max(24, span * 0.5));
-		const scaledBackward = Math.min(baseAmp * backwardBoost, Math.max(24, span * 0.38));
-		const forwardAmp = Math.max(16, Math.min(scaledForward, forwardLimit));
-		const backwardAmp = Math.max(16, Math.min(scaledBackward, backwardLimit));
-		const biasRaw = boss.horizontalForwardBias == null ? canvas.width * 0.1 : boss.horizontalForwardBias;
-		const biasMax = Math.max(0, horizontalMax - (midCenter + forwardAmp) - edgePad);
-		const forwardBias = clamp(biasRaw, 0, biasMax);
-		boss.oscPhase = (boss.oscPhase == null ? 0 : boss.oscPhase) + oscSpeed * dt;
-		const osc = Math.sin(boss.oscPhase);
-		const amp = osc >= 0 ? forwardAmp : backwardAmp;
-		const bias = Math.max(0, osc) * forwardBias;
-		const desiredX = clamp(midCenter + osc * amp + bias, horizontalMin, horizontalMax);
-		const deltaX = desiredX - boss.x;
-		boss.x = clamp(boss.x + deltaX * horizontalTracking * dt, horizontalMin, horizontalMax);
-		if (Math.abs(deltaX) > 0.6) boss.dir = deltaX > 0 ? 1 : -1;
-
-		applyCoverAvoidance(boss, {
-			padX: 96,
-			padY: 88,
-			detourDuration: 920,
-			detourSpeed: boss.speed == null ? 0.28 : Math.max(boss.speed * 0.82, 0.24),
-			pushSpeed: 0.3,
-			cooldown: 640
-		});
-		processCoverDetour(boss, dt, {
-			minX: horizontalMin,
-			maxX: horizontalMax,
-			minY: verticalMin,
-			maxY: verticalMax
-		});
-
-		const enraged = boss.hp <= boss.maxHp * 0.35;
-		const attackDelay = (enraged ? 1400 : 2200) + Math.random() * 600;
-		boss.attackTimer -= dt;
-		const bossCfg = state.levelConfig && state.levelConfig.boss;
-		const pattern = bossCfg && bossCfg.pattern;
-		if (pattern === "arrowVolley") {
-			if (boss.attackTimer <= 0) {
-				const nextAttack = boss.lastAttack === "perfume-volley" ? "fragrance-wave" : "perfume-volley";
-				if (nextAttack === "perfume-volley") spawnBossPerfumeVolley();
-				else spawnBossFragranceWave();
-				boss.lastAttack = nextAttack;
-				const cooldown = nextAttack === "perfume-volley"
-					? (bossCfg && bossCfg.volleyCooldown != null ? bossCfg.volleyCooldown : 2200)
-					: (bossCfg && bossCfg.cloudCooldown != null ? bossCfg.cloudCooldown : 2800);
-				boss.attackTimer = cooldown + Math.random() * 380;
-			}
-			return;
-		}
-		if (pattern === "regatta") {
-			if (boss.attackTimer <= 0) {
-				const config = bossCfg || {};
-				const enragedRegatta = boss.hp <= boss.maxHp * 0.45;
-				const baseOptions = ["harbor-sog", "katapult", "anchor", "regatta-rush"];
-				let pool = baseOptions.filter(option => option !== boss.lastAttack);
-				if (pool.length === 0) pool = baseOptions.slice();
-				if (enragedRegatta) {
-					pool.push("katapult", "regatta-rush");
-				}
-				const nextAttack = pool[Math.floor(Math.random() * pool.length)];
-				let cooldown;
-				switch (nextAttack) {
-					case "harbor-sog":
-						spawnYachtwalHarborSog();
-						cooldown = config.harborCooldown != null ? config.harborCooldown : 4800;
-						break;
-					case "katapult":
-						spawnYachtwalKielwasserKatapult();
-						cooldown = config.katapultCooldown != null ? config.katapultCooldown : 3600;
-						break;
-					case "anchor":
-						spawnYachtwalAnchorDonner();
-						cooldown = config.anchorCooldown != null ? config.anchorCooldown : 5400;
-						break;
-					default:
-						spawnYachtwalRegattaRaserei();
-						cooldown = config.regattaRushCooldown != null ? config.regattaRushCooldown : 4400;
-						break;
-				}
-				if (enragedRegatta) cooldown *= 0.82;
-				boss.lastAttack = nextAttack;
-				boss.attackTimer = cooldown + Math.random() * 420;
-			}
-			return;
-		}
-		if (pattern === "cashfish") {
-			state.cashfishUltLock = Math.max(0, (state.cashfishUltLock || 0) - dt);
-			if (!state.cashfishUltHistory) state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
-			if (boss.attackTimer <= 0) {
-				const config = bossCfg || {};
-				const enragedCashfish = boss.hp <= boss.maxHp * 0.45;
-				const baseOptions = ["coin-salvo", "diamond-lattice", "card-shock"];
-				let pool = baseOptions.filter(option => option !== boss.lastAttack);
-				if (pool.length === 0) pool = baseOptions.slice();
-				if (enragedCashfish) {
-					pool.push("coin-salvo", "card-shock");
-					const hist = state.cashfishUltHistory;
-					if (state.cashfishUltLock <= 0) {
-						if (!hist.tsunamiUsed || Math.random() < 0.35) pool.push("treasure-tsunami");
-						if (!hist.crownUsed || Math.random() < 0.35) pool.push("crown-ledger");
-					}
-				}
-				pool = pool.filter((option, index, arr) => option !== boss.lastAttack && arr.indexOf(option) === index);
-				if (pool.length === 0) pool = baseOptions.slice();
-				const nextAttack = pool[Math.floor(Math.random() * pool.length)];
-				let cooldown;
-				switch (nextAttack) {
-					case "coin-salvo":
-						spawnCashfishCoinSalvo();
-						cooldown = config.salvoCooldown == null ? 2700 : config.salvoCooldown;
-						break;
-					case "diamond-lattice":
-						spawnCashfishDiamondLattice();
-						cooldown = config.latticeCooldown == null ? 3600 : config.latticeCooldown;
-						break;
-					case "treasure-tsunami":
-						spawnCashfishTreasureTsunami();
-						cooldown = config.tsunamiCooldown == null ? 5600 : config.tsunamiCooldown;
-						state.cashfishUltLock = config.tsunamiLock == null ? 6400 : config.tsunamiLock;
-						state.cashfishUltHistory.tsunamiUsed = true;
-						break;
-					case "crown-ledger":
-						spawnCashfishCrownFinale();
-						cooldown = config.crownCooldown == null ? 6200 : config.crownCooldown;
-						state.cashfishUltLock = config.crownLock == null ? 7000 : config.crownLock;
-						state.cashfishUltHistory.crownUsed = true;
-						break;
-					default:
-						spawnCashfishCardShock();
-						cooldown = config.cardCooldown == null ? 3200 : config.cardCooldown;
-						break;
-				}
-				if (enragedCashfish && (nextAttack === "coin-salvo" || nextAttack === "diamond-lattice" || nextAttack === "card-shock")) {
-					cooldown *= 0.82;
-				}
-				boss.lastAttack = nextAttack;
-				boss.attackTimer = cooldown + Math.random() * 420;
-			}
-			return;
-		}
-		if (boss.attackTimer <= 0) {
-			const nextAttack = boss.lastAttack === "fin-sweep" ? "torpedo" : boss.lastAttack === "torpedo" ? "fin-sweep" : Math.random() > 0.5 ? "torpedo" : "fin-sweep";
-			if (nextAttack === "torpedo") spawnBossTorpedoBurst();
-			else spawnBossFinSweep();
-			boss.lastAttack = nextAttack;
-			boss.attackTimer = attackDelay;
-		}
-	}
-
-	function updateFoes(dt) {
-		const player = state.player;
-		const primaryCoverRock = state.coverRocks.find(rock => rock.landed);
-		for (const foe of state.foes) {
-			if (foe.dead) continue;
-			if (foe.coverDetourCooldown > 0) foe.coverDetourCooldown = Math.max(0, foe.coverDetourCooldown - dt);
-			foe.sway += dt * 0.0036;
-			const drift = Math.sin(foe.sway * 1.4) * 0.06 * dt;
-			const prevX = foe.x;
-			const prevY = foe.y;
-			if (foe.type === "bogenschreck") {
-				const rock = primaryCoverRock;
-				let rockCenterX = null;
-				let rockCenterY = null;
-				let rockRadiusX = null;
-				let rockRadiusY = null;
-				let desiredHoverX = null;
-				let hoveringOverCover = false;
-				if (rock && rock.landed) {
-					rockCenterX = rock.x + (rock.collisionOffsetX == null ? 0 : rock.collisionOffsetX);
-					rockCenterY = rock.y + (rock.collisionOffsetY == null ? 0 : rock.collisionOffsetY);
-					rockRadiusX = rock.radiusX == null ? (rock.width == null ? 80 : rock.width * 0.5) : rock.radiusX;
-					rockRadiusY = rock.radiusY == null ? (rock.height == null ? 60 : rock.height * 0.5) : rock.radiusY;
-					const forwardThreshold = rockCenterX + rockRadiusX + 36;
-					const hoverX = rockCenterX + Math.max(rockRadiusX * 0.12, 18);
-					desiredHoverX = hoverX;
-					const topEdge = rockCenterY - rockRadiusY;
-					const baseHoverY = clamp(topEdge - Math.max(24, rockRadiusY * 0.28), canvas.height * 0.18, canvas.height * 0.58);
-					const hoverAmplitude = Math.max(18, Math.min(34, rockRadiusY * 0.36));
-					if (!foe.coverHoverMode && foe.x <= forwardThreshold) {
-						foe.coverHoverMode = true;
-						foe.coverHoverPhase = foe.coverHoverPhase == null ? Math.random() * TAU : foe.coverHoverPhase;
-						foe.coverHoverBaseY = baseHoverY;
-						foe.coverHoverAmplitude = hoverAmplitude;
-						foe.coverHoverX = hoverX;
-						foe.coverDetourTimer = 0;
-					} else if (foe.coverHoverMode && foe.x > forwardThreshold + 84) {
-						foe.coverHoverMode = false;
-					}
-					if (foe.coverHoverMode) {
-						hoveringOverCover = true;
-						foe.coverHoverPhase = (foe.coverHoverPhase == null ? Math.random() * TAU : foe.coverHoverPhase) + dt * 0.0028;
-						const approachSpeed = Math.max(foe.speed || 0.18, 0.22);
-						const targetX = foe.coverHoverX == null ? hoverX : foe.coverHoverX;
-						foe.x += clamp(targetX - foe.x, -approachSpeed * dt, approachSpeed * dt);
-						const amplitude = foe.coverHoverAmplitude == null ? hoverAmplitude : foe.coverHoverAmplitude;
-						const baseY = foe.coverHoverBaseY == null ? baseHoverY : foe.coverHoverBaseY;
-						const bob = Math.sin(foe.coverHoverPhase) * amplitude;
-						const targetY = clamp(baseY + bob + drift * 6, canvas.height * 0.18, canvas.height * 0.66);
-						foe.y += clamp(targetY - foe.y, -0.28 * dt, 0.28 * dt);
-						foe.anchorX = targetX;
-						foe.anchorY = baseY;
-					}
-				} else if (foe.coverHoverMode) {
-					foe.coverHoverMode = false;
-				}
-				if (!hoveringOverCover) {
-					if (desiredHoverX != null && rockRadiusX != null) {
-						const entryAnchor = desiredHoverX + Math.max(12, rockRadiusX * 0.08);
-						if (foe.anchorX == null || foe.anchorX > entryAnchor + 1) foe.anchorX = entryAnchor;
-					}
-					if (foe.x > foe.anchorX) foe.x = Math.max(foe.anchorX, foe.x - foe.speed * dt);
-					else foe.x += Math.sin(foe.sway * 0.5) * 0.015 * dt;
-					if (foe.hoverPhase == null) foe.hoverPhase = Math.random() * TAU;
-					foe.hoverPhase += dt * 0.0026;
-					const hover = Math.sin(foe.hoverPhase) * (foe.hoverAmplitude || 16) * 0.03 * dt;
-					foe.y += drift * 0.4 + hover;
-					foe.y = clamp(foe.y, canvas.height * 0.24, canvas.height * 0.76);
-				} else {
-					foe.y = clamp(foe.y, canvas.height * 0.18, canvas.height * 0.7);
-				}
-				foe.shootTimer -= dt;
-				if (foe.shootTimer <= 0) {
-					spawnBogenschreckArrow(foe);
-					foe.shootTimer = (foe.shootCooldown || 2400) + Math.random() * 400;
-				}
-			} else if (foe.type === "oktopus") {
-				const minY = canvas.height * 0.24;
-				const maxY = canvas.height * 0.78;
-				const minAnchorX = canvas.width * 0.48;
-				const maxAnchorX = canvas.width * 0.8;
-				if (foe.laneShiftTimer != null) {
-					foe.laneShiftTimer -= dt;
-					if (foe.laneShiftTimer <= 0) {
-						const cooldown = foe.laneShiftCooldown == null ? 2400 : foe.laneShiftCooldown;
-						foe.laneShiftTimer = cooldown + Math.random() * 420;
-						const verticalShift = (Math.random() - 0.5) * canvas.height * 0.22;
-						const horizontalShift = (Math.random() - 0.5) * 120;
-						const baseAnchorY = foe.anchorY == null ? foe.y : foe.anchorY;
-						const baseAnchorX = foe.anchorX == null ? canvas.width * 0.64 : foe.anchorX;
-						foe.anchorY = clamp(baseAnchorY + verticalShift, minY + 36, maxY - 36);
-						foe.anchorX = clamp(baseAnchorX + horizontalShift, minAnchorX, maxAnchorX);
-						foe.dashDir = horizontalShift < 0 ? -1 : 1;
-						foe.dashTimer = foe.dashDuration == null ? 420 : foe.dashDuration;
-					}
-				}
-				const orbitSpeed = foe.orbitSpeed == null ? 0.0016 : foe.orbitSpeed;
-				const orbitRadius = foe.orbitRadius == null ? 30 : foe.orbitRadius;
-				const orbitVertical = foe.orbitVertical == null ? 28 : foe.orbitVertical;
-				foe.orbitAngle = (foe.orbitAngle == null ? Math.random() * TAU : foe.orbitAngle) + orbitSpeed * dt;
-				const anchorX = clamp(foe.anchorX == null ? canvas.width * 0.64 : foe.anchorX, minAnchorX, maxAnchorX);
-				const anchorY = clamp(foe.anchorY == null ? foe.baseY : foe.anchorY, minY + 24, maxY - 24);
-				let dashOffset = 0;
-				if (foe.dashTimer > 0) {
-					const dashDuration = foe.dashDuration == null || foe.dashDuration <= 0 ? 420 : foe.dashDuration;
-					foe.dashTimer = Math.max(0, foe.dashTimer - dt);
-					const elapsed = dashDuration - foe.dashTimer;
-					const progress = clamp(elapsed / dashDuration, 0, 1);
-					const eased = Math.sin(progress * Math.PI);
-					const dashDistance = foe.dashDistance == null ? 54 : foe.dashDistance;
-					dashOffset = foe.dashDir * dashDistance * eased;
-				}
-				const swirl = Math.sin(foe.orbitAngle * 0.75) * 4;
-				const desiredX = clamp(anchorX + Math.cos(foe.orbitAngle) * orbitRadius + dashOffset, minAnchorX, canvas.width * 0.82);
-				const desiredY = clamp(anchorY + Math.sin(foe.orbitAngle * 1.35) * orbitVertical + swirl + drift * 6, minY, maxY);
-				const lateralSpeed = Math.max(0.18, foe.speed || 0.18);
-				const verticalSpeed = lateralSpeed * 0.92 + 0.06;
-				const stepX = clamp(desiredX - foe.x, -lateralSpeed * dt, lateralSpeed * dt);
-				const stepY = clamp(desiredY - foe.y, -verticalSpeed * dt, verticalSpeed * dt);
-				foe.x += stepX;
-				foe.y += stepY;
-				foe.anchorX = anchorX;
-				foe.anchorY = anchorY;
-				foe.shootTimer -= dt;
-				if (foe.shootTimer <= 0) {
-					const burstCount = Math.max(1, foe.burstCount == null ? 2 : foe.burstCount);
-					if (!foe.burstQueue || foe.burstQueue <= 0) foe.burstQueue = burstCount;
-					foe.burstQueue -= 1;
-					spawnOktopusBolt(foe);
-					if (foe.burstQueue > 0) {
-						foe.shootTimer = (foe.volleySpacing || 260) + Math.random() * 160;
-					} else {
-						foe.shootTimer = (foe.shootCooldown || 3200) + Math.random() * 520;
-						foe.burstQueue = 0;
-					}
-				}
-			} else if (foe.type === "ritterfisch") {
-				const minY = canvas.height * 0.24;
-				const maxY = canvas.height * 0.78;
-				if (foe.anchorX == null) foe.anchorX = canvas.width * 0.68;
-				const anchorDrift = primaryCoverRock ? 0.022 : 0.015;
-				foe.anchorX -= anchorDrift * dt;
-				foe.anchorX = Math.min(foe.anchorX, foe.x + 60);
-				if (foe.passing) foe.anchorX = Math.min(foe.anchorX, foe.x + 10);
-				const anchorX = foe.anchorX;
-				if (foe.lanePick == null) foe.lanePick = Math.random() < 0.5 ? 0 : 1;
-				foe.anchorY = getRitterfischLaneTarget(foe, primaryCoverRock, minY, maxY);
-				const homeY = foe.anchorY == null ? foe.baseY : foe.anchorY;
-				const patrolRange = foe.patrolRange == null ? 20 : foe.patrolRange;
-				const cruiseSpeed = foe.cruiseSpeed == null ? 0.18 : foe.cruiseSpeed;
-				const chargeSpeed = foe.chargeSpeed == null ? 0.46 : foe.chargeSpeed;
-				if (!foe.passing && (foe.x < player.x + 70 || foe.x < canvas.width * 0.22)) {
-					foe.passing = true;
-					foe.chargeTimer = Math.max(foe.chargeTimer || 0, 500);
-				}
-				if (foe.recoverTimer > 0) foe.recoverTimer = Math.max(0, foe.recoverTimer - dt);
-				if (foe.charging) {
-					foe.chargeDuration += dt;
-					foe.x -= chargeSpeed * dt;
-					const targetY = clamp(player.y, minY, maxY);
-					const dy = targetY - foe.y;
-					const adjust = clamp(dy * 0.0022 * dt, -0.32 * dt, 0.32 * dt);
-					foe.y = clamp(foe.y + adjust + Math.sin(foe.chargeDuration * 0.008) * 0.08 * dt, minY, maxY);
-					foe.damage = 2;
-					if (foe.x < player.x - 140 || foe.chargeDuration >= 900 || foe.x < -80) {
-						foe.charging = false;
-						foe.chargeDuration = 0;
-						foe.damage = 1;
-						foe.recoverTimer = 600;
-						foe.chargeTimer = (foe.chargeCooldown || 3200) + Math.random() * 400;
-						foe.speed = cruiseSpeed;
-					}
-				} else {
-					if (foe.passing) {
-						foe.damage = 1;
-						foe.speed = cruiseSpeed;
-						foe.x -= cruiseSpeed * dt;
-						const pursue = (player.y - foe.y) * 0.0012 * dt;
-						const homePull = (homeY - foe.y) * 0.0016 * dt;
-						foe.y = clamp(foe.y + pursue + homePull + drift * 0.25, minY, maxY);
-					} else {
-					foe.damage = 1;
-					foe.speed = cruiseSpeed;
-						const patrolOffset = Math.sin(foe.sway * 0.55) * patrolRange;
-					const desiredX = anchorX + patrolOffset;
-					const dx = desiredX - foe.x;
-					const step = clamp(dx, -foe.speed * dt, foe.speed * dt);
-					foe.x += step;
-						foe.y += drift * 0.25;
-						const pursue = (player.y - foe.y) * 0.0012 * dt;
-						const homePull = (homeY - foe.y) * 0.0018 * dt;
-						foe.y = clamp(foe.y + pursue + homePull, minY, maxY);
-					foe.chargeTimer -= dt;
-					if (foe.chargeTimer <= 0 && (foe.recoverTimer || 0) <= 0) {
-						const horizontalGap = foe.x - player.x;
-						const verticalGap = Math.abs(foe.y - player.y);
-						if (horizontalGap > canvas.width * 0.18 && verticalGap < canvas.height * 0.2) {
-							foe.charging = true;
-							foe.chargeDuration = 0;
-							foe.chargeTimer = foe.chargeCooldown || 3200;
-						} else {
-							foe.chargeTimer = 600 + Math.random() * 400;
-						}
-					}
-					}
-				}
-				const hitCover = resolveFoeCoverCollision(foe, prevX, prevY);
-				if (hitCover && foe.charging) {
-					foe.charging = false;
-					foe.chargeDuration = 0;
-					foe.damage = 1;
-					foe.recoverTimer = Math.max(foe.recoverTimer || 0, 700);
-					foe.chargeTimer = (foe.chargeCooldown || 3200) + Math.random() * 160;
-					foe.speed = cruiseSpeed;
-				}
-			} else {
-				foe.x -= foe.speed * dt;
-				foe.y += drift;
-				foe.y = clamp(foe.y, canvas.height * 0.2, canvas.height * 0.78);
-			}
-			if (foe.type !== "ritterfisch") resolveFoeCoverCollision(foe, prevX, prevY);
-			const isRitterfisch = foe.type === "ritterfisch";
-			const isBogenschreck = foe.type === "bogenschreck";
-			const ritterBaseSpeed = isRitterfisch
-				? (foe.charging ? Math.max(foe.chargeSpeed || 0.46, 0.46) * 0.75 : Math.max(foe.speed || 0.24, 0.26) + 0.09)
-				: 0;
-			const detourSpeed = isRitterfisch ? Math.max(0.34, ritterBaseSpeed) : Math.max(0.24, foe.speed || 0.24);
-			const pushSpeed = isRitterfisch ? Math.max(0.36, detourSpeed * 0.95) : detourSpeed * 0.62;
-			const wantsAvoidance = !(isBogenschreck && foe.coverHoverMode);
-			const avoidanceTriggered = wantsAvoidance && applyCoverAvoidance(foe, {
-				padX: isRitterfisch ? 132 : isBogenschreck ? 60 : 72,
-				padY: isRitterfisch ? 108 : isBogenschreck ? 52 : 58,
-				detourDuration: isRitterfisch ? 1400 : 760,
-				detourSpeed,
-				pushSpeed,
-				cooldown: isRitterfisch ? 420 : 360
-			});
-			if (isRitterfisch && avoidanceTriggered) {
-				if (foe.charging) {
-					foe.charging = false;
-					foe.chargeDuration = 0;
-					foe.damage = 1;
-					foe.recoverTimer = Math.max(foe.recoverTimer || 0, 520);
-					foe.chargeTimer = (foe.chargeCooldown || 3200) + Math.random() * 200;
-					foe.speed = foe.cruiseSpeed == null ? (foe.speed || 0.22) : foe.cruiseSpeed;
-				}
-				if (primaryCoverRock) {
-					const centerY = primaryCoverRock.y + (primaryCoverRock.collisionOffsetY == null ? 0 : primaryCoverRock.collisionOffsetY);
-					if (!foe.coverDetourDirY) {
-						const homeY = foe.anchorY == null ? foe.baseY : foe.anchorY;
-						const preferDown = foe.y > homeY + 6;
-						const preferUp = foe.y < homeY - 6;
-						if (preferDown) foe.coverDetourDirY = -1;
-						else if (preferUp) foe.coverDetourDirY = 1;
-						else foe.coverDetourDirY = foe.y >= centerY ? 1 : -1;
-					}
-					if (foe.coverDetourSpeed == null || foe.coverDetourSpeed < detourSpeed) foe.coverDetourSpeed = detourSpeed;
-					if (foe.coverDetourPushSpeed == null || foe.coverDetourPushSpeed < pushSpeed) foe.coverDetourPushSpeed = pushSpeed;
-				}
-			}
-			processCoverDetour(foe, dt, {
-				minX: -140,
-				maxX: canvas.width - 40,
-				minY: canvas.height * 0.2,
-				maxY: canvas.height * 0.82
-			});
-		}
-
-		state.foes = state.foes.filter(foe => !foe.dead && foe.x > (foe.type === "ritterfisch" ? -160 : -90));
-
-		if (!state.over && !state.boss.active && !state.pendingSymbolAdvance) {
-			state.foeSpawnTimer -= dt;
-			if (state.foeSpawnTimer <= 0) {
-				spawnLevelFoe();
-				scheduleNextFoeSpawn();
-			}
-		}
-	}
-
-	function updateShots(dt) {
-		for (const shot of state.shots) {
-			shot.x += shot.vx * dt;
-			shot.y += shot.vy * dt;
-			shot.life -= dt;
-			shot.vy -= 0.00012 * dt;
-		}
-		state.shots = state.shots.filter(shot => shot.life > 0 && shot.x < canvas.width + 120 && shot.y > -80 && shot.y < canvas.height + 80);
-	}
-
-	function updateFoeArrows(dt) {
-		for (const arrow of state.foeArrows) {
-			const type = arrow.type || "arrow";
-			arrow.x += arrow.vx * dt;
-			arrow.y += arrow.vy * dt;
-			if (type === "octo-bolt" || type === "octo-blowdart") {
-				arrow.wobblePhase = (arrow.wobblePhase || 0) + (arrow.wobbleSpeed || 0) * dt;
-				const wobble = Math.sin(arrow.wobblePhase) * (arrow.wobbleAmplitude || 0) * 0.003 * dt;
-				arrow.y += wobble;
-				arrow.rotation = Math.atan2(arrow.vy, arrow.vx) + Math.PI;
-			} else if (arrow.rotation == null) {
-				arrow.rotation = Math.atan2(arrow.vy, arrow.vx);
-			}
-			const padX = arrow.blockPadX == null ? 28 : arrow.blockPadX;
-			const padY = arrow.blockPadY == null ? 38 : arrow.blockPadY;
-			const cover = findCoverRockHit(arrow.x, arrow.y, padX, padY);
-			if (cover) {
-				arrow.life = 0;
-				registerCoverRockImpact(cover, type === "octo-bolt" ? 0.9 : 0.7);
-				continue;
-			}
-			arrow.life -= dt;
-		}
-		state.foeArrows = state.foeArrows.filter(arrow => arrow.life > 0 && arrow.x > -160 && arrow.x < canvas.width + 160 && arrow.y > -120 && arrow.y < canvas.height + 120);
-	}
-
-	function updateHealPickups(dt) {
-		state.healSpawnTimer -= dt;
-		const canSpawn = !state.over && state.healPickups.length < 2;
-		if (canSpawn && state.healSpawnTimer <= 0) {
-			spawnHealPickup();
-			state.healSpawnTimer = 10800 + Math.random() * 5200;
-		}
-
-		for (const heal of state.healPickups) {
-			heal.x -= heal.vx * dt;
-			heal.sway += dt * 0.0026;
-			heal.y += Math.sin(heal.sway) * 0.08 * dt;
-			heal.life -= dt;
-		}
-		state.healPickups = state.healPickups.filter(heal => heal.life > 0 && heal.x > -160 && heal.y > -120 && heal.y < canvas.height + 120);
-		for (const burst of state.healBursts) {
-			burst.x += burst.vx * dt;
-			burst.y += burst.vy * dt;
-			burst.vx *= 0.994;
-			burst.vy *= 0.992;
-			burst.life -= dt;
-		}
-		state.healBursts = state.healBursts.filter(burst => burst.life > 0);
-	}
-
-	function updateCoralEffects(dt) {
-		if (state.coralEffects.length === 0) return;
-		for (const fx of state.coralEffects) {
-			fx.life = Math.max(0, fx.life - dt);
-			if (fx.kind === "spark") {
-				fx.rotation = (fx.rotation || 0) + (fx.rotationSpeed || 0) * dt;
-			}
-		}
-		state.coralEffects = state.coralEffects.filter(fx => fx.life > 0);
-	}
-
-	function updateSymbolDrops(dt) {
-		if (state.symbolDrops.length === 0) return;
-		for (const drop of state.symbolDrops) {
-			drop.sway = (drop.sway || 0) + (drop.swaySpeed || 0.0024) * dt;
-			const bob = Math.sin(drop.sway) * (drop.amplitude == null ? 8 : drop.amplitude) * 0.0022 * dt;
-			drop.y += (drop.vy == null ? 0.014 : drop.vy) * dt + bob;
-			drop.x += Math.cos(drop.sway * 0.65) * 0.0018 * dt * (drop.amplitude == null ? 8 : drop.amplitude);
-			drop.x = clamp(drop.x, 80, canvas.width - 80);
-			drop.y = clamp(drop.y, canvas.height * 0.18, canvas.height * 0.88);
-			if (!drop.collected) {
-				drop.life = Math.max(0, drop.life - dt);
-				if (drop.life <= 0) collectSymbolDrop(drop, { auto: true });
-			} else if (drop.cleanupTimer != null) {
-				drop.cleanupTimer = Math.max(0, drop.cleanupTimer - dt);
-			}
-		}
-		state.symbolDrops = state.symbolDrops.filter(drop => !drop.collected || drop.cleanupTimer == null || drop.cleanupTimer > 0);
-	}
-
-	function updateCoinDrops(dt) {
-		if (state.coinDrops.length === 0) return;
-		const hoverBandTop = canvas.height * 0.34;
-		const hoverBandBottom = canvas.height * 0.7;
-		for (const coin of state.coinDrops) {
-			if (coin.dead) continue;
-			coin.spin = (coin.spin || 0) + (coin.spinSpeed || 0.006) * dt;
-			if (coin.collected) {
-				coin.collectTimer = Math.max(0, (coin.collectTimer || 0) - dt);
-				coin.y -= 0.06 * dt;
-				if (coin.collectTimer <= 0) coin.dead = true;
-				continue;
-			}
-			coin.life = Math.max(0, (coin.life == null ? 12000 : coin.life) - dt);
-			if (coin.life <= 0) {
-				coin.dead = true;
-				continue;
-			}
-			const hoverTarget = clamp(coin.hoverY == null ? canvas.height * 0.5 : coin.hoverY, hoverBandTop, hoverBandBottom);
-			coin.hoverPhase = (coin.hoverPhase || 0) + (coin.hoverSpeed || 0.0026) * dt;
-			const hoverOffset = Math.sin(coin.hoverPhase) * (coin.hoverAmplitude == null ? 24 : coin.hoverAmplitude);
-			const targetY = hoverTarget + hoverOffset;
-			const follow = coin.hoverFollow == null ? 0.0042 : coin.hoverFollow;
-			coin.y += (targetY - coin.y) * follow * dt;
-			const baseScroll = coin.scrollSpeed == null ? Math.abs(coin.vx == null ? 0.22 : coin.vx) : coin.scrollSpeed;
-			const flow = -Math.max(0.14, baseScroll);
-			coin.vx = flow;
-			coin.x += coin.vx * dt;
-			coin.x += Math.sin((coin.hoverPhase || 0) * 0.7 + (state.elapsed || 0) * 0.0018) * 0.02 * dt;
-			coin.y = clamp(coin.y, hoverBandTop - 30, hoverBandBottom + 30);
-			if (coin.x <= -40) {
-				coin.dead = true;
-				continue;
-			}
-		}
-		state.coinDrops = state.coinDrops.filter(coin => !coin.dead);
-	}
-
-	function updateBossAttacks(dt) {
-		if (!state.boss.active) {
-			state.bossTorpedoes.length = 0;
-			state.bossSweeps.length = 0;
-			state.bossWakeWaves.length = 0;
-			state.bossWhirlpools.length = 0;
-			state.bossKatapultShots.length = 0;
-			state.bossShockwaves.length = 0;
-			state.bossSpeedboats.length = 0;
-			state.bossCoinBursts.length = 0;
-			state.bossCoinExplosions.length = 0;
-			state.bossDiamondBeams.length = 0;
-			state.bossCardBoomerangs.length = 0;
-			return;
-		}
-		for (const torpedo of state.bossTorpedoes) {
-			torpedo.x += torpedo.vx * dt;
-			torpedo.y += torpedo.vy * dt;
-			torpedo.sway += dt * 0.004;
-			torpedo.y += Math.sin(torpedo.sway) * 0.04 * dt;
-			const torpedoPad = Math.max(18, (torpedo.radius || 18) + 6);
-			const torpedoCover = findCoverRockHit(torpedo.x, torpedo.y, torpedoPad, torpedoPad * 0.6);
-			if (torpedoCover) {
-				torpedo.life = 0;
-				registerCoverRockImpact(torpedoCover, 1.1);
-				continue;
-			}
-			torpedo.life -= dt;
-		}
-		state.bossTorpedoes = state.bossTorpedoes.filter(torpedo => torpedo.life > 0 && torpedo.x > -160 && torpedo.y > -120 && torpedo.y < canvas.height + 120);
-
-		for (const sweep of state.bossSweeps) {
-			if (sweep.delay > 0) {
-				sweep.delay = Math.max(0, sweep.delay - dt);
-				continue;
-			}
-			sweep.x += sweep.vx * dt;
-			sweep.y += sweep.vy * dt;
-			sweep.phase += dt * 0.003;
-			sweep.life -= dt;
-		}
-		state.bossSweeps = state.bossSweeps.filter(sweep => sweep.life > 0 && sweep.x > -220 && sweep.y > -140 && sweep.y < canvas.height + 140);
-
-		const bossCfg = state.levelConfig && state.levelConfig.boss;
-		for (const orb of state.bossPerfumeOrbs) {
-			orb.x += orb.vx * dt;
-			orb.y += orb.vy * dt;
-			orb.life -= dt;
-			orb.sway += dt * 0.0024;
-			orb.spin = (orb.spin == null ? Math.random() * TAU : orb.spin + dt * 0.0036);
-			orb.y += Math.sin(orb.sway) * 0.04 * dt;
-			orb.trailTimer -= dt;
-			if (orb.trailTimer <= 0) {
-				spawnFragranceCloud(orb.x - 12, orb.y + 6, {
-					radius: bossCfg && bossCfg.cloudRadius ? bossCfg.cloudRadius * 0.55 : 42,
-					duration: bossCfg && bossCfg.cloudDuration ? bossCfg.cloudDuration * 0.6 : 2600,
-					growth: 0.014,
-					driftX: -0.03,
-					driftY: -0.006
-				});
-				orb.trailTimer = orb.trailInterval || 360;
-			}
-			if (orb.life <= 0 && !orb.dead) {
-				spawnFragranceCloud(orb.x, orb.y, {
-					radius: bossCfg && bossCfg.cloudRadius ? bossCfg.cloudRadius * 0.9 : 58,
-					growth: 0.02,
-					driftX: -0.04,
-					driftY: -0.012,
-					duration: bossCfg && bossCfg.cloudDuration ? bossCfg.cloudDuration : 3800
-				});
-				orb.dead = true;
-			}
-		}
-		state.bossPerfumeOrbs = state.bossPerfumeOrbs.filter(orb => !orb.dead && orb.life > 0 && orb.x > -180 && orb.x < canvas.width + 80 && orb.y > -160 && orb.y < canvas.height + 160);
-		for (const cloud of state.bossFragranceClouds) {
-			cloud.life -= dt;
-			const progress = 1 - cloud.life / Math.max(1, cloud.duration);
-			const growth = cloud.growth == null ? 0.015 : cloud.growth;
-			cloud.radius = cloud.baseRadius * (1 + growth * progress * 6);
-			cloud.x += (cloud.driftX == null ? 0 : cloud.driftX) * dt;
-			cloud.y += (cloud.driftY == null ? 0 : cloud.driftY) * dt;
-			cloud.swirl = (cloud.swirl == null ? Math.random() * TAU : cloud.swirl + dt * 0.0018);
-			cloud.pulse = (cloud.pulse == null ? Math.random() * TAU : cloud.pulse + dt * 0.0024);
-		}
-		state.bossFragranceClouds = state.bossFragranceClouds.filter(cloud => cloud.life > 0 && cloud.x > -200 && cloud.x < canvas.width + 120 && cloud.y > -200 && cloud.y < canvas.height + 200);
-
-		for (const wave of state.bossWakeWaves) {
-			wave.x += (wave.vx == null ? -0.32 : wave.vx) * dt;
-			wave.phase = (wave.phase == null ? Math.random() * TAU : wave.phase + (wave.freq == null ? 0.003 : wave.freq) * dt);
-			const amplitude = wave.amplitude == null ? 18 : wave.amplitude;
-			const baseY = wave.baseY == null ? wave.y : wave.baseY;
-			wave.y = clamp(baseY + Math.sin(wave.phase) * amplitude, canvas.height * 0.2, canvas.height * 0.82);
-			if (wave.hurtCooldown > 0) wave.hurtCooldown = Math.max(0, wave.hurtCooldown - dt);
-			wave.life -= dt;
-		}
-		state.bossWakeWaves = state.bossWakeWaves.filter(wave => wave.life > 0 && wave.x > -260);
-
-		for (const whirl of state.bossWhirlpools) {
-			if (whirl.dead) continue;
-			whirl.spin = (whirl.spin == null ? Math.random() * TAU : whirl.spin + dt * (whirl.releaseTriggered ? 0.006 : 0.0042));
-			if (whirl.telegraph > 0) {
-				whirl.telegraph = Math.max(0, whirl.telegraph - dt);
-				continue;
-			}
-			if (whirl.damageTimer > 0) whirl.damageTimer = Math.max(0, whirl.damageTimer - dt);
-			if (!whirl.releaseTriggered) {
-				whirl.life -= dt;
-				const ratio = 1 - whirl.life / Math.max(1, whirl.initialLife || whirl.life);
-				const targetRadius = (whirl.minRadius || 48) + ((whirl.maxRadius || 120) - (whirl.minRadius || 48)) * clamp01(ratio * 1.1);
-				whirl.radius = whirl.radius == null ? targetRadius : whirl.radius + (targetRadius - whirl.radius) * Math.min(1, dt * 0.0028);
-				if (whirl.life <= 520) {
-					whirl.releaseTriggered = true;
-					whirl.explosionTimer = 520;
-					whirl.explosionRadius = (whirl.radius || 96) * 1.35;
-				}
-			} else {
-				whirl.explosionTimer = Math.max(0, whirl.explosionTimer - dt);
-				if (whirl.explosionTimer <= 0) whirl.dead = true;
-			}
-		}
-		state.bossWhirlpools = state.bossWhirlpools.filter(whirl => !whirl.dead);
-
-		for (const shot of state.bossKatapultShots) {
-			if (shot.dead) continue;
-			if (shot.delay > 0) {
-				shot.delay = Math.max(0, shot.delay - dt);
-				continue;
-			}
-			if (shot.exploding) {
-				shot.explosionLife = Math.max(0, shot.explosionLife - dt);
-				if (shot.explosionLife <= 0) shot.dead = true;
-				continue;
-			}
-			shot.x += shot.vx * dt;
-			shot.y += shot.vy * dt;
-			shot.vy += (shot.gravity == null ? 0.001 : shot.gravity) * dt;
-			shot.spin = (shot.spin == null ? Math.random() * TAU : shot.spin + dt * 0.0032);
-			const padX = Math.max(28, (shot.radius || 26) + 12);
-			const padY = Math.max(26, (shot.radius || 26));
-			const cover = findCoverRockHit(shot.x, shot.y, padX, padY);
-			if (cover) {
-				shot.dead = true;
-				registerCoverRockImpact(cover, 1.35);
-				continue;
-			}
-			shot.life -= dt;
-			if (shot.life <= 0 || shot.y >= canvas.height * 0.84) {
-				shot.exploding = true;
-				shot.explosionLife = 620;
-				shot.vx = 0;
-				shot.vy = 0;
-			}
-		}
-		state.bossKatapultShots = state.bossKatapultShots.filter(shot => !shot.dead && shot.x > -220 && shot.x < canvas.width + 220 && shot.y > -160 && shot.y < canvas.height + 200);
-
-		for (const wave of state.bossShockwaves) {
-			if (wave.dead) continue;
-			wave.anchorPulse = (wave.anchorPulse == null ? Math.random() * TAU : wave.anchorPulse + dt * 0.004);
-			if (wave.stage === "telegraph") {
-				wave.telegraphTimer = Math.max(0, wave.telegraphTimer - dt);
-				if (wave.telegraphTimer <= 0) {
-					wave.stage = "wave1";
-					wave.waveOneRadius = 48;
-				}
-				continue;
-			}
-			if (wave.stage === "wave1") {
-				wave.waveOneRadius += (wave.waveSpeedOne || 1.1) * dt;
-				if (wave.waveOneRadius >= (wave.maxRadius || Math.max(canvas.width, canvas.height))) {
-					wave.stage = "pause";
-				}
-				continue;
-			}
-			if (wave.stage === "pause") {
-				wave.waitTimer = Math.max(0, wave.waitTimer - dt);
-				if (wave.waitTimer <= 0) {
-					wave.stage = "wave2";
-					wave.waveTwoRadius = Math.max(wave.waveOneRadius * 0.55, 72);
-				}
-				continue;
-			}
-			if (wave.stage === "wave2") {
-				wave.waveTwoRadius += (wave.waveSpeedTwo || 1.36) * dt;
-				if (wave.waveTwoRadius >= (wave.maxRadius || Math.max(canvas.width, canvas.height))) {
-					wave.stage = "cleanup";
-				}
-				continue;
-			}
-			if (wave.stage === "cleanup") {
-				wave.cleanupTimer = Math.max(0, wave.cleanupTimer - dt);
-				if (wave.cleanupTimer <= 0) wave.dead = true;
-			}
-		}
-		state.bossShockwaves = state.bossShockwaves.filter(wave => !wave.dead);
-
-		for (const boat of state.bossSpeedboats) {
-			if (boat.dead) continue;
-			boat.life -= dt;
-			if (boat.life <= 0) {
-				boat.dead = true;
-				continue;
-			}
-			boat.x += boat.vx * dt;
-			boat.sway = (boat.sway == null ? Math.random() * TAU : boat.sway + (boat.swaySpeed || 0.0028) * dt);
-			const swayAmp = boat.swayAmplitude == null ? 16 : boat.swayAmplitude;
-			const baseY = boat.baseY == null ? boat.y : boat.baseY;
-			boat.y = clamp(baseY + Math.sin(boat.sway) * swayAmp, canvas.height * 0.2, canvas.height * 0.78);
-			const coverBoat = findCoverRockHit(boat.x, boat.y, 50, 42);
-			if (coverBoat) {
-				boat.dead = true;
-				registerCoverRockImpact(coverBoat, 1.5);
-				continue;
-			}
-			if (boat.damageCooldown > 0) boat.damageCooldown = Math.max(0, boat.damageCooldown - dt);
-			if (boat.x < -220) boat.dead = true;
-		}
-		state.bossSpeedboats = state.bossSpeedboats.filter(boat => !boat.dead && boat.x > -260 && boat.y > -200 && boat.y < canvas.height + 200);
-
-		const explodeCoin = coin => {
-			if (coin.exploded) return;
-			state.bossCoinExplosions.push({
-				x: coin.x,
-				y: coin.y,
-				radius: 54 * (coin.scale || 1),
-				life: 520,
-				duration: 520,
-				knockback: coin.knockback == null ? 0.16 : coin.knockback,
-				damage: coin.damage == null ? 1 : coin.damage,
-				hitApplied: false,
-				elapsed: 0
-			});
-			coin.exploded = true;
-		};
-
-		const coinGround = canvas.height * 0.82;
-		for (const coin of state.bossCoinBursts) {
-			if (coin.exploded) continue;
-			coin.x += coin.vx * dt;
-			coin.y += coin.vy * dt;
-			coin.vy += (coin.gravity == null ? 0.00034 : coin.gravity) * dt;
-			coin.life -= dt;
-			coin.spin = (coin.spin || 0) + dt * 0.01;
-			if (coin.life <= 0 || coin.y >= coinGround) {
-				coin.y = Math.min(coin.y, coinGround);
-				explodeCoin(coin);
-			}
-		}
-		state.bossCoinBursts = state.bossCoinBursts.filter(coin => !coin.exploded && coin.life > 0 && coin.x > -180 && coin.x < canvas.width + 160 && coin.y > -140 && coin.y < canvas.height + 160);
-
-		for (const blast of state.bossCoinExplosions) {
-			blast.life -= dt;
-			blast.elapsed = (blast.elapsed || 0) + dt;
-			if (blast.life <= 0) blast.dead = true;
-		}
-		state.bossCoinExplosions = state.bossCoinExplosions.filter(blast => !blast.dead);
-
-		for (const beam of state.bossDiamondBeams) {
-			if (beam.stage === "telegraph") {
-				beam.telegraphTimer = Math.max(0, (beam.telegraphTimer || 0) - dt);
-				if (beam.telegraphTimer <= 0) {
-					beam.stage = "active";
-					beam.activeTimer = beam.activeDuration == null ? 1000 : beam.activeDuration;
-					beam.damageCooldown = 0;
-				}
-			} else if (beam.stage === "active") {
-				beam.activeTimer = Math.max(0, (beam.activeTimer || 0) - dt);
-				beam.damageCooldown = Math.max(0, (beam.damageCooldown || 0) - dt);
-				if (beam.activeTimer <= 0) {
-					beam.stage = "fade";
-					beam.fadeTimer = beam.fadeDuration == null ? 280 : beam.fadeDuration;
-				}
-			} else if (beam.stage === "fade") {
-				beam.fadeTimer = Math.max(0, (beam.fadeTimer || 0) - dt);
-				if (beam.fadeTimer <= 0) beam.dead = true;
-			}
-		}
-		state.bossDiamondBeams = state.bossDiamondBeams.filter(beam => !beam.dead);
-
-		const boss = state.boss;
-		for (const card of state.bossCardBoomerangs) {
-			card.life -= dt;
-			card.elapsed = (card.elapsed || 0) + dt;
-			card.hitCooldown = Math.max(0, (card.hitCooldown || 0) - dt);
-			if (card.phase === "outbound") {
-				card.x += card.vx * dt;
-				card.y += card.vy * dt;
-				card.rotation = Math.atan2(card.vy, card.vx);
-				if (card.x <= (card.bounceX == null ? canvas.width * 0.26 : card.bounceX)) {
-					card.phase = "return";
-					card.targetX = boss.x - 24 + Math.cos(card.orbitAngle || 0) * 20;
-					card.targetY = boss.y + Math.sin(card.orbitAngle || 0) * 36;
-				}
-			} else if (card.phase === "return") {
-				const targetX = card.targetX == null ? boss.x - 24 : card.targetX;
-				const targetY = card.targetY == null ? boss.y : card.targetY;
-				const dx = targetX - card.x;
-				const dy = targetY - card.y;
-				const dist = Math.hypot(dx, dy) || 1;
-				const speed = card.speed == null ? 0.34 : card.speed * 1.08;
-				card.vx = (dx / dist) * speed;
-				card.vy = (dy / dist) * speed;
-				card.x += card.vx * dt;
-				card.y += card.vy * dt;
-				card.rotation = Math.atan2(card.vy, card.vx);
-				if (dist < 8) {
-					card.phase = "orbit";
-					card.orbitAngle = card.orbitAngle == null ? 0 : card.orbitAngle;
-					card.orbitTimer = card.orbitTimer == null ? (state.levelConfig && state.levelConfig.boss && state.levelConfig.boss.cardSpiralDelay != null ? state.levelConfig.boss.cardSpiralDelay : 560) : card.orbitTimer;
-				}
-			} else if (card.phase === "orbit") {
-				const orbitRadius = card.orbitRadius == null ? 72 : card.orbitRadius;
-				const orbitDir = (card.ringIndex || 0) % 2 === 0 ? 1 : -1;
-				card.orbitTimer = Math.max(0, (card.orbitTimer || 0) - dt);
-				card.orbitAngle = (card.orbitAngle || 0) + orbitDir * dt * 0.0038;
-				card.x = boss.x + Math.cos(card.orbitAngle) * orbitRadius;
-				card.y = boss.y + Math.sin(card.orbitAngle) * orbitRadius;
-				card.rotation = card.orbitAngle + Math.PI / 2;
-				if (card.orbitTimer <= 0) {
-					card.phase = "burst";
-					const launchSpeed = (card.speed == null ? 0.34 : card.speed) * 1.32;
-					card.vx = Math.cos(card.orbitAngle) * launchSpeed;
-					card.vy = Math.sin(card.orbitAngle) * launchSpeed;
-					card.rotation = Math.atan2(card.vy, card.vx);
-				}
-			} else {
-				card.x += card.vx * dt;
-				card.y += card.vy * dt;
-				card.rotation = Math.atan2(card.vy, card.vx);
-			}
-			if (card.life <= 0 || card.x < -240 || card.x > canvas.width + 240 || card.y < -240 || card.y > canvas.height + 240) {
-				card.dead = true;
-			}
-		}
-		state.bossCardBoomerangs = state.bossCardBoomerangs.filter(card => !card.dead);
-
-		for (const wave of state.bossTreasureWaves) {
-			if (wave.stage === "telegraph") {
-				wave.telegraphTimer = Math.max(0, (wave.telegraphTimer || 0) - dt);
-				wave.foamPhase = (wave.foamPhase || 0) + dt * 0.0036;
-				if (wave.telegraphTimer <= 0) {
-					wave.stage = "surge";
-					wave.surgeTimer = wave.surgeDuration == null ? 2000 : wave.surgeDuration;
-				}
-				continue;
-			}
-			if (wave.stage === "surge") {
-				wave.x += (wave.vx == null ? -0.42 : wave.vx) * dt;
-				wave.wobblePhase = (wave.wobblePhase || 0) + (wave.wobbleSpeed == null ? 0.0032 : wave.wobbleSpeed) * dt;
-				const amplitude = wave.amplitude == null ? 34 : wave.amplitude;
-				const baseY = wave.baseY == null ? wave.y : wave.baseY;
-				wave.y = clamp(baseY + Math.sin(wave.wobblePhase) * amplitude, canvas.height * 0.24, canvas.height * 0.82);
-				wave.foamPhase = (wave.foamPhase || 0) + dt * 0.0042;
-				if (wave.damageCooldown > 0) wave.damageCooldown = Math.max(0, wave.damageCooldown - dt);
-				wave.surgeTimer = Math.max(0, (wave.surgeTimer || 0) - dt);
-				if (wave.surgeTimer <= 0 || wave.x < -((wave.radiusX || 120) + 160)) {
-					wave.stage = "foam";
-					wave.fadeTimer = wave.fadeDuration == null ? 420 : wave.fadeDuration;
-				}
-				continue;
-			}
-			wave.fadeTimer = Math.max(0, (wave.fadeTimer || 0) - dt);
-			wave.foamPhase = (wave.foamPhase || 0) + dt * 0.0024;
-			if (wave.fadeTimer <= 0) wave.dead = true;
-		}
-		state.bossTreasureWaves = state.bossTreasureWaves.filter(wave => !wave.dead);
-
-		for (const column of state.bossCrownColumns) {
-			column.sparklePhase = (column.sparklePhase || 0) + dt * 0.0045;
-			if (column.stage === "telegraph") {
-				column.telegraphTimer = Math.max(0, (column.telegraphTimer || 0) - dt);
-				if (column.telegraphTimer <= 0) {
-					column.stage = "active";
-					column.activeTimer = column.activeDuration == null ? 1400 : column.activeDuration;
-				}
-				continue;
-			}
-			if (column.stage === "active") {
-				column.pillarPulse = (column.pillarPulse || 0) + dt * 0.0038;
-				if (column.damageCooldown > 0) column.damageCooldown = Math.max(0, column.damageCooldown - dt);
-				column.activeTimer = Math.max(0, (column.activeTimer || 0) - dt);
-				if (column.activeTimer <= 0) {
-					column.stage = "fade";
-					column.fadeTimer = column.fadeDuration == null ? 420 : column.fadeDuration;
-				}
-				continue;
-			}
-			column.pillarPulse = (column.pillarPulse || 0) + dt * 0.0026;
-			column.fadeTimer = Math.max(0, (column.fadeTimer || 0) - dt);
-			if (column.fadeTimer <= 0) column.dead = true;
-		}
-		state.bossCrownColumns = state.bossCrownColumns.filter(column => !column.dead);
-	}
+	// ============================================================
+	// updateBossAttacks ausgelagert nach src/boss/update.js
+	// ============================================================
 
 	function damagePlayer(amount = 1) {
 		const player = state.player;
@@ -5136,1309 +2328,44 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		}
 	}
 
-	function handleShotFoeHits() {
-		if (state.shots.length === 0) return;
-		for (const shot of state.shots) {
-			if (shot.life <= 0) continue;
-			for (const foe of state.foes) {
-				if (foe.dead) continue;
-				const dx = foe.x - shot.x;
-				const dy = foe.y - shot.y;
-				const { width: hitWidth, height: hitHeight } = getFoeHitbox(foe);
-				const nx = dx / hitWidth;
-				const ny = dy / hitHeight;
-				if (nx * nx + ny * ny < 1) {
-					foe.dead = true;
-					shot.life = 0;
-					awardFoeDefeat(foe);
-					break;
-				}
-			}
-		}
-	}
+	// ============================================================
+	// Foe/Pickup Collision-Handler ausgelagert nach src/foes/collision.js
+	// handleShotFoeHits, handleShotFoeArrowHits, handleShotTorpedoHits
+	// handlePlayerFoeCollisions, handlePlayerFoeArrowCollisions
+	// handlePlayerHealPickups, handlePlayerCoinDrops, handlePlayerSymbolDrops
+	// ============================================================
 
-	function handleShotFoeArrowHits() {
-		if (state.shots.length === 0 || state.foeArrows.length === 0) return;
-		for (const shot of state.shots) {
-			if (shot.life <= 0) continue;
-			for (const arrow of state.foeArrows) {
-				if (arrow.life <= 0) continue;
-				const dx = arrow.x - shot.x;
-				const dy = arrow.y - shot.y;
-				const radius = arrow.parryRadius == null ? 16 : arrow.parryRadius;
-				if (Math.hypot(dx, dy) < radius) {
-					arrow.life = 0;
-					shot.life = 0;
-					break;
-				}
-			}
-		}
-		state.foeArrows = state.foeArrows.filter(arrow => arrow.life > 0);
-	}
+	// handleShotBossHits ausgelagert nach src/boss/collision.js
+	// handlePlayerTorpedoCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerFinSweepCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerWakeWaveCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerWhirlpoolEffects ausgelagert nach src/boss/collision.js
+	// handlePlayerCoinExplosions ausgelagert nach src/boss/collision.js
+	// handlePlayerDiamondBeams ausgelagert nach src/boss/collision.js
+	// handlePlayerTreasureWaves ausgelagert nach src/boss/collision.js
+	// handlePlayerCardBoomerangs ausgelagert nach src/boss/collision.js
+	// handlePlayerCrownColumns ausgelagert nach src/boss/collision.js
+	// handlePlayerKatapultCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerShockwaveCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerSpeedboatCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerPerfumeOrbCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerFragranceCloudCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerBossCollision ausgelagert nach src/boss/collision.js
 
-	function handleShotTorpedoHits() {
-		if (state.shots.length === 0 || state.bossTorpedoes.length === 0) return;
-		const reward = 3;
-		for (const shot of state.shots) {
-			if (shot.life <= 0) continue;
-			for (const torpedo of state.bossTorpedoes) {
-				if (torpedo.life <= 0) continue;
-				const dx = torpedo.x - shot.x;
-				const dy = torpedo.y - shot.y;
-				const hitRadius = torpedo.radius || 18;
-				if (Math.hypot(dx, dy) < hitRadius) {
-					torpedo.life = 0;
-					shot.life = 0;
-					state.score += reward;
-					state.levelScore += reward;
-					triggerEventFlash("torpedo", { text: "+Rammung" });
-					break;
-				}
-			}
-		}
-		state.bossTorpedoes = state.bossTorpedoes.filter(torpedo => torpedo.life > 0);
-	}
+	// renderBackground, renderBubbles, renderFloorOverlay, renderCoverRocks, renderTsunamiWave
+	// sind jetzt in src/game/background.js ausgelagert
 
-	function handleShotBossHits() {
-		if (state.over) return;
-		const boss = state.boss;
-		if (!boss.active) return;
-		const scorePerHit = 10;
-		for (const shot of state.shots) {
-			if (shot.life <= 0) continue;
-			const dx = shot.x - boss.x;
-			const dy = (shot.y - boss.y) * 0.7;
-			const dist = Math.hypot(dx, dy);
-			const hitRadius = 64;
-			if (dist < hitRadius) {
-				shot.life = 0;
-				boss.hp = Math.max(0, boss.hp - 1);
-				state.score += scorePerHit;
-				state.levelScore += scorePerHit;
-				if (boss.hp <= 0) {
-					winGame();
-					break;
-				} else if (bannerEl) {
-					bannerEl.textContent = `Bosskampf – HP ${boss.hp}/${boss.maxHp}`;
-				}
-			}
-		}
-	}
-
-	function handlePlayerFoeCollisions() {
-		if (state.over) return;
-		const player = state.player;
-		for (const foe of state.foes) {
-			if (foe.dead) continue;
-			const dx = player.x - foe.x;
-			const dy = player.y - foe.y;
-			const { width: hitWidth, height: hitHeight } = getFoeHitbox(foe, { forPlayer: true });
-			const nx = dx / hitWidth;
-			const ny = dy / hitHeight;
-			if (nx * nx + ny * ny < 1) {
-				foe.dead = true;
-				damagePlayer(foe.damage == null ? 1 : foe.damage);
-			}
-		}
-	}
-
-	function handlePlayerFoeArrowCollisions() {
-		if (state.over || state.foeArrows.length === 0) return;
-		const player = state.player;
-		for (const arrow of state.foeArrows) {
-			if (arrow.life <= 0) continue;
-			const dx = player.x - arrow.x;
-			const dy = player.y - arrow.y;
-			const hitRadius = arrow.hitRadius == null ? 28 : arrow.hitRadius;
-			if (Math.hypot(dx, dy) < hitRadius) {
-				arrow.life = 0;
-				damagePlayer(arrow.damage || 1);
-			}
-		}
-		state.foeArrows = state.foeArrows.filter(arrow => arrow.life > 0);
-	}
-
-	function handlePlayerTorpedoCollisions() {
-		if (state.over || state.bossTorpedoes.length === 0) return;
-		const player = state.player;
-		for (const torpedo of state.bossTorpedoes) {
-			if (torpedo.life <= 0) continue;
-			const dx = player.x - torpedo.x;
-			const dy = player.y - torpedo.y;
-			const radius = (torpedo.radius || 18) + 4;
-			if (Math.hypot(dx, dy) < radius) {
-				torpedo.life = 0;
-				damagePlayer(1);
-			}
-		}
-		state.bossTorpedoes = state.bossTorpedoes.filter(torpedo => torpedo.life > 0);
-	}
-
-	function handlePlayerFinSweepCollisions() {
-		if (state.over || state.bossSweeps.length === 0) return;
-		const player = state.player;
-		for (const sweep of state.bossSweeps) {
-			if (sweep.delay > 0 || sweep.life <= 0) continue;
-			const dx = player.x - sweep.x;
-			const dy = player.y - sweep.y;
-			const radius = (sweep.radius || 38) + 6;
-			if (Math.hypot(dx, dy) < radius) {
-				sweep.life = 0;
-				damagePlayer(1);
-			}
-		}
-		state.bossSweeps = state.bossSweeps.filter(sweep => sweep.life > 0);
-	}
-
-	function handlePlayerWakeWaveCollisions() {
-		if (state.over || state.bossWakeWaves.length === 0) return;
-		const player = state.player;
-		for (const wave of state.bossWakeWaves) {
-			if (wave.life <= 0) continue;
-			if (wave.hurtCooldown > 0) continue;
-			const radiusX = (wave.radiusX == null ? 82 : wave.radiusX) * 0.9;
-			const radiusY = (wave.radiusY == null ? 28 : wave.radiusY) * 1.05;
-			const dx = player.x - wave.x;
-			const dy = player.y - wave.y;
-			const nx = dx / Math.max(1, radiusX);
-			const ny = dy / Math.max(1, radiusY);
-			if (nx * nx + ny * ny < 1) {
-				wave.hurtCooldown = 700;
-				damagePlayer(1);
-			}
-		}
-	}
-
-	function handlePlayerWhirlpoolEffects() {
-		if (state.over || state.bossWhirlpools.length === 0) return;
-		const player = state.player;
-		const dt = state.frameDt || 16;
-		for (const whirl of state.bossWhirlpools) {
-			if (whirl.dead || whirl.telegraph > 0) continue;
-			const dx = player.x - whirl.x;
-			const dy = player.y - whirl.y;
-			const dist = Math.hypot(dx, dy) || 1;
-			const activeRadius = whirl.radius == null ? 96 : whirl.radius;
-			const pullRadius = whirl.releaseTriggered ? (whirl.explosionRadius || activeRadius * 1.4) : activeRadius * 1.25;
-			if (dist < pullRadius) {
-				const pullStrength = (whirl.pull == null ? 0.001 : whirl.pull) * dt * (1 - dist / Math.max(1, pullRadius));
-				player.x = clamp(player.x - dx * pullStrength, 60, canvas.width - 60);
-				player.y = clamp(player.y - dy * pullStrength, 60, canvas.height - 60);
-			}
-			if (!whirl.releaseTriggered) {
-				if (dist < activeRadius * 0.92) {
-					if (whirl.damageTimer <= 0) {
-						damagePlayer(1);
-						whirl.damageTimer = 800;
-					}
-				}
-			} else if (!whirl.explosionApplied && dist < (whirl.explosionRadius || activeRadius * 1.4)) {
-				whirl.explosionApplied = true;
-				damagePlayer(1);
-			}
-		}
-	}
-
-	function handlePlayerCoinExplosions() {
-		if (state.over || state.bossCoinExplosions.length === 0) return;
-		const player = state.player;
-		for (const blast of state.bossCoinExplosions) {
-			if (blast.life <= 0 || blast.hitApplied) continue;
-			const radius = blast.radius == null ? 54 : blast.radius;
-			const dx = player.x - blast.x;
-			const dy = player.y - blast.y;
-			if (Math.hypot(dx, dy) < radius) {
-				blast.hitApplied = true;
-				damagePlayer(blast.damage == null ? 1 : blast.damage);
-				const knock = blast.knockback == null ? 0.16 : blast.knockback;
-				const pushX = knock * 520 * (dx >= 0 ? 1 : -1);
-				const pushY = knock * 280 * (dy >= 0 ? 1 : -1);
-				player.x = clamp(player.x + pushX, 60, canvas.width - 60);
-				player.y = clamp(player.y + pushY, 60, canvas.height - 60);
-			}
-		}
-	}
-
-	function handlePlayerDiamondBeams() {
-		if (state.over || state.bossDiamondBeams.length === 0) return;
-		const player = state.player;
-		for (const beam of state.bossDiamondBeams) {
-			const stage = beam.stage || "telegraph";
-			if (stage !== "active") continue;
-			const angle = beam.angle || 0;
-			const cosA = Math.cos(angle);
-			const sinA = Math.sin(angle);
-			const dx = player.x - beam.originX;
-			const dy = player.y - beam.originY;
-			const projection = dx * cosA + dy * sinA;
-			if (projection < -80 || projection > canvas.width + 220) continue;
-			const distance = Math.abs(dx * sinA - dy * cosA);
-			const halfWidth = (beam.width == null ? 48 : beam.width) * 0.5;
-			if (distance <= halfWidth) {
-				if (beam.damageCooldown && beam.damageCooldown > 0) continue;
-				damagePlayer(1);
-				beam.damageCooldown = 260;
-				const knock = beam.knockback == null ? 0.16 : beam.knockback;
-				player.x = clamp(player.x - cosA * knock * 540, 60, canvas.width - 60);
-				player.y = clamp(player.y - sinA * knock * 420, 60, canvas.height - 60);
-			}
-		}
-	}
-
-	function handlePlayerTreasureWaves() {
-		if (state.over || state.bossTreasureWaves.length === 0) return;
-		const player = state.player;
-		for (const wave of state.bossTreasureWaves) {
-			if (wave.stage !== "surge") continue;
-			if (wave.damageCooldown > 0) continue;
-			const radiusX = (wave.radiusX == null ? 120 : wave.radiusX) * 0.82;
-			const radiusY = (wave.radiusY == null ? 48 : wave.radiusY) * 1.08;
-			const dx = player.x - wave.x;
-			const dy = player.y - wave.y;
-			const nx = dx / Math.max(1, radiusX);
-			const ny = dy / Math.max(1, radiusY);
-			if (nx * nx + ny * ny < 1) {
-				damagePlayer(wave.damage == null ? 1 : wave.damage);
-				wave.damageCooldown = 520;
-				const knock = wave.knockback == null ? 0.22 : wave.knockback;
-				player.x = clamp(player.x + (dx >= 0 ? 1 : -1) * knock * 540, 60, canvas.width - 60);
-				player.y = clamp(player.y + (dy >= 0 ? 1 : -1) * knock * 320, 60, canvas.height - 60);
-			}
-		}
-	}
-
-	function handlePlayerCardBoomerangs() {
-		if (state.over || state.bossCardBoomerangs.length === 0) return;
-		const player = state.player;
-		for (const card of state.bossCardBoomerangs) {
-			if (card.dead) continue;
-			if (card.phase === "orbit") continue;
-			if (card.hitCooldown && card.hitCooldown > 0) continue;
-			const radius = card.phase === "burst" ? 34 : 28;
-			const dx = player.x - card.x;
-			const dy = player.y - card.y;
-			if (Math.hypot(dx, dy) < radius) {
-				card.hitCooldown = 420;
-				damagePlayer(card.damage == null ? 1 : card.damage);
-				const knock = card.knockback == null ? 0.14 : card.knockback;
-				player.x = clamp(player.x + (dx >= 0 ? 1 : -1) * knock * 480, 60, canvas.width - 60);
-				player.y = clamp(player.y + (dy >= 0 ? 1 : -1) * knock * 220, 60, canvas.height - 60);
-			}
-		}
-	}
-
-	function handlePlayerCrownColumns() {
-		if (state.over || state.bossCrownColumns.length === 0) return;
-		const player = state.player;
-		for (const column of state.bossCrownColumns) {
-			if (column.stage !== "active") continue;
-			if (column.damageCooldown > 0) continue;
-			const halfWidth = column.halfWidth == null ? 46 : column.halfWidth;
-			const top = column.top == null ? canvas.height * 0.22 : column.top;
-			const bottom = column.bottom == null ? canvas.height * 0.82 : column.bottom;
-			if (player.x >= column.x - halfWidth && player.x <= column.x + halfWidth && player.y >= top && player.y <= bottom) {
-				damagePlayer(column.damage == null ? 1 : column.damage);
-				column.damageCooldown = 560;
-				const knock = column.knockback == null ? 0.24 : column.knockback;
-				const dirX = player.x >= column.x ? 1 : -1;
-				const dirY = player.y >= (top + bottom) * 0.5 ? 1 : -1;
-				player.x = clamp(player.x + dirX * knock * 620, 60, canvas.width - 60);
-				player.y = clamp(player.y + dirY * knock * 260, 60, canvas.height - 60);
-			}
-		}
-	}
-
-	function handlePlayerKatapultCollisions() {
-		if (state.over || state.bossKatapultShots.length === 0) return;
-		const player = state.player;
-		for (const shot of state.bossKatapultShots) {
-			if (shot.dead || shot.delay > 0) continue;
-			const dx = player.x - shot.x;
-			const dy = player.y - shot.y;
-			const dist = Math.hypot(dx, dy);
-			if (!shot.exploding) {
-				const radius = (shot.radius || 24) + 6;
-				if (dist < radius) {
-					shot.exploding = true;
-					shot.explosionLife = Math.max(shot.explosionLife, 520);
-					shot.damageDone = true;
-					if (player.invulnFor <= 0) damagePlayer(1);
-				}
-			} else if (!shot.damageDone) {
-				const explosionRadius = shot.explosionRadius || 110;
-				if (dist < explosionRadius * 0.8) {
-					if (player.invulnFor <= 0) damagePlayer(1);
-					shot.damageDone = true;
-				}
-			}
-		}
-	}
-
-	function handlePlayerShockwaveCollisions() {
-		if (state.over || state.bossShockwaves.length === 0) return;
-		const player = state.player;
-		const dt = state.frameDt || 16;
-		for (const wave of state.bossShockwaves) {
-			if (wave.dead) continue;
-			const dx = player.x - wave.x;
-			const dy = player.y - wave.y;
-			const dist = Math.hypot(dx, dy) || 1;
-			if (wave.stage === "wave1" && !wave.damageWaveOne) {
-				const thickness = wave.waveThicknessOne || 90;
-				const radius = wave.waveOneRadius || 0;
-				if (dist < radius + thickness * 0.5 && dist > Math.max(0, radius - thickness * 0.5)) {
-					damagePlayer(1);
-					wave.damageWaveOne = true;
-				}
-			}
-			if (wave.stage === "wave2" && !wave.damageWaveTwo) {
-				const thickness = wave.waveThicknessTwo || 120;
-				const radius = wave.waveTwoRadius || 0;
-				if (dist < radius + thickness * 0.5 && dist > Math.max(0, radius - thickness * 0.5)) {
-					if (player.shieldActive) {
-						player.shieldLastBlock = performance.now();
-					} else {
-						damagePlayer(1);
-					}
-					wave.damageWaveTwo = true;
-				}
-			}
-			if ((wave.stage === "wave1" || wave.stage === "wave2") && dist > 0) {
-				const pushForce = (wave.stage === "wave2" ? 0.0009 : 0.0005) * dt;
-				const nx = dx / dist;
-				player.x = clamp(player.x + nx * pushForce, 60, canvas.width - 60);
-				player.y = clamp(player.y + (dy / dist) * pushForce * 0.6, 60, canvas.height - 60);
-			}
-		}
-	}
-
-	function handlePlayerSpeedboatCollisions() {
-		if (state.over || state.bossSpeedboats.length === 0) return;
-		const player = state.player;
-		for (const boat of state.bossSpeedboats) {
-			if (boat.dead) continue;
-			const dx = player.x - boat.x;
-			const dy = player.y - boat.y;
-			const radiusX = 36;
-			const radiusY = 22;
-			const nx = dx / radiusX;
-			const ny = dy / radiusY;
-			if (nx * nx + ny * ny < 1) {
-				if ((boat.damageCooldown || 0) <= 0) {
-					damagePlayer(1);
-					boat.damageCooldown = 640;
-				}
-			}
-		}
-	}
-
-	function handlePlayerPerfumeOrbCollisions() {
-		if (state.over || state.bossPerfumeOrbs.length === 0) return;
-		const player = state.player;
-		const bossCfg = state.levelConfig && state.levelConfig.boss;
-		for (const orb of state.bossPerfumeOrbs) {
-			if (orb.dead || orb.life <= 0) continue;
-			const dx = player.x - orb.x;
-			const dy = player.y - orb.y;
-			const radius = (orb.radius || 18) + 14;
-			if (Math.hypot(dx, dy) < radius) {
-				orb.dead = true;
-				orb.life = 0;
-				spawnFragranceCloud(orb.x, orb.y, {
-					radius: bossCfg && bossCfg.cloudRadius ? bossCfg.cloudRadius * 0.75 : 52,
-					duration: bossCfg && bossCfg.cloudDuration ? bossCfg.cloudDuration * 0.72 : 2800,
-					growth: 0.02,
-					driftX: -0.035,
-					driftY: -0.012
-				});
-				if (player.invulnFor <= 0) damagePlayer(1);
-				break;
-			}
-		}
-	}
-
-	function handlePlayerFragranceCloudCollisions() {
-		if (state.over || state.bossFragranceClouds.length === 0) return;
-		const player = state.player;
-		for (const cloud of state.bossFragranceClouds) {
-			const dx = player.x - cloud.x;
-			const dy = player.y - cloud.y;
-			const radius = cloud.radius || cloud.baseRadius || 60;
-			if (Math.hypot(dx, dy) < radius * 0.86) {
-				if (!player.shieldActive) player.perfumeSlowTimer = Math.max(player.perfumeSlowTimer || 0, 2200);
-				if (player.invulnFor <= 0) damagePlayer(cloud.damage || 1);
-				if (player.invulnFor > 0) break;
-			}
-		}
-	}
-
-	function handlePlayerHealPickups() {
-		if (state.over || state.healPickups.length === 0) return;
-		const player = state.player;
-		let collected = false;
-		for (const heal of state.healPickups) {
-			if (heal.life <= 0) continue;
-			const dx = player.x - heal.x;
-			const dy = player.y - heal.y;
-			const radius = 26 * (heal.scale || 1);
-			if (Math.hypot(dx, dy) < radius) {
-				heal.life = 0;
-				if (state.hearts < state.maxHearts) {
-					state.hearts = Math.min(state.maxHearts, state.hearts + 1);
-					collected = true;
-					triggerEventFlash("heal", { text: "Erfrischt!" });
-					const burstCount = 10;
-					for (let i = 0; i < burstCount; i += 1) {
-						const angle = (i / burstCount) * TAU + Math.random() * 0.6;
-						state.healBursts.push({
-							x: player.x,
-							y: player.y,
-							vx: Math.cos(angle) * 0.14,
-							vy: Math.sin(angle) * 0.18,
-							rad: 12 + Math.random() * 8,
-							life: 900,
-							fade: 900
-						});
-					}
-				}
-			}
-		}
-		if (collected) updateHUD();
-		state.healPickups = state.healPickups.filter(heal => heal.life > 0);
-	}
-
-	function handlePlayerCoinDrops() {
-		if (state.over || state.coinDrops.length === 0) return;
-		const player = state.player;
-		for (const coin of state.coinDrops) {
-			if (coin.collected || coin.dead) continue;
-			const dx = player.x - coin.x;
-			const dy = player.y - coin.y;
-			if (Math.hypot(dx, dy) < 34) {
-				collectCoinDrop(coin);
-			}
-		}
-	}
-
-	function handlePlayerSymbolDrops() {
-		if (state.over || state.symbolDrops.length === 0) return;
-		const player = state.player;
-		for (const drop of state.symbolDrops) {
-			if (drop.collected) continue;
-			const dx = player.x - drop.x;
-			const dy = player.y - drop.y;
-			const radius = 40;
-			if (Math.hypot(dx, dy) < radius) {
-				collectSymbolDrop(drop, { auto: false });
-			}
-		}
-	}
-
-	function handlePlayerBossCollision() {
-		const boss = state.boss;
-		if (!boss.active || state.over) return;
-		const player = state.player;
-		const dx = player.x - boss.x;
-		const dy = (player.y - boss.y) * 0.7;
-		const dist = Math.hypot(dx, dy);
-		const hitRadius = 72;
-		if (dist < hitRadius) damagePlayer(1);
-	}
-
-	function renderBackground() {
-		const width = canvas.width;
-		const height = canvas.height;
-		const level = state.level || 1;
-		const palette = level === 2
-			? {
-				top: "#1d0f35",
-				mid: "#0f1633",
-				bottom: "#07091b",
-				haze: "rgba(90,50,120,0.32)",
-				hazeStrong: "rgba(180,110,220,0.22)",
-				ridges: "#12031f",
-				foreground: "#1a0633"
-			}
-			: {
-				top: "#03294a",
-				mid: "#02203b",
-				bottom: "#02111f",
-				haze: "rgba(40,80,120,0.28)",
-				hazeStrong: "rgba(110,170,220,0.22)",
-				ridges: "#031728",
-				foreground: "#05233b"
-			};
-		const time = state.elapsed || 0;
-		const baseGrad = ctx.createLinearGradient(0, 0, 0, height);
-		baseGrad.addColorStop(0, palette.top);
-		baseGrad.addColorStop(0.55, palette.mid);
-		baseGrad.addColorStop(1, palette.bottom);
-		ctx.fillStyle = baseGrad;
-		ctx.fillRect(0, 0, width, height);
-
-		ctx.save();
-		ctx.fillStyle = palette.ridges;
-		ctx.globalAlpha = 0.7;
-		ctx.beginPath();
-		ctx.moveTo(0, height * 0.76);
-		ctx.bezierCurveTo(width * 0.18, height * 0.7, width * 0.34, height * 0.82, width * 0.52, height * 0.78);
-		ctx.bezierCurveTo(width * 0.7, height * 0.74, width * 0.82, height * 0.86, width, height * 0.8);
-		ctx.lineTo(width, height);
-		ctx.lineTo(0, height);
-		ctx.closePath();
-		ctx.fill();
-		ctx.restore();
-
-		ctx.save();
-		ctx.fillStyle = palette.foreground;
-		ctx.globalAlpha = 0.85;
-		ctx.beginPath();
-		ctx.moveTo(0, height * 0.88);
-		ctx.bezierCurveTo(width * 0.16, height * 0.82, width * 0.3, height * 0.92, width * 0.46, height * 0.9);
-		ctx.bezierCurveTo(width * 0.68, height * 0.86, width * 0.82, height * 0.96, width, height * 0.94);
-		ctx.lineTo(width, height);
-		ctx.lineTo(0, height);
-		ctx.closePath();
-		ctx.fill();
-		ctx.restore();
-
-		if (level === 1) {
-			const bgSprite = SPRITES.backgroundLevelOne;
-			if (spriteReady(bgSprite)) {
-				const scale = Math.max(width / bgSprite.naturalWidth, height / bgSprite.naturalHeight);
-				const drawW = bgSprite.naturalWidth * scale;
-				const drawH = bgSprite.naturalHeight * scale;
-				const overflowX = drawW - width;
-				const overflowY = drawH - height;
-				const drawX = overflowX > 0 ? -overflowX * 0.15 : 0;
-				const drawY = overflowY > 0 ? -overflowY * 0.45 : 0; // keep rocks hugging top edge
-				ctx.drawImage(bgSprite, drawX, drawY, drawW, drawH);
-			}
-		}
-
-
-
-		ctx.save();
-		const glowGrad = ctx.createRadialGradient(width * 0.5, height * 0.08, 0, width * 0.5, height * 0.08, height * 0.9);
-		glowGrad.addColorStop(0, palette.hazeStrong);
-		glowGrad.addColorStop(1, "rgba(0,0,0,0)");
-		ctx.globalCompositeOperation = "lighter";
-		ctx.globalAlpha = 0.85;
-		ctx.fillStyle = glowGrad;
-		ctx.fillRect(0, 0, width, height);
-		ctx.restore();
-
-		ctx.save();
-		ctx.globalCompositeOperation = "lighter";
-		ctx.globalAlpha = 0.22;
-		const beamCount = 4;
-		for (let i = 0; i < beamCount; i += 1) {
-			const phase = time * 0.00025 + i * 1.37;
-			const beamCenter = (width / (beamCount + 1)) * (i + 1) + Math.sin(phase) * width * 0.08;
-			const beamWidth = width * 0.18;
-			ctx.beginPath();
-			ctx.moveTo(beamCenter - beamWidth * 0.3, -height * 0.1);
-			ctx.lineTo(beamCenter + beamWidth * 0.3, -height * 0.1);
-			ctx.lineTo(beamCenter + beamWidth * 0.55, height * 0.72);
-			ctx.lineTo(beamCenter - beamWidth * 0.55, height * 0.72);
-			ctx.closePath();
-			const beamGrad = ctx.createLinearGradient(beamCenter, 0, beamCenter, height * 0.75);
-			beamGrad.addColorStop(0, "rgba(255,255,255,0.28)");
-			beamGrad.addColorStop(0.6, palette.haze);
-			beamGrad.addColorStop(1, "rgba(0,0,0,0)");
-			ctx.fillStyle = beamGrad;
-			ctx.fill();
-		}
-		ctx.restore();
-
-		ctx.save();
-		ctx.globalAlpha = 0.35;
-		ctx.fillStyle = palette.haze;
-		ctx.beginPath();
-		ctx.moveTo(0, height * 0.35);
-		ctx.bezierCurveTo(width * 0.2, height * 0.28, width * 0.4, height * 0.32, width * 0.7, height * 0.42);
-		ctx.lineTo(width, height * 0.48);
-		ctx.lineTo(width, height * 0.65);
-		ctx.lineTo(0, height * 0.55);
-		ctx.closePath();
-		ctx.fill();
-		ctx.restore();
-
-		const pseudoRand = seed => {
-			const s = Math.sin(seed) * 43758.5453;
-			return s - Math.floor(s);
-		};
-		ctx.save();
-		ctx.globalAlpha = 0.22;
-		ctx.fillStyle = "rgba(255,255,255,0.35)";
-		const moteCount = 42;
-		for (let i = 0; i < moteCount; i += 1) {
-			const noise = pseudoRand(i * 12.93);
-			const noise2 = pseudoRand(i * 34.37);
-			const scroll = (time * 0.00004 + noise2) % 1;
-			const x = noise * width;
-			const y = scroll * height;
-			const size = 1 + pseudoRand(i * 91.77) * 3;
-			ctx.beginPath();
-			ctx.arc(x, y, size, 0, TAU);
-			ctx.fill();
-		}
-		ctx.restore();
-
-		if (level === 3 || state.levelIndex === 2) {
-			const floorSprite = LEVEL3_FLOOR_SPRITE;
-			const floorTop = getLevel3FloorTop();
-			if (spriteReady(floorSprite) && floorTop != null) {
-				const scale = width / floorSprite.naturalWidth;
-				const drawW = floorSprite.naturalWidth * scale;
-				const drawH = floorSprite.naturalHeight * scale;
-				const drawX = 0;
-				const drawY = floorTop;
-				ctx.drawImage(floorSprite, drawX, drawY, drawW, drawH);
-			}
-		}
-	}
-
-	function renderBubbles() {
-		ctx.save();
-		ctx.strokeStyle = "rgba(210,240,255,0.35)";
-		for (const bubble of state.bubbles) {
-			ctx.beginPath();
-			ctx.arc(bubble.x, bubble.y, bubble.r, 0, TAU);
-			ctx.stroke();
-		}
-		ctx.restore();
-	}
-
-	function renderFloorOverlay() {
-		const level = state.level || 1;
-		if (level === 2 || state.levelIndex === 1) {
-			const floorSprite = LEVEL2_FLOOR_SPRITE;
-			if (spriteReady(floorSprite)) {
-				const scale = canvas.width / floorSprite.naturalWidth;
-				const drawW = floorSprite.naturalWidth * scale;
-				const drawH = floorSprite.naturalHeight * scale;
-				const drawY = canvas.height - drawH + LEVEL2_FLOOR_OFFSET;
-				ctx.drawImage(floorSprite, 0, drawY, drawW, drawH);
-				const pseudoRand = seed => {
-					const s = Math.sin(seed) * 43758.5453;
-					return s - Math.floor(s);
-				};
-				const time = state.elapsed || 0;
-				const riseSpan = 220;
-				const baseY = drawY + drawH * 0.46;
-				ctx.save();
-				ctx.globalCompositeOperation = "lighter";
-				for (let i = 0; i < 18; i += 1) {
-					const noise = pseudoRand(i * 19.3);
-					const drift = Math.sin(time * 0.0012 + i) * 6;
-					const phase = (time * 0.035 + i * 120) % riseSpan;
-					const x = 160 + noise * 140 + drift;
-					const y = baseY - phase;
-					const size = 2 + pseudoRand(i * 91.7) * 3;
-					const alpha = 0.55 * (1 - phase / riseSpan);
-					ctx.fillStyle = `rgba(190, 90, 255, ${alpha.toFixed(3)})`;
-					ctx.beginPath();
-					ctx.arc(x, y, size, 0, TAU);
-					ctx.fill();
-				}
-				ctx.restore();
-			}
-			return;
-		}
-		if (level === 3 || state.levelIndex === 2) {
-			const floorSprite = LEVEL3_FLOOR_SPRITE;
-			const floorTop = getLevel3FloorTop();
-			if (spriteReady(floorSprite) && floorTop != null) {
-				const scale = canvas.width / floorSprite.naturalWidth;
-				const drawW = floorSprite.naturalWidth * scale;
-				const drawH = floorSprite.naturalHeight * scale;
-				ctx.drawImage(floorSprite, 0, floorTop, drawW, drawH);
-			}
-			return;
-		}
-		if (level === 4 || state.levelIndex === 3) {
-			const floorSprite = LEVEL4_FLOOR_SPRITE;
-			const floorTop = getLevel4FloorTop();
-			if (spriteReady(floorSprite) && floorTop != null) {
-				const scale = canvas.width / floorSprite.naturalWidth;
-				const drawW = floorSprite.naturalWidth * scale;
-				const drawH = floorSprite.naturalHeight * scale;
-				ctx.drawImage(floorSprite, 0, floorTop, drawW, drawH);
-			}
-		}
-	}
-
-	function renderCoverRocks() {
-		if (state.coverRocks.length === 0) return;
-		const sprite = SPRITES.coverRock;
-		for (const rock of state.coverRocks) {
-			const radiusX = rock.radiusX == null ? 80 : rock.radiusX;
-			const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
-			const dropRatio = clamp01((rock.y + radiusY) / Math.max(1, rock.groundLine || canvas.height));
-			const shadowRadius = Math.max(36, radiusX * (0.55 + dropRatio * 0.35));
-			const shadowY = (rock.groundLine == null ? canvas.height * 0.88 : rock.groundLine) + 8;
-			MODELS.simpleShadow(ctx, rock.x + 10, shadowY, shadowRadius);
-			ctx.save();
-			ctx.translate(rock.x, rock.y);
-			const impactRatio = rock.landed && rock.impactTimer > 0 ? rock.impactTimer / 520 : 0;
-			if (impactRatio > 0) {
-				const sway = Math.sin(impactRatio * TAU * 2.4) * 0.06;
-				ctx.rotate(sway);
-			}
-			if (rock.delay > 0) ctx.globalAlpha = 0.75;
-			const hitGlow = rock.hitPulse > 0 ? clamp01(rock.hitPulse / 520) : 0;
-			if (spriteReady(sprite)) {
-				const drawW = rock.width == null ? sprite.naturalWidth * (rock.scale == null ? 0.26 : rock.scale) : rock.width;
-				const drawH = rock.height == null ? sprite.naturalHeight * (rock.scale == null ? 0.26 : rock.scale) : rock.height;
-				ctx.drawImage(sprite, -drawW / 2, -drawH / 2, drawW, drawH);
-			} else {
-				ctx.fillStyle = "#2b2f45";
-				ctx.beginPath();
-				ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, TAU);
-				ctx.fill();
-				ctx.strokeStyle = "#151827";
-				ctx.lineWidth = 4;
-				ctx.stroke();
-			}
-			if (hitGlow > 0) {
-				ctx.save();
-				ctx.globalAlpha = hitGlow * 0.32;
-				ctx.fillStyle = "#ffe9b6";
-				ctx.beginPath();
-				ctx.ellipse(0, 0, radiusX * 0.86, radiusY * 0.78, 0, 0, TAU);
-				ctx.fill();
-				ctx.restore();
-			}
-			ctx.restore();
-		}
-	}
-
-	function renderHeals() {
-		if (state.healPickups.length === 0) return;
-		const sprite = getHealSprite();
-		if (sprite) {
-			for (const heal of state.healPickups) {
-				if (heal.life <= 0) continue;
-				const scale = (heal.spriteScale || 0.1) * (heal.scale || 1);
-				const baseW = sprite.naturalWidth || sprite.width;
-				const baseH = sprite.naturalHeight || sprite.height;
-				const drawW = baseW * scale;
-				const drawH = baseH * scale;
-				const alpha = clamp01(heal.life / 1000);
-				ctx.save();
-				ctx.translate(heal.x, heal.y);
-				ctx.rotate(Math.sin(heal.sway * 0.4) * 0.04);
-				ctx.globalAlpha = alpha < 0.9 ? Math.max(alpha, 0.1) : 0.95;
-				ctx.drawImage(sprite, -drawW / 2, -drawH / 2, drawW, drawH);
-				ctx.restore();
-			}
-			return;
-		}
-
-		ctx.save();
-		for (const heal of state.healPickups) {
-			if (heal.life <= 0) continue;
-			const radius = 14 * (heal.scale || 1);
-			ctx.fillStyle = "rgba(120,220,200,0.55)";
-			ctx.beginPath();
-			ctx.arc(heal.x, heal.y, radius, 0, TAU);
-			ctx.fill();
-		}
-		ctx.restore();
-	}
-
-	function renderCoralEffects() {
-		if (state.coralEffects.length === 0) return;
-		ctx.save();
-		ctx.globalCompositeOperation = "lighter";
-		for (const fx of state.coralEffects) {
-			const progress = fx.maxLife > 0 ? clamp01(1 - fx.life / fx.maxLife) : 1;
-			const eased = easeOutCubic(progress);
-			if (fx.kind === "ring") {
-				const radius = fx.startRadius + (fx.endRadius - fx.startRadius) * eased;
-				const thickness = fx.startLine + (fx.endLine - fx.startLine) * eased;
-				const alpha = clamp01(fx.startAlpha + (fx.endAlpha - fx.startAlpha) * eased);
-				ctx.save();
-				ctx.globalAlpha = alpha;
-				ctx.lineWidth = Math.max(0.6, thickness);
-				ctx.strokeStyle = fx.mode === "spawn" ? "rgba(255,200,220,1)" : "rgba(255,170,200,1)";
-				ctx.beginPath();
-				ctx.arc(fx.x, fx.y, Math.max(2, radius), 0, TAU);
-				ctx.stroke();
-				ctx.restore();
-			} else if (fx.kind === "spark") {
-				const radius = fx.radiusStart + (fx.radiusEnd - fx.radiusStart) * eased;
-				const fade = fx.mode === "spawn" ? 0.8 - progress * 0.45 : 0.7 - progress * 0.3;
-				ctx.save();
-				ctx.globalAlpha = clamp01(fade);
-				MODELS.sparkle(ctx, fx.x, fx.y, { radius: Math.max(4, radius), rotation: fx.rotation || 0 });
-				ctx.restore();
-			}
-		}
-		ctx.restore();
-	}
-
-	function renderCoralAllies() {
-		if (state.coralAllies.length === 0) return;
-		const now = performance.now();
-		ctx.save();
-		for (const ally of state.coralAllies) {
-			ctx.save();
-			const x = ally.x == null ? state.player.x : ally.x;
-			const y = ally.y == null ? state.player.y : ally.y;
-			ctx.translate(x, y);
-			const wobble = Math.sin((ally.bobPhase || 0) + now * 0.0022) * 0.1;
-			const spriteKey = ally.spriteKey;
-			const sprite = spriteKey && SPRITES[spriteKey] ? SPRITES[spriteKey] : null;
-			const usingSprite = sprite && spriteReady(sprite);
-			const baseRotation = usingSprite ? ally.spriteRotationOffset || 0 : 0;
-			ctx.rotate(baseRotation + wobble * 0.2);
-			if (usingSprite) {
-				const scale = ally.spriteScale == null ? 0.22 : ally.spriteScale;
-				const drawW = sprite.naturalWidth * scale;
-				const drawH = sprite.naturalHeight * scale;
-				const offsetX = ally.spriteOffsetX == null ? 0 : ally.spriteOffsetX;
-				const offsetY = ally.spriteOffsetY == null ? 0 : ally.spriteOffsetY;
-				ctx.drawImage(sprite, -drawW / 2 + offsetX, -drawH / 2 + offsetY, drawW, drawH);
-			} else {
-				const bodyRadius = 18;
-				const grad = ctx.createLinearGradient(0, -bodyRadius, 0, bodyRadius);
-				grad.addColorStop(0, "rgba(255,188,210,0.95)");
-				grad.addColorStop(1, "rgba(255,132,120,0.85)");
-				ctx.fillStyle = grad;
-				ctx.beginPath();
-				ctx.ellipse(0, 0, bodyRadius * 0.9, bodyRadius * 0.6, 0, 0, TAU);
-				ctx.fill();
-				ctx.lineWidth = 3;
-				ctx.strokeStyle = "rgba(255,245,235,0.65)";
-				ctx.stroke();
-				ctx.lineWidth = 2;
-				ctx.strokeStyle = "rgba(255,110,120,0.65)";
-				ctx.beginPath();
-				ctx.moveTo(-bodyRadius * 0.3, bodyRadius * 0.4);
-				ctx.lineTo(0, bodyRadius * 0.85);
-				ctx.lineTo(bodyRadius * 0.3, bodyRadius * 0.4);
-				ctx.stroke();
-			}
-			ctx.restore();
-		}
-		ctx.restore();
-	}
-
-	function renderTsunamiWave() {
-		const wave = state.tsunamiWave;
-		if (!wave) return;
-		const width = wave.width == null ? Math.max(260, canvas.width * 0.24) : wave.width;
-		const left = wave.x;
-		const right = left + width;
-		const strength = clamp01(wave.energy == null ? 1 : wave.energy);
-		const elapsed = wave.elapsed || 0;
-		ctx.save();
-		ctx.beginPath();
-		ctx.rect(left, 0, width, canvas.height);
-		ctx.clip();
-		const grad = ctx.createLinearGradient(left, 0, right, 0);
-		grad.addColorStop(0, `rgba(80,150,240,${0.22 + 0.28 * strength})`);
-		grad.addColorStop(0.42, `rgba(110,195,255,${0.3 + 0.32 * strength})`);
-		grad.addColorStop(1, `rgba(200,245,255,${0.35 + 0.28 * strength})`);
-		ctx.globalCompositeOperation = "source-over";
-		ctx.globalAlpha = 1;
-		ctx.fillStyle = grad;
-		ctx.fillRect(left, 0, width, canvas.height);
-		ctx.globalCompositeOperation = "lighter";
-		ctx.globalAlpha = 0.25 * strength;
-		ctx.fillStyle = "rgba(255,255,255,0.9)";
-		ctx.fillRect(Math.max(left, right - width * 0.3), 0, width * 0.08, canvas.height);
-		ctx.globalAlpha = 0.18 * strength;
-		ctx.fillRect(Math.max(left, right - width * 0.46), 0, width * 0.06, canvas.height);
-		ctx.globalCompositeOperation = "source-over";
-		const shimmerPhase = (wave.detailOffset || 0) + elapsed * 0.0021;
-		const shimmerCount = 3;
-		for (let i = 0; i < shimmerCount; i += 1) {
-			const phase = shimmerPhase + i * 1.7;
-			const center = (Math.sin(phase) * 0.5 + 0.5) * canvas.height;
-			const bandHeight = 90 + Math.sin(phase * 1.4 + i * 2.1) * 38;
-			const top = center - bandHeight * 0.5;
-			const gradBand = ctx.createLinearGradient(left, top, left, top + bandHeight);
-			gradBand.addColorStop(0, "rgba(160,215,255,0)");
-			gradBand.addColorStop(0.45, `rgba(210,245,255,${0.14 * strength})`);
-			gradBand.addColorStop(0.85, "rgba(200,240,255,0)");
-			ctx.globalAlpha = 0.9;
-			ctx.fillStyle = gradBand;
-			ctx.fillRect(left, top, width, bandHeight);
-		}
-		if (wave.bubbles && wave.bubbles.length) {
-			const span = canvas.height + 160;
-			ctx.globalCompositeOperation = "lighter";
-			for (const bubble of wave.bubbles) {
-				const driftPhase = shimmerPhase * (0.9 + bubble.drift * 0.18) + bubble.x * 4.8;
-				const drift = Math.sin(driftPhase) * width * 0.08;
-				const x = left + width * bubble.x + drift;
-				const travel = (bubble.y * span + elapsed * bubble.speed * span) % span;
-				const y = canvas.height + 80 - travel;
-				const radius = Math.max(3, bubble.radius * (0.45 + strength * 0.55));
-				const alpha = Math.max(0, bubble.alpha * strength * 1.2);
-				if (y < -radius || y > canvas.height + radius) continue;
-				ctx.globalAlpha = alpha;
-				const bubbleGrad = ctx.createRadialGradient(x, y, radius * 0.25, x, y, radius);
-				bubbleGrad.addColorStop(0, "rgba(255,255,255,0.95)");
-				bubbleGrad.addColorStop(0.5, "rgba(195,235,255,0.45)");
-				bubbleGrad.addColorStop(1, "rgba(150,210,255,0)");
-				ctx.fillStyle = bubbleGrad;
-				ctx.beginPath();
-				ctx.arc(x, y, radius, 0, TAU);
-				ctx.fill();
-			}
-		}
-		ctx.restore();
-	}
-
-	function renderCoinDrops() {
-		if (state.coinDrops.length === 0) return;
-		ctx.save();
-		for (const coin of state.coinDrops) {
-			if (coin.dead) continue;
-			const radius = 14 * (coin.scale || 1);
-			const ratio = coin.collectDuration ? (coin.collectTimer || 0) / coin.collectDuration : 1;
-			const alpha = coin.collected ? Math.max(0, ratio) : 1;
-			ctx.save();
-			ctx.translate(coin.x, coin.y);
-			ctx.rotate(coin.spin || 0);
-			ctx.globalAlpha = 0.85 * alpha;
-			const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius);
-			grad.addColorStop(0, "rgba(255,255,220,0.95)");
-			grad.addColorStop(0.45, "rgba(255,215,110,0.9)");
-			grad.addColorStop(1, "rgba(200,140,40,0.6)");
-			ctx.fillStyle = grad;
-			ctx.beginPath();
-			ctx.ellipse(0, 0, radius, radius * 0.7, 0, 0, TAU);
-			ctx.fill();
-			ctx.strokeStyle = "rgba(255,240,180,0.85)";
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			ctx.ellipse(0, 0, radius * 0.85, radius * 0.58, 0, 0, TAU);
-			ctx.stroke();
-			ctx.restore();
-			if (coin.collected && coin.collectTimer > 0) {
-				const collectRatio = coin.collectDuration ? 1 - coin.collectTimer / coin.collectDuration : 0;
-				ctx.save();
-				ctx.globalAlpha = 0.7 * (1 - collectRatio * 0.8);
-				ctx.fillStyle = "#ffe4a6";
-				ctx.font = "bold 18px 'Trebuchet MS', 'Segoe UI', sans-serif";
-				ctx.textAlign = "center";
-				ctx.fillText(`+${coin.value || 1}`, coin.x, coin.y - 24 - collectRatio * 28);
-				ctx.restore();
-			}
-		}
-		ctx.restore();
-	}
-
-	function renderHealBursts() {
-		if (state.healBursts.length === 0) return;
-		ctx.save();
-		for (const burst of state.healBursts) {
-			const lifeRatio = clamp01(burst.life / (burst.fade || 900));
-			ctx.globalAlpha = lifeRatio * 0.8;
-			MODELS.sparkle(ctx, burst.x, burst.y, { radius: burst.rad * lifeRatio * 0.9, rotation: burst.life * 0.002 });
-		}
-		ctx.restore();
-	}
-
-	function renderSymbolDrops() {
-		if (state.symbolDrops.length === 0) return;
-		ctx.save();
-		for (const drop of state.symbolDrops) {
-			const config = SYMBOL_DATA[drop.kind];
-			const spriteKey = config && config.spriteKey;
-			const sprite = spriteKey && SPRITES[spriteKey];
-			const cleanup = drop.cleanupTimer == null ? SYMBOL_AUTOCOLLECT_MS : drop.cleanupTimer;
-			const alpha = drop.collected ? clamp01(cleanup / 420) : 1;
-			ctx.save();
-			ctx.translate(drop.x, drop.y);
-			ctx.globalAlpha = alpha;
-			ctx.shadowColor = drop.collected ? "rgba(119,255,204,0.35)" : "rgba(119,255,204,0.5)";
-			ctx.shadowBlur = drop.collected ? 6 : 16;
-			const baseScale = drop.scale == null ? 0.26 : drop.scale;
-			if (sprite && spriteReady(sprite)) {
-				const drawW = sprite.naturalWidth * baseScale;
-				const drawH = sprite.naturalHeight * baseScale;
-				ctx.drawImage(sprite, -drawW / 2, -drawH / 2, drawW, drawH);
-			} else {
-				ctx.fillStyle = "rgba(255,255,255,0.85)";
-				ctx.beginPath();
-				ctx.arc(0, 0, 18 * baseScale * 4, 0, TAU);
-				ctx.fill();
-			}
-			ctx.restore();
-		}
-		ctx.restore();
-	}
-
-	function renderDebugLabel() {
-		ctx.save();
-		ctx.fillStyle = "rgba(255,255,255,0.8)";
-		ctx.font = "12px 'Segoe UI', sans-serif";
-		ctx.textAlign = "left";
-		ctx.textBaseline = "bottom";
-		ctx.fillText(DEBUG_BUILD_LABEL, 12, canvas.height - 8);
-		ctx.restore();
-	}
+	// renderHeals, renderCoralEffects, renderCoralAllies, renderCoinDrops, renderHealBursts,
+	// renderSymbolDrops, renderDebugLabel, renderPlayer, renderShots, renderEventFlash
+	// sind jetzt in src/game/render.js ausgelagert
 
 	// Boss-Render-Funktionen sind jetzt in boss/render.js ausgelagert
 
-	function renderPlayer() {
-		const player = state.player;
-		const now = performance.now();
-		if (player.shieldUnlocked) {
-			const duration = player.shieldDuration || SHIELD_DURATION;
-			if (player.shieldActive) {
-				const ratio = clamp01(player.shieldTimer / Math.max(1, duration));
-				const outerRadius = 88 + Math.sin(now * 0.006 + ratio * 5.4) * 8;
-				ctx.save();
-				ctx.translate(player.x, player.y);
-				ctx.globalCompositeOperation = "lighter";
-				ctx.globalAlpha = 0.75;
-				const shieldGrad = ctx.createRadialGradient(0, 0, outerRadius * 0.35, 0, 0, outerRadius);
-				shieldGrad.addColorStop(0, "rgba(210,250,255,0.82)");
-				shieldGrad.addColorStop(0.45, `rgba(140,220,255,${0.58 + ratio * 0.24})`);
-				shieldGrad.addColorStop(1, "rgba(20,80,140,0)");
-				ctx.fillStyle = shieldGrad;
-				ctx.beginPath();
-				ctx.arc(0, 0, outerRadius, 0, TAU);
-				ctx.fill();
-				ctx.globalCompositeOperation = "source-over";
-				ctx.lineWidth = 3.6;
-				ctx.strokeStyle = `rgba(170,230,255,${0.55 + 0.35 * ratio})`;
-				ctx.beginPath();
-				ctx.arc(0, 0, outerRadius * 0.84, 0, TAU);
-				ctx.stroke();
-				const swings = 4;
-				for (let i = 0; i < swings; i += 1) {
-					const angle = now * 0.002 + i * (TAU / swings);
-					ctx.save();
-					ctx.rotate(angle);
-					ctx.globalAlpha = 0.4 + 0.25 * Math.sin(now * 0.004 + i);
-					ctx.strokeStyle = "rgba(210,255,255,0.4)";
-					ctx.lineWidth = 1.6;
-					ctx.beginPath();
-					ctx.ellipse(0, 0, outerRadius * 0.62, outerRadius * 0.2, 0, 0, TAU);
-					ctx.stroke();
-					ctx.restore();
-				}
-				ctx.restore();
-			} else if (player.shieldCooldown <= 0) {
-				const haloRadius = 58 + Math.sin(now * 0.008) * 4;
-				ctx.save();
-				ctx.translate(player.x, player.y);
-				ctx.globalAlpha = 0.35;
-				ctx.strokeStyle = "rgba(170,230,255,0.7)";
-				ctx.lineWidth = 2.2;
-				ctx.beginPath();
-				ctx.arc(0, 0, haloRadius, 0, TAU);
-				ctx.stroke();
-				ctx.restore();
-			}
-			if (player.shieldLastBlock && now - player.shieldLastBlock < 360) {
-				const pulseRatio = 1 - (now - player.shieldLastBlock) / 360;
-				const rippleRadius = 60 + pulseRatio * 30;
-				ctx.save();
-				ctx.translate(player.x, player.y);
-				ctx.globalAlpha = 0.35 * pulseRatio;
-				ctx.strokeStyle = "rgba(220,255,255,0.6)";
-				ctx.lineWidth = 3 * pulseRatio;
-				ctx.beginPath();
-				ctx.arc(0, 0, rippleRadius, 0, TAU);
-				ctx.stroke();
-				ctx.restore();
-			}
-		}
-		if (player.perfumeSlowTimer > 0) {
-			const slowRatio = clamp01((player.perfumeSlowTimer || 0) / 2600);
-			const auraRadius = 56 + Math.sin(now * 0.005 + (player.perfumeSlowTimer || 0) * 0.001) * 6;
-			ctx.save();
-			ctx.translate(player.x, player.y);
-			ctx.globalCompositeOperation = "lighter";
-			ctx.globalAlpha = 0.55 * slowRatio;
-			const auraGrad = ctx.createRadialGradient(0, 0, auraRadius * 0.25, 0, 0, auraRadius);
-			auraGrad.addColorStop(0, "rgba(255,245,255,0.85)");
-			auraGrad.addColorStop(0.45, "rgba(255,170,240,0.5)");
-			auraGrad.addColorStop(1, "rgba(150,40,180,0)");
-			ctx.fillStyle = auraGrad;
-			ctx.beginPath();
-			ctx.arc(0, 0, auraRadius, 0, TAU);
-			ctx.fill();
-			ctx.globalCompositeOperation = "source-over";
-			ctx.lineWidth = 2.8;
-			ctx.strokeStyle = `rgba(255,160,245,${0.4 + 0.3 * slowRatio})`;
-			ctx.beginPath();
-			ctx.arc(0, 0, auraRadius * 0.82, 0, TAU);
-			ctx.stroke();
-			ctx.restore();
-		}
-		const energyMax = player.energyMax == null ? 100 : player.energyMax;
-		const energyValue = clamp(player.energy == null ? energyMax : player.energy, 0, energyMax);
-		const energyRatio = energyMax > 0 ? energyValue / energyMax : 0;
-		const barWidth = 90;
-		const barHeight = 8;
-		const barCenterX = player.x - player.dir * 70;
-		const barX = barCenterX - barWidth / 2;
-		const barY = player.y - 44;
-		ctx.save();
-		ctx.globalAlpha = 0.82;
-		ctx.fillStyle = "rgba(6,16,28,0.65)";
-		ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
-		ctx.fillStyle = "rgba(18,32,52,0.9)";
-		ctx.fillRect(barX, barY, barWidth, barHeight);
-		const energyGrad = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
-		energyGrad.addColorStop(0, "#62f5ff");
-		energyGrad.addColorStop(1, "#2fb8ff");
-		ctx.fillStyle = energyGrad;
-		ctx.fillRect(barX, barY, barWidth * energyRatio, barHeight);
-		ctx.strokeStyle = "rgba(220,245,255,0.5)";
-		ctx.lineWidth = 1.6;
-		ctx.strokeRect(barX, barY, barWidth, barHeight);
-		ctx.restore();
-		ctx.save();
-		if (player.invulnFor > 0 && Math.floor(player.invulnFor / 120) % 2 === 0) ctx.globalAlpha = 0.45;
-		MODELS.simpleShadow(ctx, player.x + 12, player.y + 36, 26);
-		MODELS.player(ctx, player.x, player.y, { dir: player.dir, scale: 1 });
-		ctx.restore();
-	}
+	// renderFoes ausgelagert nach src/foes/render.js
 
-	function renderFoes() {
-		for (const foe of state.foes) {
-			const isBogenschreck = foe.type === "bogenschreck";
-			const isRitterfisch = foe.type === "ritterfisch";
-			const isOktopus = foe.type === "oktopus";
-			const shadowRadius = (isBogenschreck ? 22 : isRitterfisch ? 24 : isOktopus ? 20 : 18) * foe.scale;
-			MODELS.simpleShadow(ctx, foe.x + 8, foe.y + 24, shadowRadius);
-			const renderer = isBogenschreck ? MODELS.bogenschreck : isRitterfisch ? MODELS.ritterfisch : isOktopus ? MODELS.oktopus : MODELS.foe;
-			renderer(ctx, foe.x, foe.y, { scale: foe.scale, sway: foe.sway, charging: foe.charging });
-		}
-	}
+	// renderBossHpBar ausgelagert nach src/boss/ui.js
 
-	function renderShots() {
-		const sprite = SPRITES.shot;
-		if (spriteReady(sprite)) {
-			ctx.save();
-			for (const shot of state.shots) {
-				if (shot.life <= 0) continue;
-				const scale = shot.spriteScale == null ? 0.1 : shot.spriteScale;
-				const drawW = sprite.naturalWidth * scale;
-				const drawH = sprite.naturalHeight * scale;
-				const offsetX = shot.spriteOffsetX == null ? 0 : shot.spriteOffsetX;
-				const offsetY = shot.spriteOffsetY == null ? 0 : shot.spriteOffsetY;
-				ctx.save();
-				ctx.translate(shot.x, shot.y);
-				ctx.drawImage(sprite, -drawW / 2 + offsetX, -drawH / 2 + offsetY, drawW, drawH);
-				ctx.restore();
-			}
-			ctx.restore();
-			return;
-		}
-
-		ctx.save();
-		for (const shot of state.shots) {
-			if (shot.life <= 0) continue;
-			const radius = shot.coralShot ? 5.2 : 4;
-			const grad = ctx.createRadialGradient(shot.x, shot.y, radius * 0.2, shot.x, shot.y, radius);
-			if (shot.coralShot) {
-				grad.addColorStop(0, "rgba(255,225,210,0.95)");
-				grad.addColorStop(1, "rgba(255,140,120,0.12)");
-			} else {
-				grad.addColorStop(0, "rgba(180,240,255,0.9)");
-				grad.addColorStop(1, "rgba(120,200,255,0.05)");
-			}
-			ctx.fillStyle = grad;
-			ctx.beginPath();
-			ctx.arc(shot.x, shot.y, radius, 0, TAU);
-			ctx.fill();
-		}
-		ctx.restore();
-	}
-
-	function renderBossHpBar() {
-		const boss = state.boss;
-		if (!boss.active) return;
-		const padX = 160;
-		const padY = 26;
-		const barWidth = canvas.width - padX * 2;
-		const barHeight = 18;
-		const ratio = boss.maxHp > 0 ? clamp01(boss.hp / boss.maxHp) : 0;
-		ctx.save();
-		ctx.translate(padX, padY);
-		ctx.fillStyle = "rgba(4,12,24,0.6)";
-		ctx.fillRect(-6, -6, barWidth + 12, barHeight + 12);
-		ctx.fillStyle = "rgba(18,32,52,0.9)";
-		ctx.fillRect(0, 0, barWidth, barHeight);
-		const gradient = ctx.createLinearGradient(0, 0, barWidth, 0);
-		gradient.addColorStop(0, "#ff7aa2");
-		gradient.addColorStop(1, "#ffd18d");
-		ctx.fillStyle = gradient;
-		ctx.fillRect(0, 0, barWidth * ratio, barHeight);
-		ctx.strokeStyle = "rgba(240,248,255,0.45)";
-		ctx.lineWidth = 2;
-		ctx.strokeRect(0, 0, barWidth, barHeight);
-		ctx.fillStyle = "#f2f7ff";
-		ctx.font = "16px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(`Boss HP ${Math.ceil(boss.hp)}/${boss.maxHp}`, barWidth / 2, barHeight / 2);
-		ctx.restore();
-	}
-
-	function renderEventFlash() {
-		const flash = state.eventFlash;
-		if (!flash) return;
-		const now = performance.now();
-		const elapsed = now - flash.started;
-		if (elapsed >= flash.duration) {
-			state.eventFlash = null;
-			return;
-		}
-		const fade = clamp01(1 - elapsed / flash.duration);
-		const eased = fade * fade;
-		const overlayOpacity = (flash.opacity || 0.9) * eased * 0.45;
-		ctx.save();
-		if (flash.kind !== "heal") {
-			ctx.fillStyle = `rgba(255,250,230,${overlayOpacity})`;
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-		}
-		if (flash.text) {
-			ctx.font = "28px 'Trebuchet MS', 'Segoe UI', sans-serif";
-			ctx.textAlign = "center";
-			ctx.textBaseline = "middle";
-			if (flash.kind === "heal") {
-				ctx.fillStyle = `rgba(180,255,240,${Math.min(0.85, eased)})`;
-				ctx.strokeStyle = "rgba(0,110,140,0.35)";
-			} else {
-				ctx.fillStyle = `rgba(255,255,255,${Math.min(0.9, overlayOpacity * 2)})`;
-				ctx.strokeStyle = "rgba(15,40,60,0.45)";
-			}
-			ctx.lineWidth = 4;
-			ctx.strokeText(flash.text, canvas.width / 2, canvas.height * 0.18);
-			ctx.fillText(flash.text, canvas.width / 2, canvas.height * 0.18);
-		}
-		ctx.restore();
-	}
-
-	function renderBoss() {
-		const boss = state.boss;
-		if (!boss.active) return;
-		const shadowRadius = boss.shadowRadius == null ? 48 : boss.shadowRadius;
-		const shadowOffsetX = boss.shadowOffsetX == null ? 16 : boss.shadowOffsetX;
-		const shadowOffsetY = boss.shadowOffsetY == null ? 52 : boss.shadowOffsetY;
-		MODELS.simpleShadow(ctx, boss.x + shadowOffsetX, boss.y + shadowOffsetY, shadowRadius);
-		MODELS.boss(ctx, boss.x, boss.y, {
-			pulse: boss.pulse,
-			spriteKey: boss.spriteKey,
-			spriteScale: boss.spriteScale == null ? undefined : boss.spriteScale,
-			spriteOffsetX: boss.spriteOffsetX == null ? undefined : boss.spriteOffsetX,
-			spriteOffsetY: boss.spriteOffsetY == null ? undefined : boss.spriteOffsetY,
-			flip: boss.spriteFlip !== false
-		});
-	}
+	// renderBoss ausgelagert nach src/boss/ui.js
 
 	// Context-Objekt für das Render-Modul
 	const cityRenderCtx = {
@@ -6461,6 +2388,22 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		get citySpriteDebugPanel() { return citySpriteDebugPanel; }
 	};
 
+	// Context-Objekt für das Game-Render-Modul
+	const gameRenderCtx = {
+		getCtx: () => ctx,
+		getCanvas: () => canvas,
+		getState: () => state,
+		SPRITES,
+		MODELS,
+		SYMBOL_DATA,
+		spriteReady,
+		getHealSprite,
+		SHIELD_DURATION,
+		SYMBOL_AUTOCOLLECT_MS,
+		DEBUG_BUILD_LABEL
+	};
+	const gameRenderer = createGameRenderSystem(gameRenderCtx);
+
 	// Context-Objekt für das Boss-Render-Modul
 	const bossRenderCtx = {
 		get ctx() { return ctx; },
@@ -6469,8 +2412,222 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 	};
 	const bossRenderer = createBossRenderSystem(bossRenderCtx);
 
-	// Boss-Spawn-Modul (boss/spawn.js) ist bereit aber noch nicht integriert
-	// Integration erfordert Refactoring der Aufruf-Stellen in updateBoss()
+	// Context-Objekt für das Boss-Spawn-Modul
+	const bossSpawnCtx = {
+		getCanvas: () => canvas,
+		getState: () => state,
+		findCoverRockHit,
+		registerCoverRockImpact,
+		triggerEventFlash
+	};
+	const bossSpawner = createBossSpawnSystem(bossSpawnCtx);
+
+	// Context-Objekt für das Boss-Update-Modul
+	const bossUpdateCtx = {
+		getCanvas: () => canvas,
+		getState: () => state,
+		getSPRITES: () => SPRITES,
+		spriteReady,
+		activateBoss,
+		applyCoverAvoidance,
+		processCoverDetour,
+		findCoverRockHit,
+		registerCoverRockImpact,
+		// Spawn-Funktionen aus dem Spawn-Modul
+		spawnBossTorpedoBurst: () => bossSpawner.spawnBossTorpedoBurst(),
+		spawnBossFinSweep: () => bossSpawner.spawnBossFinSweep(),
+		spawnBossPerfumeVolley: () => bossSpawner.spawnBossPerfumeVolley(),
+		spawnBossFragranceWave: () => bossSpawner.spawnBossFragranceWave(),
+		spawnYachtwalHarborSog: () => bossSpawner.spawnYachtwalHarborSog(),
+		spawnYachtwalKielwasserKatapult: () => bossSpawner.spawnYachtwalKielwasserKatapult(),
+		spawnYachtwalAnchorDonner: () => bossSpawner.spawnYachtwalAnchorDonner(),
+		spawnYachtwalRegattaRaserei: () => bossSpawner.spawnYachtwalRegattaRaserei(),
+		spawnCashfishCoinSalvo: () => bossSpawner.spawnCashfishCoinSalvo(),
+		spawnCashfishDiamondLattice: () => bossSpawner.spawnCashfishDiamondLattice(),
+		spawnCashfishTreasureTsunami: () => bossSpawner.spawnCashfishTreasureTsunami(),
+		spawnCashfishCrownFinale: () => bossSpawner.spawnCashfishCrownFinale(),
+		spawnCashfishCardShock: () => bossSpawner.spawnCashfishCardShock(),
+		spawnFragranceCloud: (x, y, opts) => bossSpawner.spawnFragranceCloud(x, y, opts)
+	};
+	const bossUpdater = createBossUpdateSystem(bossUpdateCtx);
+
+	// Context-Objekt für das Boss-Collision-Modul
+	const bossCollisionCtx = {
+		getCanvas: () => canvas,
+		getState: () => state,
+		damagePlayer,
+		winGame,
+		updateBannerEl: text => { if (bannerEl) bannerEl.textContent = text; },
+		spawnFragranceCloud: (x, y, opts) => bossSpawner.spawnFragranceCloud(x, y, opts)
+	};
+	const bossCollision = createBossCollisionSystem(bossCollisionCtx);
+
+	// Context-Objekt für das Boss-UI-Modul
+	const bossUICtx = {
+		getCtx: () => ctx,
+		getCanvas: () => canvas,
+		getState: () => state,
+		getMODELS: () => MODELS
+	};
+	const bossUI = createBossUISystem(bossUICtx);
+
+	// ============================================================
+	// Foes-Module Initialisierung
+	// ============================================================
+
+	// Context-Objekt für das Foes-Arrows-Modul
+	const foeArrowsCtx = {
+		get canvas() { return canvas; },
+		get state() { return state; },
+		findCoverRockHit,
+		registerCoverRockImpact,
+		USE_CLASSIC_OKTOPUS_PROJECTILE
+	};
+	const foeArrows = createFoeArrowsSystem(foeArrowsCtx);
+
+	// Context-Objekt für das Foes-Spawn-Modul
+	const foeSpawnCtx = {
+		get canvas() { return canvas; },
+		get state() { return state; },
+		clamp
+	};
+	const foeSpawner = createFoeSpawnSystem(foeSpawnCtx);
+
+	// Context-Objekt für das Foes-Update-Modul
+	const foeUpdateCtx = {
+		get canvas() { return canvas; },
+		get state() { return state; },
+		clamp,
+		spawnBogenschreckArrow: (foe) => foeArrows.spawnBogenschreckArrow(foe),
+		spawnOktopusBolt: (foe) => foeArrows.spawnOktopusBolt(foe),
+		applyCoverAvoidance,
+		processCoverDetour,
+		getRitterfischLaneTarget,
+		resolveFoeCoverCollision,
+		spawnLevelFoe: () => spawnLevelFoe(),
+		scheduleNextFoeSpawn: (initial) => scheduleNextFoeSpawn(initial)
+	};
+	const foeUpdater = createFoeUpdateSystem(foeUpdateCtx);
+
+	// Context-Objekt für das Foes-Render-Modul
+	const foeRenderCtx = {
+		get ctx() { return ctx; },
+		get state() { return state; },
+		get MODELS() { return MODELS; },
+		get SPRITES() { return SPRITES; },
+		spriteReady
+	};
+	const foeRenderer = createFoeRenderSystem(foeRenderCtx);
+
+	// Context-Objekt für das Foes-Collision-Modul
+	const foeCollisionCtx = {
+		get state() { return state; },
+		getFoeHitbox,
+		awardFoeDefeat,
+		damagePlayer,
+		triggerEventFlash,
+		updateHUD,
+		collectCoinDrop,
+		collectSymbolDrop
+	};
+	const foeCollision = createFoeCollisionSystem(foeCollisionCtx);
+
+	// ============================================================
+	// Abilities-Modul Initialisierung
+	// ============================================================
+	const abilitiesCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		triggerEventFlash,
+		updateHUD,
+		awardFoeDefeat,
+		SHIELD_DURATION,
+		SHIELD_COOLDOWN
+	};
+	const abilities = createAbilitiesSystem(abilitiesCtx);
+
+	// ============================================================
+	// Player-Update-Modul Initialisierung
+	// ============================================================
+	const playerUpdateCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		getPointer: () => pointer,
+		hasKey,
+		clamp,
+		SHIELD_COOLDOWN,
+		SHIELD_DURATION,
+		KEY_LEFT,
+		KEY_RIGHT,
+		KEY_UP,
+		KEY_DOWN,
+		resolvePlayerCoverCollision
+	};
+	const playerUpdater = createPlayerUpdateSystem(playerUpdateCtx);
+
+	// ============================================================
+	// Background-Modul Initialisierung
+	// ============================================================
+	const backgroundCtx = {
+		getCtx: () => ctx,
+		getCanvas: () => canvas,
+		getState: () => state,
+		SPRITES,
+		MODELS,
+		spriteReady,
+		clamp01,
+		getLevel3FloorTop,
+		getLevel4FloorTop,
+		LEVEL2_FLOOR_SPRITE,
+		LEVEL3_FLOOR_SPRITE,
+		LEVEL4_FLOOR_SPRITE,
+		LEVEL2_FLOOR_OFFSET
+	};
+	const backgroundRenderer = createBackgroundRenderSystem(backgroundCtx);
+
+	// ============================================================
+	// Cover-Rock-Modul Initialisierung
+	// ============================================================
+	const coverRockCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		clamp,
+		getSPRITES: () => SPRITES,
+		spriteReady,
+		getCoverRockCollisionMask,
+		getLevel3GroundLine,
+		damagePlayer
+	};
+	const coverRocks = createCoverRockSystem(coverRockCtx);
+
+	// ============================================================
+	// Pickups-Update-Modul Initialisierung
+	// ============================================================
+	const pickupsCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		clamp,
+		spawnHealPickup,
+		collectSymbolDrop
+	};
+	const pickups = createPickupsSystem(pickupsCtx);
+
+	// ============================================================
+	// Level-Modul Initialisierung
+	// ============================================================
+	const levelCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		getBannerEl: () => bannerEl,
+		triggerEventFlash,
+		updateHUD,
+		hidePickupMessage,
+		seedBubbles,
+		abilities,
+		scheduleNextFoeSpawn,
+		primeFoes
+	};
+	const levels = createLevelSystem(levelCtx);
 
 	function renderCity() {
 		renderCityModule(cityRenderCtx);
@@ -6479,7 +2636,7 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 	function render() {
 		if (state.mode === "city") {
 			renderCity();
-			renderDebugLabel();
+			gameRenderer.renderDebugLabel();
 			return;
 		}
 		// CSS 3D-Perspektive entfernen wenn nicht im Stadt-Modus
@@ -6490,17 +2647,17 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		if (cityMerchantEl) cityMerchantEl.style.display = "none";
 		if (cityMissionEl) cityMissionEl.style.display = "none";
 		if (citySpriteDebugPanel) citySpriteDebugPanel.style.display = "none";
-		renderBackground();
-		renderBubbles();
-		renderFoes();
-		renderCoverRocks();
-		renderTsunamiWave();
-		renderHeals();
-		renderCoralEffects();
-		renderCoralAllies();
-		renderCoinDrops();
-		renderSymbolDrops();
-		renderBossHpBar();
+		backgroundRenderer.renderBackground();
+		backgroundRenderer.renderBubbles();
+		foeRenderer.renderFoes();
+		backgroundRenderer.renderCoverRocks();
+		backgroundRenderer.renderTsunamiWave();
+		gameRenderer.renderHeals();
+		gameRenderer.renderCoralEffects();
+		gameRenderer.renderCoralAllies();
+		gameRenderer.renderCoinDrops();
+		gameRenderer.renderSymbolDrops();
+		bossUI.renderBossHpBar();
 		bossRenderer.renderBossDiamondBeams();
 		bossRenderer.renderBossFinSweeps();
 		bossRenderer.renderBossWakeWaves();
@@ -6514,14 +2671,14 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		bossRenderer.renderBossPerfumeOrbs();
 		bossRenderer.renderBossTorpedoes();
 		bossRenderer.renderBossFragranceClouds();
-		renderFoeArrows();
-		renderShots();
-		renderBoss();
-		renderHealBursts();
-		renderEventFlash();
-		renderPlayer();
-		renderFloorOverlay();
-		renderDebugLabel();
+		foeRenderer.renderFoeArrows();
+		gameRenderer.renderShots();
+		bossUI.renderBoss();
+		gameRenderer.renderHealBursts();
+		gameRenderer.renderEventFlash();
+		gameRenderer.renderPlayer();
+		backgroundRenderer.renderFloorOverlay();
+		gameRenderer.renderDebugLabel();
 	}
 
 	function tick(now) {
@@ -6560,27 +2717,28 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 			return;
 		}
 		if (DEBUG_SHORTCUTS && event.altKey && event.shiftKey) {
-			// Alt+Shift+1-4: Direkt zum Boss des Levels springen
+			// Alt+Shift+1-4: Zum Anfang des Levels springen (ohne Boss)
 			if (event.code === "Digit1") {
 				event.preventDefault();
-				debugJumpToLevel(0, { skipToBoss: true });
+				debugJumpToLevel(0, { skipToBoss: false });
 				return;
 			}
 			if (event.code === "Digit2") {
 				event.preventDefault();
-				debugJumpToLevel(1, { skipToBoss: true });
+				debugJumpToLevel(1, { skipToBoss: false });
 				return;
 			}
 			if (event.code === "Digit3") {
 				event.preventDefault();
-				debugJumpToLevel(2, { skipToBoss: true });
+				debugJumpToLevel(2, { skipToBoss: false });
 				return;
 			}
 			if (event.code === "Digit4") {
 				event.preventDefault();
-				debugJumpToLevel(3, { skipToBoss: true });
+				debugJumpToLevel(3, { skipToBoss: false });
 				return;
 			}
+			// Alt+Shift+Ctrl+1-4: Direkt zum Boss des Levels springen
 			if (event.code === "Digit5") {
 				event.preventDefault();
 				enterCity();
@@ -6590,13 +2748,13 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		keys.add(event.key);
 		if (state.started && !state.over && !state.paused && state.mode === "game" && isShieldActivationKey(event)) {
 			event.preventDefault();
-			tryActivateShield();
+			abilities.tryActivateShield();
 		}
 		if (state.started && !state.over && !state.paused && state.mode === "game" && isCoralActivationKey(event)) {
-			if (tryActivateCoralAllies()) event.preventDefault();
+			if (abilities.tryActivateCoralAllies()) event.preventDefault();
 		}
 		if (state.started && !state.over && !state.paused && state.mode === "game" && isTsunamiActivationKey(event)) {
-			if (tryActivateTsunamiAbility()) event.preventDefault();
+			if (abilities.tryActivateTsunamiAbility()) event.preventDefault();
 		}
 		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
 			event.preventDefault();
@@ -6606,7 +2764,7 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 				if (!controlsArmed) return;
 				resetGame();
 			} else {
-				playerShoot();
+				playerUpdater.playerShoot();
 			}
 			return;
 		}
@@ -6672,7 +2830,7 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 					resetGame();
 					return;
 				}
-				if (!state.over && !state.paused && state.player.shieldUnlocked) tryActivateShield();
+				if (!state.over && !state.paused && state.player.shieldUnlocked) abilities.tryActivateShield();
 				return;
 			}
 			if (event.button !== 0) return;
@@ -6681,7 +2839,7 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 				if (!controlsArmed) return;
 				resetGame();
 			}
-			else playerShoot();
+			else playerUpdater.playerShoot();
 			return;
 		}
 		if (!state.started) {
@@ -6707,7 +2865,7 @@ function resolveFoeCoverCollision(foe, prevX, prevY) {
 		hudShield.addEventListener("click", () => {
 			if (!state.started || state.over || state.paused) return;
 			if (!state.player.shieldUnlocked) return;
-			tryActivateShield();
+			abilities.tryActivateShield();
 		});
 
 	if (typeof window !== "undefined") {
