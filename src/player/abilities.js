@@ -1,6 +1,8 @@
 // src/player/abilities.js
 // Spieler-Fähigkeiten: Shield, Coral Allies, Tsunami
 
+import { shotPool } from '../core/pool.js';
+
 const TAU = Math.PI * 2;
 
 /**
@@ -145,17 +147,18 @@ export function createAbilitiesSystem(deps) {
 
 	function spawnCoralAllyShot(origin) {
 		const state = getState();
-		state.shots.push({
-			x: (origin && origin.x) == null ? state.player.x + 24 : origin.x + 18,
-			y: (origin && origin.y) == null ? state.player.y - 8 : origin.y - 6,
-			vx: 0.7,
-			vy: -0.02 + Math.sin(origin && origin.angle != null ? origin.angle : 0) * 0.015,
-			life: 1300,
-			spriteScale: 0.085,
-			spriteOffsetX: 5,
-			spriteOffsetY: 0,
-			coralShot: true
-		});
+		// Object Pool: Wiederverwendung statt Neuerstellung
+		const shot = shotPool.acquire();
+		shot.x = (origin && origin.x) == null ? state.player.x + 24 : origin.x + 18;
+		shot.y = (origin && origin.y) == null ? state.player.y - 8 : origin.y - 6;
+		shot.vx = 0.7;
+		shot.vy = -0.02 + Math.sin(origin && origin.angle != null ? origin.angle : 0) * 0.015;
+		shot.life = 1300;
+		shot.spriteScale = 0.085;
+		shot.spriteOffsetX = 5;
+		shot.spriteOffsetY = 0;
+		shot.coralShot = true;
+		state.shots.push(shot);
 	}
 
 	function tryActivateCoralAllies() {

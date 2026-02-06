@@ -9,6 +9,7 @@
  */
 
 import { TAU } from '../core/constants.js';
+import { foePool } from '../core/pool.js';
 
 /**
  * Create the foe update module with context-based dependencies.
@@ -385,6 +386,12 @@ export function createFoeUpdateSystem(deps) {
             applyFoeCoverAvoidance(foe, dt, primaryCoverRock, prevX, prevY);
         }
 
+        // Object Pool: NUR Foes die aus dem Pool kommen zurückgeben
+        const deadFoes = state.foes.filter(foe => 
+            (foe.dead || foe.x <= (foe.type === "ritterfisch" ? -160 : -90)) && foe._pooled
+        );
+        foePool.releaseAll(deadFoes);
+        
         // Filter out dead/offscreen foes
         state.foes = state.foes.filter(foe => !foe.dead && foe.x > (foe.type === "ritterfisch" ? -160 : -90));
 

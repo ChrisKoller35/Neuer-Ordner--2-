@@ -16,3 +16,12 @@ export * from './input.js';
 
 // Asset-Loader
 export * from './assets.js';
+
+// Object Pools
+export * from './pool.js';
+
+// Spatial Partitioning
+export * from './spatial.js';
+
+// State Machine
+export * from './stateMachine.js';

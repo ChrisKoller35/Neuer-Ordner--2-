@@ -159,6 +159,9 @@ function renderNPCs(ctx, city, sprites) {
 		} else if (npc.id === "quest") {
 			npcSprite = sprites.npcMission;
 			spriteScale = NPC_MISSION_SCALE;
+		} else if (npc.id === "upgrade") {
+			npcSprite = sprites.npcUpgrade; // Platzhalter - später echtes Bild
+			spriteScale = NPC_SPRITE_SCALE;
 		}
 		
 		let labelOffset = 40;
@@ -174,8 +177,14 @@ function renderNPCs(ctx, city, sprites) {
 			
 			labelOffset = drawH + 15;
 		} else {
-			// Fallback-Kreis
-			ctx.fillStyle = npc.id === "merchant" ? "rgba(255, 200, 100, 0.9)" : "rgba(100, 200, 255, 0.9)";
+			// Fallback-Kreis mit NPC-spezifischer Farbe
+			let fallbackColor = "rgba(100, 200, 255, 0.9)"; // Standard: blau
+			if (npc.id === "merchant") {
+				fallbackColor = "rgba(255, 200, 100, 0.9)"; // Gold für Händler
+			} else if (npc.id === "upgrade") {
+				fallbackColor = "rgba(200, 100, 255, 0.9)"; // Lila für Upgrades
+			}
+			ctx.fillStyle = fallbackColor;
 			ctx.beginPath();
 			ctx.arc(nx, ny - 15, 20, 0, TAU);
 			ctx.fill();

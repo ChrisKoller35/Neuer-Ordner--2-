@@ -16,12 +16,15 @@ import {
 	FOE_BASE_SCORE,
 	SHIELD_DURATION, SHIELD_COOLDOWN,
 	LEVEL2_FLOOR_OFFSET, LEVEL3_FLOOR_OFFSET, LEVEL4_FLOOR_OFFSET,
-	LEVEL3_FLOOR_MIN_VISIBLE, LEVEL3_FLOOR_COLLISION_RATIO, LEVEL3_FLOOR_COLLISION_PAD
+	LEVEL3_FLOOR_MIN_VISIBLE, LEVEL3_FLOOR_COLLISION_RATIO, LEVEL3_FLOOR_COLLISION_PAD,
+	MAX_DELTA_TIME, MIN_DELTA_TIME, LONG_FRAME_THRESHOLD
 } from './core/constants.js';
 
 import { clamp, clamp01, easeOutCubic, lerp, distance, randomRange } from './core/utils.js';
 
 import { loadSprite, spriteReady, configureAssetLoader } from './core/assets.js';
+
+import { updateAllGrids } from './core/spatial.js';
 
 // JSON-Daten importieren (Vite unterstützt JSON-Imports)
 import itemsData from './data/items.json';
@@ -124,7 +127,15 @@ import { createBossSpawnSystem } from './boss/spawn.js';
 import { createBossUpdateSystem } from './boss/update.js';
 import { createBossCollisionSystem } from './boss/collision.js';
 import { createBossUISystem } from './boss/ui.js';
-// Boss-Spawn-Modul existiert aber ist noch nicht integriert: ./boss/spawn.js
+
+// Progression-System importieren
+import { createProgressionState, createProgressionSystem } from './player/progression.js';
+import { createTalentTreeUI } from './player/talentUI.js';
+import { KEY_TALENT_TREE, CODE_TALENT_TREE } from './core/constants.js';
+
+// Upgrade-System importieren
+import { createUpgradeSystem } from './player/upgrades.js';
+import { createUpgradeUI } from './player/upgradeUI.js';
 
 let canvas = null;
 let ctx = null;
@@ -1018,6 +1029,10 @@ function bootGame() {
 	const hudHearts = document.getElementById("hearts");
 	const hudShield = document.getElementById("ab-shield");
 	const hudArmor = document.getElementById("hudArmor");
+	const hudPlayerLevel = document.getElementById("playerLevel");
+	const hudXpBarFill = document.getElementById("xpBarFill");
+	const hudSkillPoints = document.getElementById("skillPoints");
+	const hudSkillPointsNum = document.getElementById("skillPointsNum");
 	const hudSymbols = {
 		pferd: document.getElementById("sym-pferd"),
 		sprinter: document.getElementById("sym-sprinter"),
@@ -1316,7 +1331,9 @@ function bootGame() {
 		levelConfig: null,
 		foeSpawnInterval: { min: 1400, max: 2100 },
 		city: null,
-		armorShieldCharges: 0
+		armorShieldCharges: 0,
+		// Progression-System (Level, XP, Talente)
+		progression: createProgressionState()
 	};
 
 	// ============================================================
@@ -1361,6 +1378,95 @@ function bootGame() {
 
 	// Initial UI aktualisieren
 	cityUI.updateAllUI();
+
+	// ============================================================
+	// PROGRESSION SYSTEM - Level, XP, Talente
+	// ============================================================
+	let talentTreeUI = null; // Forward declaration
+	
+	const progressionSystem = createProgressionSystem({
+		state,
+		player: state.player,
+		triggerEventFlash: (type, opts) => triggerEventFlash(type, opts),
+		onLevelUp: (newLevel, levelsGained) => {
+			console.log(`Level Up! Neues Level: ${newLevel}, Skillpunkte: +${levelsGained}`);
+			// HUD und TalentUI aktualisieren
+			updateHUD();
+			if (talentTreeUI) talentTreeUI.update();
+		}
+	});
+
+	// Talentbaum UI
+	talentTreeUI = createTalentTreeUI({
+		canvas,
+		state,
+		progressionSystem
+	});
+
+	// Talenteffekte beim Start anwenden
+	progressionSystem.applyTalentEffects();
+
+	// ============================================================
+	// UPGRADE SYSTEM - Spieler-Upgrades beim NPC
+	// ============================================================
+	const upgradeSystem = createUpgradeSystem({
+		state,
+		player: state.player
+	});
+
+	const upgradeUI = createUpgradeUI({
+		canvas,
+		state,
+		upgradeSystem
+	});
+
+	// Upgrade-Effekte beim Start anwenden
+	upgradeSystem.applyUpgradeEffects();
+
+	// Keyboard-Handler für Talentbaum (U-Taste)
+	function handleTalentTreeKeyDown(e) {
+		const key = e.key;
+		const code = e.code;
+		if (KEY_TALENT_TREE.has(key) || CODE_TALENT_TREE.has(code)) {
+			// Im Game- oder City-Modus, oder wenn Talentbaum offen ist
+			if (state.mode === 'game' || state.mode === 'city' || state.progression.talentTreeOpen) {
+				e.preventDefault();
+				talentTreeUI.toggle();
+				state.progression.talentTreeOpen = talentTreeUI.isVisible();
+			}
+		}
+	}
+	window.addEventListener('keydown', handleTalentTreeKeyDown);
+
+	// DEBUG: Taste 9 = Level 4 + 3 Skillpunkte (zum Testen)
+	function handleDebugCheat(e) {
+		if (e.key === '9' && (state.mode === 'game' || state.mode === 'city')) {
+			state.progression.level = 4;
+			state.progression.skillPoints = (state.progression.skillPoints || 0) + 3;
+			state.progression.xp = progressionSystem.getXPForLevel(4);
+			// XP-Display manuell aktualisieren
+			const levelEl = document.getElementById('player-level');
+			const xpFillEl = document.getElementById('xp-fill');
+			const skillpointsEl = document.getElementById('skillpoints-display');
+			if (levelEl) levelEl.textContent = state.progression.level;
+			if (xpFillEl) xpFillEl.style.width = '0%';
+			if (skillpointsEl) skillpointsEl.textContent = state.progression.skillPoints;
+			talentTreeUI.update();
+			console.log('[DEBUG] Cheat aktiviert: Level 4, Skillpunkte:', state.progression.skillPoints);
+		}
+	}
+	window.addEventListener('keydown', handleDebugCheat);
+
+	// Click-Handler für XP-Anzeige
+	const xpDisplayEl = document.querySelector('.xp-display');
+	if (xpDisplayEl) {
+		xpDisplayEl.addEventListener('click', () => {
+			if (state.mode === 'game') {
+				talentTreeUI.toggle();
+				state.progression.talentTreeOpen = talentTreeUI.isVisible();
+			}
+		});
+	}
 
 	function seedBubbles() {
 		const count = 24;
@@ -1759,7 +1865,10 @@ function bootGame() {
 	}
 
 	function advanceLevel(nextIndex, opts = {}) {
-		return levels.advanceLevel(nextIndex, opts);
+		const result = levels.advanceLevel(nextIndex, opts);
+		// Talent-Effekte nach Level-Start anwenden
+		progressionSystem.applyTalentEffects();
+		return result;
 	}
 
 	function debugJumpToLevel(targetIndex, options = {}) {
@@ -2181,6 +2290,24 @@ function bootGame() {
 				}
 			}
 		}
+		
+		// Progression HUD aktualisieren
+		if (hudPlayerLevel) {
+			hudPlayerLevel.textContent = state.progression.level.toString();
+		}
+		if (hudXpBarFill) {
+			const progress = progressionSystem.getLevelProgress() * 100;
+			hudXpBarFill.style.width = `${progress}%`;
+		}
+		if (hudSkillPoints && hudSkillPointsNum) {
+			const sp = state.progression.skillPoints;
+			if (sp > 0) {
+				hudSkillPoints.style.display = 'inline';
+				hudSkillPointsNum.textContent = sp.toString();
+			} else {
+				hudSkillPoints.style.display = 'none';
+			}
+		}
 	}
 
 	// updatePlayer ist jetzt in src/player/update.js ausgelagert
@@ -2239,6 +2366,10 @@ function bootGame() {
 
 	function update(dt) {
 		state.frameDt = dt;
+		
+		// Spatial Grid: Alle Grids aktualisieren für effiziente Kollisionserkennung
+		updateAllGrids(state);
+		
 		playerUpdater.updatePlayer(dt);
 		abilities.updateCoralAllies(dt);
 		pickups.updateCoralEffects(dt);
@@ -2323,6 +2454,10 @@ function bootGame() {
 		state.score += reward;
 		state.levelScore += reward;
 		spawnCoinDrop({ x: foe.x, y: foe.y, value: getCoinValueForFoe(foe) });
+		
+		// XP für besiegten Gegner vergeben
+		const xpGained = progressionSystem.awardXP(foe.type || 'default');
+		
 		if (!state.boss.active && state.levelScore >= state.unlockBossScore && bannerEl) {
 			bannerEl.textContent = "Boss wittert deine Präsenz...";
 		}
@@ -2682,7 +2817,16 @@ function bootGame() {
 	}
 
 	function tick(now) {
-		const dt = clamp(now - state.lastTick, 0, 48);
+		// Delta-Time Capping: Verhindert Physik-Sprünge bei Tab-Wechsel oder Lag
+		const rawDt = now - state.lastTick;
+		const dt = clamp(rawDt, MIN_DELTA_TIME, MAX_DELTA_TIME);
+		
+		// Tab-Wechsel Erkennung: Wenn rawDt sehr groß war, Reset-Logik
+		if (rawDt > LONG_FRAME_THRESHOLD) {
+			// Optional: Logging für Debug-Zwecke
+			// console.log(`Long frame detected: ${rawDt.toFixed(0)}ms (capped to ${dt}ms)`);
+		}
+		
 		state.lastTick = now;
 		if (state.started && !state.over && !state.paused) {
 			if (state.mode === "city") updateCity(dt);
@@ -2817,6 +2961,16 @@ function bootGame() {
 					cityUI.setMissionOpen(true);
 					updateCityMissionUI();
 					if (bannerEl) bannerEl.textContent = "Missionen geöffnet";
+					return;
+				}
+			}
+			// Upgrade-NPC
+			const upgradeNpc = city.npcs && city.npcs.find(npc => npc.id === "upgrade");
+			if (upgradeNpc) {
+				const dist = Math.hypot(worldX - upgradeNpc.x, worldY - upgradeNpc.y);
+				if (dist <= npcClickRadius) {
+					upgradeUI.show();
+					if (bannerEl) bannerEl.textContent = "Upgrade-Schmiede geöffnet";
 					return;
 				}
 			}

@@ -3,6 +3,8 @@
  * Handles player movement, energy, shield, and shooting
  */
 
+import { shotPool } from '../core/pool.js';
+
 /**
  * Creates the player update system
  * @param {Object} ctx - Context with dependencies
@@ -37,16 +39,17 @@ export function createPlayerUpdateSystem(ctx) {
 		const energyCost = player.energyCost == null ? 35 : player.energyCost;
 		if ((player.energy == null ? energyMax : player.energy) < energyCost) return;
 
-		state.shots.push({
-			x: player.x + 26,
-			y: player.y - 6,
-			vx: 0.64,
-			vy: -0.02,
-			life: 900,
-			spriteScale: 0.1,
-			spriteOffsetX: 6,
-			spriteOffsetY: 0
-		});
+		// Object Pool: Wiederverwendung statt Neuerstellung
+		const shot = shotPool.acquire();
+		shot.x = player.x + 26;
+		shot.y = player.y - 6;
+		shot.vx = 0.64;
+		shot.vy = -0.02;
+		shot.life = 900;
+		shot.spriteScale = 0.1;
+		shot.spriteOffsetX = 6;
+		shot.spriteOffsetY = 0;
+		state.shots.push(shot);
 
 		player.energy = Math.max(0, (player.energy == null ? energyMax : player.energy) - energyCost);
 		if (player.energy <= 0) {
@@ -143,6 +146,15 @@ export function createPlayerUpdateSystem(ctx) {
 			shot.vy -= 0.00012 * dt;
 		}
 
+		// Object Pool: NUR Shots die aus dem Pool kommen zurückgeben
+		const deadShots = state.shots.filter(shot => 
+			(shot.life <= 0 || 
+			shot.x >= canvas.width + 120 || 
+			shot.y <= -80 || 
+			shot.y >= canvas.height + 80) && shot._pooled
+		);
+		shotPool.releaseAll(deadShots);
+		
 		state.shots = state.shots.filter(shot => 
 			shot.life > 0 && 
 			shot.x < canvas.width + 120 && 

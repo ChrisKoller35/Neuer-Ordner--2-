@@ -5,6 +5,8 @@
  * Each foe type has unique properties like shooting, charging, or orbiting.
  */
 
+import { foePool } from '../core/pool.js';
+
 /**
  * Create the foe spawn module with context-based dependencies.
  * @param {Object} deps - Dependencies
@@ -35,17 +37,19 @@ export function createFoeSpawnSystem(deps) {
             : type === "ritterfisch" ? 0.028 + Math.random() * 0.014
             : type === "oktopus" ? 0.032 + Math.random() * 0.012
             : 0.06 + Math.random() * 0.02;
-        const foe = {
-            type,
-            x: opts.x != null ? opts.x : canvas.width + 45 + Math.random() * 50,
-            y: opts.y != null ? opts.y : canvas.height * 0.24 + Math.random() * (canvas.height * 0.57),
-            vx: opts.vx != null ? opts.vx : -baseSpeed,
-            vy: opts.vy != null ? opts.vy : 0,
-            hp,
-            maxHp: hp,
-            scale,
-            sway: Math.random() * Math.PI * 2
-        };
+        
+        // Object Pool: Wiederverwendung statt Neuerstellung
+        const foe = foePool.acquire();
+        foe.type = type;
+        foe.x = opts.x != null ? opts.x : canvas.width + 45 + Math.random() * 50;
+        foe.y = opts.y != null ? opts.y : canvas.height * 0.24 + Math.random() * (canvas.height * 0.57);
+        foe.vx = opts.vx != null ? opts.vx : -baseSpeed;
+        foe.vy = opts.vy != null ? opts.vy : 0;
+        foe.hp = hp;
+        foe.maxHp = hp;
+        foe.scale = scale;
+        foe.sway = Math.random() * Math.PI * 2;
+        foe.dead = false;
 
         // --- Bogenschreck specifics ---
         if (type === "bogenschreck") {

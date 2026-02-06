@@ -3,6 +3,9 @@
  * Handles level configurations, transitions, and progression
  */
 
+import { clearAllPools } from '../core/pool.js';
+import { clearAllGrids } from '../core/spatial.js';
+
 // Default boss stats for fallback
 const DEFAULT_BOSS_STATS = {
 	maxHp: 22,
@@ -401,6 +404,11 @@ export function createLevelSystem(ctx) {
 		state.over = false;
 		state.paused = false;
 		state.started = true;
+
+		// Object Pool: Alle Pools leeren beim Level-Wechsel
+		clearAllPools();
+		// Spatial Grid: Alle Grids leeren beim Level-Wechsel
+		clearAllGrids();
 
 		// Clear all arrays
 		state.foes.length = 0;

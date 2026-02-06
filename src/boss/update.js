@@ -6,6 +6,7 @@
 
 import { TAU } from '../core/constants.js';
 import { clamp, clamp01 } from '../core/utils.js';
+import { bossTorpedoPool, bossWakeWavePool } from '../core/pool.js';
 
 /**
  * Erstellt das Boss-Update-System
@@ -317,6 +318,11 @@ export function createBossUpdateSystem(deps) {
 			}
 			torpedo.life -= dt;
 		}
+		// Object Pool: NUR Torpedos die aus dem Pool kommen zurückgeben
+		const deadTorpedoes = state.bossTorpedoes.filter(torpedo => 
+			(torpedo.life <= 0 || torpedo.x <= -160 || torpedo.y <= -120 || torpedo.y >= canvas.height + 120) && torpedo._pooled
+		);
+		bossTorpedoPool.releaseAll(deadTorpedoes);
 		state.bossTorpedoes = state.bossTorpedoes.filter(torpedo => torpedo.life > 0 && torpedo.x > -160 && torpedo.y > -120 && torpedo.y < canvas.height + 120);
 
 		// Fin Sweeps
@@ -388,6 +394,9 @@ export function createBossUpdateSystem(deps) {
 			if (wave.hurtCooldown > 0) wave.hurtCooldown = Math.max(0, wave.hurtCooldown - dt);
 			wave.life -= dt;
 		}
+		// Object Pool: NUR Wellen die aus dem Pool kommen zurückgeben
+		const deadWaves = state.bossWakeWaves.filter(wave => (wave.life <= 0 || wave.x <= -260) && wave._pooled);
+		bossWakeWavePool.releaseAll(deadWaves);
 		state.bossWakeWaves = state.bossWakeWaves.filter(wave => wave.life > 0 && wave.x > -260);
 
 		// Whirlpools

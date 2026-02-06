@@ -6,6 +6,315 @@
 let USE_WEBP_ASSETS = true;
 let BASE_URL = null; // Wird beim ersten Aufruf gesetzt
 
+// ============================================================
+// ASSET MANAGER - Reference Counting und Caching
+// ============================================================
+
+/**
+ * Asset-Eintrag mit Metadaten
+ * @typedef {Object} AssetEntry
+ * @property {HTMLImageElement} image - Das geladene Bild
+ * @property {number} refCount - Anzahl aktiver Referenzen
+ * @property {number} lastAccess - Zeitstempel des letzten Zugriffs
+ * @property {string} path - Originaler Pfad
+ * @property {boolean} loaded - Ob das Asset geladen ist
+ * @property {string[]} groups - Gruppen zu denen das Asset gehört
+ */
+
+/** @type {Map<string, AssetEntry>} */
+const assetCache = new Map();
+
+/** @type {Map<string, Set<string>>} */
+const assetGroups = new Map();
+
+/** Maximale Inaktivitätszeit bevor Assets entladen werden können (5 Minuten) */
+const ASSET_UNLOAD_THRESHOLD = 5 * 60 * 1000;
+
+/**
+ * Asset Manager für Reference Counting und Memory Management
+ */
+export const AssetManager = {
+	/**
+	 * Lädt ein Asset mit Caching und Reference Counting
+	 * @param {string} path - Pfad zum Asset
+	 * @param {string} [group] - Optionale Gruppe (z.B. "level1", "boss2")
+	 * @returns {HTMLImageElement}
+	 */
+	load(path, group = null) {
+		const normalizedPath = this._normalizePath(path);
+		
+		// Aus Cache holen falls vorhanden
+		if (assetCache.has(normalizedPath)) {
+			const entry = assetCache.get(normalizedPath);
+			entry.refCount++;
+			entry.lastAccess = performance.now();
+			if (group && !entry.groups.includes(group)) {
+				entry.groups.push(group);
+				this._addToGroup(group, normalizedPath);
+			}
+			return entry.image;
+		}
+		
+		// Neues Asset laden
+		const image = loadSprite(path);
+		const entry = {
+			image,
+			refCount: 1,
+			lastAccess: performance.now(),
+			path: normalizedPath,
+			loaded: false,
+			groups: group ? [group] : []
+		};
+		
+		image.addEventListener('load', () => {
+			entry.loaded = true;
+		});
+		
+		assetCache.set(normalizedPath, entry);
+		
+		if (group) {
+			this._addToGroup(group, normalizedPath);
+		}
+		
+		return image;
+	},
+	
+	/**
+	 * Erhöht den Reference Count für ein Asset
+	 * @param {string} path
+	 */
+	retain(path) {
+		const normalizedPath = this._normalizePath(path);
+		const entry = assetCache.get(normalizedPath);
+		if (entry) {
+			entry.refCount++;
+			entry.lastAccess = performance.now();
+		}
+	},
+	
+	/**
+	 * Verringert den Reference Count für ein Asset
+	 * @param {string} path
+	 */
+	release(path) {
+		const normalizedPath = this._normalizePath(path);
+		const entry = assetCache.get(normalizedPath);
+		if (entry) {
+			entry.refCount = Math.max(0, entry.refCount - 1);
+		}
+	},
+	
+	/**
+	 * Lädt alle Assets einer Gruppe
+	 * @param {string} group - Gruppenname
+	 * @param {string[]} paths - Array von Pfaden
+	 * @returns {Promise<void>}
+	 */
+	async loadGroup(group, paths) {
+		const promises = paths.map(path => {
+			return new Promise((resolve, reject) => {
+				const img = this.load(path, group);
+				if (img.complete && img.naturalWidth > 0) {
+					resolve();
+				} else {
+					img.onload = resolve;
+					img.onerror = () => reject(new Error(`Failed to load: ${path}`));
+				}
+			});
+		});
+		await Promise.all(promises);
+	},
+	
+	/**
+	 * Gibt alle Assets einer Gruppe frei
+	 * @param {string} group
+	 */
+	releaseGroup(group) {
+		const paths = assetGroups.get(group);
+		if (!paths) return;
+		
+		for (const path of paths) {
+			this.release(path);
+		}
+	},
+	
+	/**
+	 * Entlädt Assets ohne aktive Referenzen
+	 * @param {boolean} [force=false] - Auch kürzlich verwendete Assets entladen
+	 */
+	cleanup(force = false) {
+		const now = performance.now();
+		const toDelete = [];
+		
+		for (const [path, entry] of assetCache) {
+			if (entry.refCount <= 0) {
+				if (force || (now - entry.lastAccess > ASSET_UNLOAD_THRESHOLD)) {
+					// Asset für GC freigeben
+					entry.image.src = '';
+					toDelete.push(path);
+				}
+			}
+		}
+		
+		for (const path of toDelete) {
+			assetCache.delete(path);
+			// Aus allen Gruppen entfernen
+			for (const [, groupPaths] of assetGroups) {
+				groupPaths.delete(path);
+			}
+		}
+		
+		return toDelete.length;
+	},
+	
+	/**
+	 * Holt ein gecachtes Asset
+	 * @param {string} path
+	 * @returns {HTMLImageElement|null}
+	 */
+	get(path) {
+		const normalizedPath = this._normalizePath(path);
+		const entry = assetCache.get(normalizedPath);
+		if (entry) {
+			entry.lastAccess = performance.now();
+			return entry.image;
+		}
+		return null;
+	},
+	
+	/**
+	 * Prüft ob ein Asset geladen ist
+	 * @param {string} path
+	 * @returns {boolean}
+	 */
+	isLoaded(path) {
+		const normalizedPath = this._normalizePath(path);
+		const entry = assetCache.get(normalizedPath);
+		return entry ? entry.loaded : false;
+	},
+	
+	/**
+	 * Prüft ob ein Asset gecacht ist
+	 * @param {string} path
+	 * @returns {boolean}
+	 */
+	isCached(path) {
+		return assetCache.has(this._normalizePath(path));
+	},
+	
+	/**
+	 * Gibt Statistiken zurück
+	 */
+	getStats() {
+		let totalSize = 0;
+		let loadedCount = 0;
+		let activeRefs = 0;
+		
+		for (const entry of assetCache.values()) {
+			if (entry.loaded && entry.image.naturalWidth > 0) {
+				loadedCount++;
+				// Geschätzte Größe: width * height * 4 bytes (RGBA)
+				totalSize += entry.image.naturalWidth * entry.image.naturalHeight * 4;
+			}
+			activeRefs += entry.refCount;
+		}
+		
+		return {
+			cachedAssets: assetCache.size,
+			loadedAssets: loadedCount,
+			activeReferences: activeRefs,
+			estimatedMemoryMB: (totalSize / (1024 * 1024)).toFixed(2),
+			groups: assetGroups.size
+		};
+	},
+	
+	/**
+	 * Leert den gesamten Cache
+	 */
+	clearAll() {
+		for (const entry of assetCache.values()) {
+			entry.image.src = '';
+		}
+		assetCache.clear();
+		assetGroups.clear();
+	},
+	
+	// Private Hilfsmethoden
+	_normalizePath(path) {
+		return path.replace(/\\/g, '/').replace(/^\.\//, '');
+	},
+	
+	_addToGroup(group, path) {
+		if (!assetGroups.has(group)) {
+			assetGroups.set(group, new Set());
+		}
+		assetGroups.get(group).add(path);
+	}
+};
+
+// ============================================================
+// Level-spezifische Asset-Definitionen
+// ============================================================
+
+/**
+ * Asset-Gruppen für jedes Level
+ */
+export const LEVEL_ASSETS = {
+	level1: [
+		'./Backgroundlvlone.webp',
+		'./Player.webp',
+		'./foe-jelly.webp',
+		'./boss-shark.webp',
+		'./player-shot.webp'
+	],
+	level2: [
+		'./Aquischwer-Bogenschreck.webp',
+		'./Bodengold.webp',
+		'./Parfüm-Kraken.webp'
+	],
+	level3: [
+		'./Oktopus.webp',
+		'./Oktopuspfeil.webp',
+		'./Ritterfisch.webp',
+		'./Bodenlava.webp'
+	],
+	level4: [
+		'./Yachtwal.webp',
+		'./Cashfish.webp'
+	],
+	common: [
+		'./heal-potion.webp',
+		'./Geldscheinsymbol.webp',
+		'./Korallenbegleitereins.webp',
+		'./Korallenbegleiterzwei.webp'
+	]
+};
+
+/**
+ * Lädt Assets für ein bestimmtes Level vor
+ * @param {number} levelIndex - Level-Index (0-basiert)
+ */
+export async function preloadLevelAssets(levelIndex) {
+	const levelKey = `level${levelIndex + 1}`;
+	const assets = LEVEL_ASSETS[levelKey] || [];
+	
+	// Common Assets beim ersten Level laden
+	if (levelIndex === 0) {
+		await AssetManager.loadGroup('common', LEVEL_ASSETS.common);
+	}
+	
+	await AssetManager.loadGroup(levelKey, assets);
+}
+
+/**
+ * Gibt Assets eines abgeschlossenen Levels frei
+ * @param {number} levelIndex
+ */
+export function releaseLevelAssets(levelIndex) {
+	const levelKey = `level${levelIndex + 1}`;
+	AssetManager.releaseGroup(levelKey);
+}
+
 /**
  * Konfiguriert den Asset Loader
  * @param {Object} config - Konfiguration

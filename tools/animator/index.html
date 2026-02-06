@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashfish Animator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Header */
+        .header {
+            background: #16213e;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 2px solid #0f3460;
+        }
+        
+        .header h1 {
+            font-size: 1.4em;
+            color: #e94560;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            background: #0f3460;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #e94560;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.primary {
+            background: #e94560;
+        }
+        
+        button.primary:hover {
+            background: #ff6b6b;
+        }
+        
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 52px - 150px);
+        }
+        
+        /* Canvas Area */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f0f23;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #mainCanvas {
+            background: repeating-conic-gradient(#2a2a3a 0% 25%, #1f1f2f 0% 50%) 50% / 20px 20px;
+            cursor: crosshair;
+        }
+        
+        .drop-zone {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 60px;
+            border: 3px dashed #0f3460;
+            border-radius: 20px;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        .drop-zone.hidden {
+            display: none;
+        }
+        
+        .drop-zone h2 {
+            color: #0f3460;
+            margin-bottom: 10px;
+        }
+        
+        .drop-zone p {
+            color: #666;
+        }
+        
+        /* Side Panel */
+        .side-panel {
+            width: 280px;
+            background: #16213e;
+            padding: 15px;
+            overflow-y: auto;
+            border-left: 2px solid #0f3460;
+        }
+        
+        .panel-section {
+            margin-bottom: 20px;
+        }
+        
+        .panel-section h3 {
+            color: #e94560;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Parts List */
+        .parts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .part-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #0f3460;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .part-item:hover {
+            background: #1a4a7a;
+        }
+        
+        .part-item.selected {
+            background: #e94560;
+        }
+        
+        .part-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .part-name {
+            flex: 1;
+            font-size: 13px;
+        }
+        
+        .part-delete {
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        
+        .part-delete:hover {
+            opacity: 1;
+            color: #ff6b6b;
+        }
+        
+        /* Input */
+        input[type="text"], input[type="number"] {
+            background: #0f3460;
+            border: 1px solid #1a4a7a;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 13px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+        
+        /* Properties */
+        .properties-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .prop-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .prop-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        /* Timeline */
+        .timeline-container {
+            height: 150px;
+            background: #16213e;
+            border-top: 2px solid #0f3460;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #0f3460;
+        }
+        
+        .timeline-controls button {
+            padding: 6px 12px;
+        }
+        
+        .frame-info {
+            font-size: 13px;
+            color: #888;
+        }
+        
+        .frame-info span {
+            color: #e94560;
+            font-weight: bold;
+        }
+        
+        .timeline-scroll {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 10px 15px;
+        }
+        
+        .timeline-tracks {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: max-content;
+        }
+        
+        .timeline-ruler {
+            display: flex;
+            gap: 0;
+            margin-bottom: 5px;
+            padding-left: 100px;
+        }
+        
+        .ruler-frame {
+            width: 40px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            flex-shrink: 0;
+        }
+        
+        .ruler-frame.current {
+            color: #e94560;
+            font-weight: bold;
+        }
+        
+        .timeline-track {
+            display: flex;
+            align-items: center;
+            height: 28px;
+        }
+        
+        .track-label {
+            width: 100px;
+            font-size: 12px;
+            color: #888;
+            padding-right: 10px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        
+        .track-frames {
+            display: flex;
+            gap: 0;
+            flex: 1;
+        }
+        
+        .track-frame {
+            width: 40px;
+            height: 24px;
+            background: #0f3460;
+            border: 1px solid #1a4a7a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .track-frame:hover {
+            background: #1a4a7a;
+        }
+        
+        .track-frame.current {
+            border-color: #e94560;
+        }
+        
+        .track-frame.has-keyframe::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: #e94560;
+            border-radius: 2px;
+            transform: rotate(45deg);
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            bottom: 150px;
+            left: 0;
+            right: 280px;
+            background: rgba(0,0,0,0.7);
+            color: #888;
+            padding: 5px 15px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* Mode indicator */
+        .mode-indicator {
+            padding: 4px 12px;
+            background: #e94560;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .mode-indicator.select-mode {
+            background: #0f3460;
+        }
+        
+        /* Export Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-overlay.hidden {
+            display: none;
+        }
+        
+        .modal {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 12px;
+            min-width: 400px;
+        }
+        
+        .modal h2 {
+            color: #e94560;
+            margin-bottom: 20px;
+        }
+        
+        .modal-row {
+            margin-bottom: 15px;
+        }
+        
+        .modal-row label {
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 13px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+        
+        /* Help Text */
+        .help-text {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🐟 Cashfish Animator</h1>
+        <div class="header-buttons">
+            <button onclick="loadImage()">📁 Bild laden</button>
+            <button onclick="saveProject()">💾 Projekt speichern</button>
+            <button onclick="loadProject()">📂 Projekt laden</button>
+            <button class="primary" onclick="showExportModal()">⬇ Als PNG exportieren</button>
+        </div>
+        <div style="flex:1"></div>
+        <div>
+            <span class="mode-indicator" id="modeIndicator">Zeichnen-Modus</span>
+        </div>
+        <button onclick="toggleMode()" style="margin-left: 10px;">🔄 Modus wechseln (M)</button>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Canvas -->
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="mainCanvas" width="800" height="600"></canvas>
+            <div class="drop-zone" id="dropZone">
+                <h2>📁 Bild hier reinziehen</h2>
+                <p>oder klicke auf "Bild laden"</p>
+            </div>
+        </div>
+        
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <div class="panel-section">
+                <h3>Bereiche (Parts)</h3>
+                <div class="parts-list" id="partsList">
+                    <p class="help-text">Ziehe Rechtecke auf dem Bild um Bereiche zu markieren.</p>
+                </div>
+                <button onclick="addPart()" style="margin-top: 10px; width: 100%;">+ Bereich hinzufügen</button>
+            </div>
+            
+            <div class="panel-section">
+                <h3>Eigenschaften</h3>
+                <div id="propertiesPanel">
+                    <p class="help-text">Wähle einen Bereich aus um Eigenschaften zu bearbeiten.</p>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h3>Animation</h3>
+                <div class="properties-grid">
+                    <div class="prop-group">
+                        <span class="prop-label">Frames</span>
+                        <input type="number" id="totalFrames" value="8" min="1" max="60" onchange="updateTotalFrames()">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">FPS</span>
+                        <input type="number" id="animFPS" value="12" min="1" max="60">
+                    </div>
+                </div>
+                <p class="help-text" style="margin-top: 10px;">Klicke auf Timeline-Felder um Keyframes zu setzen (K).</p>
+            </div>
+            
+            <div class="panel-section">
+                <h3>Tastenkürzel</h3>
+                <p class="help-text">
+                    <b>M</b> - Modus wechseln<br>
+                    <b>K</b> - Keyframe setzen/löschen<br>
+                    <b>Leertaste</b> - Play/Pause<br>
+                    <b>←/→</b> - Frame vor/zurück<br>
+                    <b>Entf</b> - Bereich löschen
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div class="timeline-container">
+        <div class="timeline-controls">
+            <button onclick="prevFrame()">◀</button>
+            <button onclick="togglePlay()" id="playBtn">▶ Play</button>
+            <button onclick="nextFrame()">▶</button>
+            <button onclick="setKeyframe()">◆ Keyframe</button>
+            <button onclick="deleteKeyframe()">✕ Keyframe löschen</button>
+            <div class="frame-info">Frame: <span id="currentFrameDisplay">1</span> / <span id="totalFramesDisplay">8</span></div>
+        </div>
+        <div class="timeline-scroll">
+            <div class="timeline-tracks" id="timelineTracks">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <span id="statusText">Bereit</span>
+        <span id="mousePos">0, 0</span>
+    </div>
+    
+    <!-- Export Modal -->
+    <div class="modal-overlay hidden" id="exportModal">
+        <div class="modal">
+            <h2>Als PNG-Sequenz exportieren</h2>
+            <div class="modal-row">
+                <label>Dateiname-Präfix</label>
+                <input type="text" id="exportPrefix" value="anim_">
+            </div>
+            <div class="modal-row">
+                <label>Ausgabegröße</label>
+                <div class="properties-grid">
+                    <div class="prop-group">
+                        <span class="prop-label">Breite</span>
+                        <input type="number" id="exportWidth" value="128">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Höhe</span>
+                        <input type="number" id="exportHeight" value="128">
+                    </div>
+                </div>
+            </div>
+            <p class="help-text">Exportiert als: anim_01.png, anim_02.png, ...</p>
+            <div class="modal-buttons">
+                <button onclick="hideExportModal()">Abbrechen</button>
+                <button class="primary" onclick="exportAnimation()">Exportieren</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================
+        // CASHFISH ANIMATOR - Bone Animation Tool
+        // ============================================================
+        
+        // State
+        const state = {
+            image: null,
+            imageLoaded: false,
+            parts: [],
+            selectedPartId: null,
+            currentFrame: 0,
+            totalFrames: 8,
+            isPlaying: false,
+            playInterval: null,
+            mode: 'draw', // 'draw' oder 'select'
+            
+            // Drawing state
+            isDrawing: false,
+            drawStart: { x: 0, y: 0 },
+            
+            // Drag state
+            isDragging: false,
+            dragStart: { x: 0, y: 0 },
+            dragPartStart: { x: 0, y: 0, rotation: 0 },
+            dragMode: null, // 'move', 'rotate', 'pivot'
+            
+            // View
+            zoom: 1,
+            panX: 0,
+            panY: 0
+        };
+        
+        // Colors for parts
+        const partColors = [
+            '#e94560', '#4ecdc4', '#ffe66d', '#95e1d3', 
+            '#f38181', '#aa96da', '#fcbad3', '#a8d8ea'
+        ];
+        
+        // Canvas & Context
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        
+        function init() {
+            setupEventListeners();
+            updateTimeline();
+            render();
+        }
+        
+        function setupEventListeners() {
+            const container = document.getElementById('canvasContainer');
+            
+            // Drag & Drop
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    loadImageFile(file);
+                }
+            });
+            
+            // Canvas events
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('mouseleave', onMouseUp);
+            
+            // Keyboard
+            document.addEventListener('keydown', onKeyDown);
+        }
+        
+        // ============================================================
+        // IMAGE LOADING
+        // ============================================================
+        
+        function loadImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) loadImageFile(file);
+            };
+            input.click();
+        }
+        
+        function loadImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    state.imageLoaded = true;
+                    
+                    // Canvas an Bildgröße anpassen (max 800x600)
+                    const maxW = 800, maxH = 600;
+                    let w = img.width, h = img.height;
+                    if (w > maxW || h > maxH) {
+                        const scale = Math.min(maxW / w, maxH / h);
+                        w *= scale;
+                        h *= scale;
+                    }
+                    canvas.width = Math.max(800, w);
+                    canvas.height = Math.max(600, h);
+                    
+                    document.getElementById('dropZone').classList.add('hidden');
+                    setStatus('Bild geladen: ' + file.name);
+                    render();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // ============================================================
+        // PARTS MANAGEMENT
+        // ============================================================
+        
+        function createPart(x, y, width, height) {
+            const id = Date.now();
+            const colorIndex = state.parts.length % partColors.length;
+            
+            const part = {
+                id,
+                name: 'Teil ' + (state.parts.length + 1),
+                color: partColors[colorIndex],
+                // Position relativ zum Bild
+                x, y, width, height,
+                // Pivot-Punkt (Standard: Mitte)
+                pivotX: x + width / 2,
+                pivotY: y + height / 2,
+                // Keyframes mit 3D-Transformationen
+                // z: Tiefe (-100 = weit weg/klein, +100 = nah/groß)
+                // skewX/Y: Perspektivische Verzerrung
+                keyframes: {
+                    0: { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0 }
+                }
+            };
+            
+            state.parts.push(part);
+            state.selectedPartId = id;
+            updatePartsList();
+            updateTimeline();
+            render();
+            
+            return part;
+        }
+        
+        function addPart() {
+            if (!state.imageLoaded) {
+                alert('Bitte erst ein Bild laden!');
+                return;
+            }
+            // Placeholder-Part in der Mitte
+            createPart(
+                canvas.width / 2 - 50,
+                canvas.height / 2 - 50,
+                100, 100
+            );
+        }
+        
+        function deletePart(id) {
+            state.parts = state.parts.filter(p => p.id !== id);
+            if (state.selectedPartId === id) {
+                state.selectedPartId = state.parts.length > 0 ? state.parts[0].id : null;
+            }
+            updatePartsList();
+            updateTimeline();
+            render();
+        }
+        
+        function selectPart(id) {
+            state.selectedPartId = id;
+            updatePartsList();
+            updatePropertiesPanel();
+            render();
+        }
+        
+        function getSelectedPart() {
+            return state.parts.find(p => p.id === state.selectedPartId);
+        }
+        
+        // ============================================================
+        // KEYFRAMES
+        // ============================================================
+        
+        function setKeyframe() {
+            const part = getSelectedPart();
+            if (!part) {
+                setStatus('Bitte erst einen Bereich auswählen!');
+                return;
+            }
+            
+            const frame = state.currentFrame;
+            if (!part.keyframes[frame]) {
+                // Interpolierte Werte als Basis nehmen
+                const interpolated = getInterpolatedTransform(part, frame);
+                part.keyframes[frame] = { ...interpolated };
+            }
+            
+            setStatus(`Keyframe gesetzt: ${part.name} @ Frame ${frame + 1}`);
+            updateTimeline();
+            render();
+        }
+        
+        function deleteKeyframe() {
+            const part = getSelectedPart();
+            if (!part) return;
+            
+            const frame = state.currentFrame;
+            if (frame === 0) {
+                setStatus('Frame 0 kann nicht gelöscht werden!');
+                return;
+            }
+            
+            if (part.keyframes[frame]) {
+                delete part.keyframes[frame];
+                setStatus(`Keyframe gelöscht: ${part.name} @ Frame ${frame + 1}`);
+                updateTimeline();
+                render();
+            }
+        }
+        
+        function getInterpolatedTransform(part, frame) {
+            const keys = Object.keys(part.keyframes).map(Number).sort((a, b) => a - b);
+            
+            // Exakter Keyframe?
+            if (part.keyframes[frame]) {
+                return { ...part.keyframes[frame] };
+            }
+            
+            // Finde umgebende Keyframes
+            let prevKey = 0, nextKey = keys[keys.length - 1];
+            
+            for (const key of keys) {
+                if (key < frame) prevKey = key;
+                if (key > frame) { nextKey = key; break; }
+            }
+            
+            if (prevKey === nextKey || !part.keyframes[prevKey] || !part.keyframes[nextKey]) {
+                return { ...part.keyframes[prevKey] };
+            }
+            
+            // Interpolieren
+            const t = (frame - prevKey) / (nextKey - prevKey);
+            const prev = part.keyframes[prevKey];
+            const next = part.keyframes[nextKey];
+            
+            return {
+                x: lerp(prev.x || 0, next.x || 0, t),
+                y: lerp(prev.y || 0, next.y || 0, t),
+                z: lerp(prev.z || 0, next.z || 0, t),
+                rotation: lerpAngle(prev.rotation || 0, next.rotation || 0, t),
+                scaleX: lerp(prev.scaleX || 1, next.scaleX || 1, t),
+                scaleY: lerp(prev.scaleY || 1, next.scaleY || 1, t),
+                skewX: lerp(prev.skewX || 0, next.skewX || 0, t),
+                skewY: lerp(prev.skewY || 0, next.skewY || 0, t)
+            };
+        }
+        
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        function lerpAngle(a, b, t) {
+            // Kürzesten Weg um den Kreis nehmen
+            let diff = b - a;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            return a + diff * t;
+        }
+        
+        // ============================================================
+        // ANIMATION PLAYBACK
+        // ============================================================
+        
+        function togglePlay() {
+            if (state.isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+        
+        function startPlay() {
+            const fps = parseInt(document.getElementById('animFPS').value) || 12;
+            state.isPlaying = true;
+            document.getElementById('playBtn').textContent = '⏸ Pause';
+            
+            state.playInterval = setInterval(() => {
+                state.currentFrame = (state.currentFrame + 1) % state.totalFrames;
+                updateFrameDisplay();
+                updateTimeline();
+                render();
+            }, 1000 / fps);
+        }
+        
+        function stopPlay() {
+            state.isPlaying = false;
+            document.getElementById('playBtn').textContent = '▶ Play';
+            if (state.playInterval) {
+                clearInterval(state.playInterval);
+                state.playInterval = null;
+            }
+        }
+        
+        function nextFrame() {
+            stopPlay();
+            state.currentFrame = (state.currentFrame + 1) % state.totalFrames;
+            updateFrameDisplay();
+            updateTimeline();
+            render();
+        }
+        
+        function prevFrame() {
+            stopPlay();
+            state.currentFrame = (state.currentFrame - 1 + state.totalFrames) % state.totalFrames;
+            updateFrameDisplay();
+            updateTimeline();
+            render();
+        }
+        
+        function goToFrame(frame) {
+            stopPlay();
+            state.currentFrame = frame;
+            updateFrameDisplay();
+            updateTimeline();
+            render();
+        }
+        
+        function updateTotalFrames() {
+            state.totalFrames = parseInt(document.getElementById('totalFrames').value) || 8;
+            if (state.currentFrame >= state.totalFrames) {
+                state.currentFrame = state.totalFrames - 1;
+            }
+            updateFrameDisplay();
+            updateTimeline();
+        }
+        
+        function updateFrameDisplay() {
+            document.getElementById('currentFrameDisplay').textContent = state.currentFrame + 1;
+            document.getElementById('totalFramesDisplay').textContent = state.totalFrames;
+        }
+        
+        // ============================================================
+        // MOUSE HANDLING
+        // ============================================================
+        
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+        
+        function onMouseDown(e) {
+            const pos = getMousePos(e);
+            
+            if (state.mode === 'draw') {
+                // Neuen Bereich zeichnen
+                state.isDrawing = true;
+                state.drawStart = pos;
+            } else {
+                // Select mode: Part auswählen oder bewegen
+                const hit = hitTestParts(pos);
+                if (hit) {
+                    selectPart(hit.id);
+                    state.isDragging = true;
+                    state.dragStart = pos;
+                    state.dragPartStart = { 
+                        x: hit.x, 
+                        y: hit.y,
+                        pivotX: hit.pivotX,
+                        pivotY: hit.pivotY
+                    };
+                    state.dragMode = e.shiftKey ? 'rotate' : 'move';
+                } else {
+                    state.selectedPartId = null;
+                    updatePartsList();
+                    updatePropertiesPanel();
+                }
+            }
+            
+            render();
+        }
+        
+        function onMouseMove(e) {
+            const pos = getMousePos(e);
+            document.getElementById('mousePos').textContent = `${Math.round(pos.x)}, ${Math.round(pos.y)}`;
+            
+            if (state.isDrawing) {
+                render();
+                // Preview-Rechteck zeichnen
+                const x = Math.min(pos.x, state.drawStart.x);
+                const y = Math.min(pos.y, state.drawStart.y);
+                const w = Math.abs(pos.x - state.drawStart.x);
+                const h = Math.abs(pos.y - state.drawStart.y);
+                
+                ctx.strokeStyle = '#e94560';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(x, y, w, h);
+                ctx.setLineDash([]);
+            }
+            
+            if (state.isDragging && state.selectedPartId) {
+                const part = getSelectedPart();
+                if (!part) return;
+                
+                const dx = pos.x - state.dragStart.x;
+                const dy = pos.y - state.dragStart.y;
+                
+                if (state.dragMode === 'move') {
+                    // Part-Position bewegen
+                    part.x = state.dragPartStart.x + dx;
+                    part.y = state.dragPartStart.y + dy;
+                    part.pivotX = state.dragPartStart.pivotX + dx;
+                    part.pivotY = state.dragPartStart.pivotY + dy;
+                } else if (state.dragMode === 'rotate') {
+                    // Rotation um Pivot
+                    const transform = getInterpolatedTransform(part, state.currentFrame);
+                    const angle = Math.atan2(pos.y - part.pivotY, pos.x - part.pivotX);
+                    const startAngle = Math.atan2(state.dragStart.y - part.pivotY, state.dragStart.x - part.pivotX);
+                    
+                    // Keyframe updaten oder erstellen
+                    if (!part.keyframes[state.currentFrame]) {
+                        part.keyframes[state.currentFrame] = { ...transform };
+                    }
+                    part.keyframes[state.currentFrame].rotation = angle - startAngle;
+                    updateTimeline();
+                }
+                
+                render();
+            }
+        }
+        
+        function onMouseUp(e) {
+            if (state.isDrawing) {
+                const pos = getMousePos(e);
+                const x = Math.min(pos.x, state.drawStart.x);
+                const y = Math.min(pos.y, state.drawStart.y);
+                const w = Math.abs(pos.x - state.drawStart.x);
+                const h = Math.abs(pos.y - state.drawStart.y);
+                
+                // Nur erstellen wenn groß genug
+                if (w > 10 && h > 10) {
+                    createPart(x, y, w, h);
+                }
+                
+                state.isDrawing = false;
+            }
+            
+            state.isDragging = false;
+            state.dragMode = null;
+            render();
+        }
+        
+        function hitTestParts(pos) {
+            // Von oben nach unten (zuletzt gezeichnete zuerst)
+            for (let i = state.parts.length - 1; i >= 0; i--) {
+                const part = state.parts[i];
+                if (pos.x >= part.x && pos.x <= part.x + part.width &&
+                    pos.y >= part.y && pos.y <= part.y + part.height) {
+                    return part;
+                }
+            }
+            return null;
+        }
+        
+        // ============================================================
+        // KEYBOARD HANDLING
+        // ============================================================
+        
+        function onKeyDown(e) {
+            // Ignore wenn in Input
+            if (e.target.tagName === 'INPUT') return;
+            
+            switch (e.key) {
+                case 'm':
+                case 'M':
+                    toggleMode();
+                    break;
+                case 'k':
+                case 'K':
+                    setKeyframe();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case 'ArrowLeft':
+                    prevFrame();
+                    break;
+                case 'ArrowRight':
+                    nextFrame();
+                    break;
+                case 'Delete':
+                case 'Backspace':
+                    if (state.selectedPartId) {
+                        deletePart(state.selectedPartId);
+                    }
+                    break;
+            }
+        }
+        
+        function toggleMode() {
+            state.mode = state.mode === 'draw' ? 'select' : 'draw';
+            const indicator = document.getElementById('modeIndicator');
+            if (state.mode === 'draw') {
+                indicator.textContent = 'Zeichnen-Modus';
+                indicator.className = 'mode-indicator';
+                canvas.style.cursor = 'crosshair';
+            } else {
+                indicator.textContent = 'Auswahl-Modus';
+                indicator.className = 'mode-indicator select-mode';
+                canvas.style.cursor = 'default';
+            }
+            setStatus(`Modus: ${state.mode === 'draw' ? 'Zeichnen' : 'Auswahl'}`);
+        }
+        
+        // ============================================================
+        // RENDERING
+        // ============================================================
+        
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Wenn keine Parts vorhanden, zeige das ganze Bild als Referenz
+            if (state.image && state.parts.length === 0) {
+                ctx.globalAlpha = 1;
+                ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+            }
+            
+            // Wenn Parts vorhanden, zeige das Bild abgedunkelt als Referenz
+            if (state.image && state.parts.length > 0) {
+                ctx.globalAlpha = 0.3;
+                ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+            }
+            
+            // Parts zeichnen - MIT Bildinhalt!
+            for (const part of state.parts) {
+                const isSelected = part.id === state.selectedPartId;
+                const transform = getInterpolatedTransform(part, state.currentFrame);
+                
+                ctx.save();
+                
+                // Z-Achse: Tiefe simulieren (z beeinflusst Skalierung + Y-Position)
+                // z = -100 → klein + oben (weit weg)
+                // z = +100 → groß + unten (nah dran)
+                const zScale = 1 + (transform.z || 0) / 200; // z=100 → 1.5x, z=-100 → 0.5x
+                const zOffsetY = (transform.z || 0) * 0.3;   // z=100 → +30px nach unten
+                
+                // Transform anwenden (um den Pivot-Punkt)
+                ctx.translate(part.pivotX + transform.x, part.pivotY + transform.y + zOffsetY);
+                ctx.rotate(transform.rotation || 0);
+                
+                // Skew (perspektivische Verzerrung) anwenden
+                ctx.transform(1, transform.skewY || 0, transform.skewX || 0, 1, 0, 0);
+                
+                // Skalierung (inkl. Z-Tiefe)
+                ctx.scale((transform.scaleX || 1) * zScale, (transform.scaleY || 1) * zScale);
+                ctx.translate(-part.pivotX, -part.pivotY);
+                
+                // BILDINHALT des Parts zeichnen
+                if (state.image) {
+                    // Berechne Source-Koordinaten im Originalbild
+                    const scaleX = state.image.width / canvas.width;
+                    const scaleY = state.image.height / canvas.height;
+                    const srcX = part.x * scaleX;
+                    const srcY = part.y * scaleY;
+                    const srcW = part.width * scaleX;
+                    const srcH = part.height * scaleY;
+                    
+                    ctx.drawImage(state.image, 
+                        srcX, srcY, srcW, srcH,           // Source
+                        part.x, part.y, part.width, part.height  // Destination
+                    );
+                }
+                
+                // Rahmen zeichnen
+                ctx.strokeStyle = part.color;
+                ctx.lineWidth = isSelected ? 3 : 2;
+                ctx.setLineDash(isSelected ? [] : [5, 3]);
+                ctx.strokeRect(part.x, part.y, part.width, part.height);
+                
+                ctx.setLineDash([]);
+                
+                // Pivot-Punkt
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(part.pivotX, part.pivotY, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                    ctx.strokeStyle = part.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Kreuz im Pivot
+                    ctx.beginPath();
+                    ctx.moveTo(part.pivotX - 10, part.pivotY);
+                    ctx.lineTo(part.pivotX + 10, part.pivotY);
+                    ctx.moveTo(part.pivotX, part.pivotY - 10);
+                    ctx.lineTo(part.pivotX, part.pivotY + 10);
+                    ctx.strokeStyle = part.color;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                
+                // Name
+                ctx.fillStyle = part.color;
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText(part.name, part.x + 5, part.y - 5);
+                
+                ctx.restore();
+            }
+        }
+        
+        // ============================================================
+        // UI UPDATES
+        // ============================================================
+        
+        function updatePartsList() {
+            const list = document.getElementById('partsList');
+            
+            if (state.parts.length === 0) {
+                list.innerHTML = '<p class="help-text">Ziehe Rechtecke auf dem Bild um Bereiche zu markieren.</p>';
+                return;
+            }
+            
+            list.innerHTML = state.parts.map(part => `
+                <div class="part-item ${part.id === state.selectedPartId ? 'selected' : ''}" 
+                     onclick="selectPart(${part.id})">
+                    <div class="part-color" style="background: ${part.color}"></div>
+                    <span class="part-name">${part.name}</span>
+                    <span class="part-delete" onclick="event.stopPropagation(); deletePart(${part.id})">✕</span>
+                </div>
+            `).join('');
+        }
+        
+        function updatePropertiesPanel() {
+            const panel = document.getElementById('propertiesPanel');
+            const part = getSelectedPart();
+            
+            if (!part) {
+                panel.innerHTML = '<p class="help-text">Wähle einen Bereich aus um Eigenschaften zu bearbeiten.</p>';
+                return;
+            }
+            
+            const transform = getInterpolatedTransform(part, state.currentFrame);
+            
+            panel.innerHTML = `
+                <div class="prop-group" style="margin-bottom: 10px;">
+                    <span class="prop-label">Name</span>
+                    <input type="text" value="${part.name}" onchange="updatePartName(${part.id}, this.value)">
+                </div>
+                <h4 style="color: #888; font-size: 11px; margin: 10px 0 5px;">POSITION</h4>
+                <div class="properties-grid">
+                    <div class="prop-group">
+                        <span class="prop-label">X (links/rechts)</span>
+                        <input type="number" value="${Math.round(transform.x || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'x', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Y (oben/unten)</span>
+                        <input type="number" value="${Math.round(transform.y || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'y', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Z (Tiefe)</span>
+                        <input type="number" value="${Math.round(transform.z || 0)}" step="10"
+                               onchange="updatePartTransform(${part.id}, 'z', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Rotation °</span>
+                        <input type="number" value="${Math.round((transform.rotation || 0) * 180 / Math.PI)}" 
+                               onchange="updatePartTransform(${part.id}, 'rotation', parseFloat(this.value) * Math.PI / 180)">
+                    </div>
+                </div>
+                <h4 style="color: #888; font-size: 11px; margin: 10px 0 5px;">SKALIERUNG & VERZERRUNG</h4>
+                <div class="properties-grid">
+                    <div class="prop-group">
+                        <span class="prop-label">Skala X</span>
+                        <input type="number" value="${(transform.scaleX || 1).toFixed(2)}" step="0.1"
+                               onchange="updatePartTransform(${part.id}, 'scaleX', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Skala Y</span>
+                        <input type="number" value="${(transform.scaleY || 1).toFixed(2)}" step="0.1"
+                               onchange="updatePartTransform(${part.id}, 'scaleY', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Skew X</span>
+                        <input type="number" value="${(transform.skewX || 0).toFixed(2)}" step="0.05"
+                               onchange="updatePartTransform(${part.id}, 'skewX', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Skew Y</span>
+                        <input type="number" value="${(transform.skewY || 0).toFixed(2)}" step="0.05"
+                               onchange="updatePartTransform(${part.id}, 'skewY', parseFloat(this.value))">
+                    </div>
+                </div>
+                <p class="help-text" style="margin-top: 8px;">Z: -100=weit weg, +100=nah<br>Skew: Perspektive neigen</p>
+            `;
+        }
+        
+        function updatePartName(id, name) {
+            const part = state.parts.find(p => p.id === id);
+            if (part) {
+                part.name = name;
+                updatePartsList();
+                render();
+            }
+        }
+        
+        function updatePartTransform(id, prop, value) {
+            const part = state.parts.find(p => p.id === id);
+            if (!part) return;
+            
+            // Keyframe erstellen falls nicht vorhanden
+            if (!part.keyframes[state.currentFrame]) {
+                const interpolated = getInterpolatedTransform(part, state.currentFrame);
+                part.keyframes[state.currentFrame] = { ...interpolated };
+            }
+            
+            part.keyframes[state.currentFrame][prop] = value;
+            updateTimeline();
+            render();
+        }
+        
+        function updateTimeline() {
+            const container = document.getElementById('timelineTracks');
+            
+            // Ruler
+            let html = '<div class="timeline-ruler">';
+            for (let i = 0; i < state.totalFrames; i++) {
+                html += `<div class="ruler-frame ${i === state.currentFrame ? 'current' : ''}" 
+                             onclick="goToFrame(${i})">${i + 1}</div>`;
+            }
+            html += '</div>';
+            
+            // Tracks für jedes Part
+            for (const part of state.parts) {
+                html += `<div class="timeline-track">`;
+                html += `<div class="track-label" style="color: ${part.color}">${part.name}</div>`;
+                html += `<div class="track-frames">`;
+                
+                for (let i = 0; i < state.totalFrames; i++) {
+                    const hasKeyframe = part.keyframes[i] !== undefined;
+                    const isCurrent = i === state.currentFrame;
+                    html += `<div class="track-frame ${hasKeyframe ? 'has-keyframe' : ''} ${isCurrent ? 'current' : ''}" 
+                                 onclick="goToFrame(${i}); selectPart(${part.id})"></div>`;
+                }
+                
+                html += '</div></div>';
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function setStatus(text) {
+            document.getElementById('statusText').textContent = text;
+        }
+        
+        // ============================================================
+        // PROJECT SAVE/LOAD
+        // ============================================================
+        
+        function saveProject() {
+            const project = {
+                version: 1,
+                totalFrames: state.totalFrames,
+                fps: parseInt(document.getElementById('animFPS').value) || 12,
+                parts: state.parts,
+                // Bild als DataURL speichern
+                image: state.image ? canvas.toDataURL() : null
+            };
+            
+            const json = JSON.stringify(project, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'animation.cashfish-anim';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            setStatus('Projekt gespeichert!');
+        }
+        
+        function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.cashfish-anim,.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const project = JSON.parse(e.target.result);
+                        
+                        state.totalFrames = project.totalFrames || 8;
+                        document.getElementById('totalFrames').value = state.totalFrames;
+                        document.getElementById('animFPS').value = project.fps || 12;
+                        
+                        state.parts = project.parts || [];
+                        state.currentFrame = 0;
+                        state.selectedPartId = state.parts.length > 0 ? state.parts[0].id : null;
+                        
+                        if (project.image) {
+                            const img = new Image();
+                            img.onload = () => {
+                                state.image = img;
+                                state.imageLoaded = true;
+                                document.getElementById('dropZone').classList.add('hidden');
+                                render();
+                            };
+                            img.src = project.image;
+                        }
+                        
+                        updatePartsList();
+                        updatePropertiesPanel();
+                        updateTimeline();
+                        updateFrameDisplay();
+                        render();
+                        
+                        setStatus('Projekt geladen!');
+                    } catch (err) {
+                        alert('Fehler beim Laden: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        
+        // ============================================================
+        // EXPORT
+        // ============================================================
+        
+        function showExportModal() {
+            if (!state.imageLoaded) {
+                alert('Bitte erst ein Bild laden!');
+                return;
+            }
+            document.getElementById('exportModal').classList.remove('hidden');
+        }
+        
+        function hideExportModal() {
+            document.getElementById('exportModal').classList.add('hidden');
+        }
+        
+        async function exportAnimation() {
+            const prefix = document.getElementById('exportPrefix').value || 'anim_';
+            const width = parseInt(document.getElementById('exportWidth').value) || 128;
+            const height = parseInt(document.getElementById('exportHeight').value) || 128;
+            
+            // Export-Canvas erstellen
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = width;
+            exportCanvas.height = height;
+            const ectx = exportCanvas.getContext('2d');
+            
+            // Berechne Bounds aller Parts
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const part of state.parts) {
+                minX = Math.min(minX, part.x);
+                minY = Math.min(minY, part.y);
+                maxX = Math.max(maxX, part.x + part.width);
+                maxY = Math.max(maxY, part.y + part.height);
+            }
+            
+            const boundsW = maxX - minX;
+            const boundsH = maxY - minY;
+            const scale = Math.min(width / boundsW, height / boundsH) * 0.9;
+            const offsetX = (width - boundsW * scale) / 2 - minX * scale;
+            const offsetY = (height - boundsH * scale) / 2 - minY * scale;
+            
+            setStatus('Exportiere...');
+            
+            for (let frame = 0; frame < state.totalFrames; frame++) {
+                ectx.clearRect(0, 0, width, height);
+                
+                // Für jeden Part
+                for (const part of state.parts) {
+                    const transform = getInterpolatedTransform(part, frame);
+                    
+                    ectx.save();
+                    ectx.scale(scale, scale);
+                    ectx.translate(offsetX / scale, offsetY / scale);
+                    
+                    // Z-Achse: Tiefe simulieren
+                    const zScale = 1 + (transform.z || 0) / 200;
+                    const zOffsetY = (transform.z || 0) * 0.3;
+                    
+                    // Transform anwenden (wie in render)
+                    ectx.translate(part.pivotX + (transform.x || 0), part.pivotY + (transform.y || 0) + zOffsetY);
+                    ectx.rotate(transform.rotation || 0);
+                    
+                    // Skew anwenden
+                    ectx.transform(1, transform.skewY || 0, transform.skewX || 0, 1, 0, 0);
+                    
+                    // Skalierung (inkl. Z-Tiefe)
+                    ectx.scale((transform.scaleX || 1) * zScale, (transform.scaleY || 1) * zScale);
+                    ectx.translate(-part.pivotX, -part.pivotY);
+                    
+                    // Teil des Originalbilds zeichnen
+                    if (state.image) {
+                        const srcX = part.x * (state.image.width / canvas.width);
+                        const srcY = part.y * (state.image.height / canvas.height);
+                        const srcW = part.width * (state.image.width / canvas.width);
+                        const srcH = part.height * (state.image.height / canvas.height);
+                        
+                        ectx.drawImage(state.image, 
+                            srcX, srcY, srcW, srcH,
+                            part.x, part.y, part.width, part.height
+                        );
+                    }
+                    
+                    ectx.restore();
+                }
+                
+                // Als PNG herunterladen
+                const frameNum = String(frame + 1).padStart(2, '0');
+                const dataUrl = exportCanvas.toDataURL('image/png');
+                
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `${prefix}${frameNum}.png`;
+                a.click();
+                
+                // Kurze Pause zwischen Downloads
+                await new Promise(r => setTimeout(r, 100));
+            }
+            
+            hideExportModal();
+            setStatus(`${state.totalFrames} Frames exportiert als ${prefix}01.png - ${prefix}${String(state.totalFrames).padStart(2, '0')}.png`);
+        }
+        
+        // ============================================================
+        // START
+        // ============================================================
+        
+        init();
+    </script>
+</body>
+</html>

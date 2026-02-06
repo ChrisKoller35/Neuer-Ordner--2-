@@ -14,6 +14,14 @@
       "xOffset": -500,
       "yOffset": 10,
       "fromRight": true
+    },
+    {
+      "id": "upgrade",
+      "label": "Upgrades",
+      "floorIndex": 2,
+      "xOffset": -300,
+      "yOffset": 133,
+      "fromRight": true
     }
   ],
   "floorOffsets": {
