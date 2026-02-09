@@ -137,9 +137,6 @@ import { KEY_TALENT_TREE, CODE_TALENT_TREE } from './core/constants.js';
 import { createUpgradeSystem } from './player/upgrades.js';
 import { createUpgradeUI } from './player/upgradeUI.js';
 
-// Buildings-System importieren (Gebäude, Karte, Teleporter)
-import { createBuildingsManager } from './buildings/buildingsManager.js';
-
 let canvas = null;
 let ctx = null;
 
@@ -2771,40 +2768,9 @@ function bootGame() {
 		renderCityModule(cityRenderCtx);
 	}
 
-	// Buildings-Manager initialisieren
-	const buildingsManager = createBuildingsManager({
-		getState: () => state,
-		setState: (newState) => Object.assign(state, newState),
-		getCanvas: () => canvas,
-		getPlayerPosition: () => state.city?.player ? { x: state.city.player.x, y: state.city.player.y } : null,
-		setPlayerPosition: (x, y) => { if (state.city?.player) { state.city.player.x = x; state.city.player.y = y; } },
-		getPlayerSprite: () => SPRITES.player,
-		getCameraOffset: () => state.city?.camera ? { x: state.city.camera.x, y: state.city.camera.y } : { x: 0, y: 0 },
-		triggerEventFlash: (type, opts) => triggerEventFlash(type, opts),
-		onModeChange: (newMode) => {
-			state.mode = newMode;
-			if (newMode === 'city') {
-				// Stadt-UI wieder einblenden
-				syncCityInventoryVisibility();
-				syncCityShopVisibility();
-				syncCityMissionVisibility();
-			}
-		}
-	});
-	buildingsManager.init();
-
 	function render() {
-		// Building-Modus (Gebäude-Szene)
-		if (state.mode === "building") {
-			buildingsManager.render(ctx);
-			gameRenderer.renderDebugLabel();
-			return;
-		}
-		
 		if (state.mode === "city") {
 			renderCity();
-			// Teleporter und Map-Overlay rendern
-			buildingsManager.render(ctx);
 			gameRenderer.renderDebugLabel();
 			return;
 		}
@@ -2863,28 +2829,8 @@ function bootGame() {
 		
 		state.lastTick = now;
 		if (state.started && !state.over && !state.paused) {
-			if (state.mode === "building") {
-				// Building-Modus: Keys aus dem keys-Set lesen
-				const buildingKeys = {
-					left: keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
-					right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
-					up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
-					down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
-				};
-				buildingsManager.update(dt, buildingKeys);
-			} else if (state.mode === "city") {
-				updateCity(dt);
-				// Buildings-Manager auch in Stadt updaten (für Teleporter)
-				const buildingKeys = {
-					left: keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
-					right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
-					up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
-					down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
-				};
-				buildingsManager.update(dt, buildingKeys);
-			} else {
-				update(dt);
-			}
+			if (state.mode === "city") updateCity(dt);
+			else update(dt);
 			updateHUD();
 		}
 		render();
@@ -2892,14 +2838,6 @@ function bootGame() {
 	}
 
 	document.addEventListener("keydown", event => {
-		// Buildings-Manager Keyboard-Handler (Map, Teleporter, Gebäude)
-		if (state.mode === "city" || state.mode === "building") {
-			if (buildingsManager.handleKeyDown(event.key, event.code)) {
-				event.preventDefault();
-				return;
-			}
-		}
-		
 		if (state.mode === "city") {
 			// Inventar öffnen/schließen
 			if (event.key === "i" || event.key === "I") {
@@ -3066,45 +3004,6 @@ function bootGame() {
 	});
 
 	canvas.addEventListener("contextmenu", event => event.preventDefault());
-	
-	// Mouse-Events für Buildings-Manager (Karte)
-	canvas.addEventListener("mousemove", event => {
-		const rect = canvas.getBoundingClientRect();
-		const x = event.clientX - rect.left;
-		const y = event.clientY - rect.top;
-		buildingsManager.handleMouseMove(x, y);
-	});
-	
-	canvas.addEventListener("click", event => {
-		if (state.mode === "city" || state.mode === "building") {
-			const rect = canvas.getBoundingClientRect();
-			const x = event.clientX - rect.left;
-			const y = event.clientY - rect.top;
-			if (buildingsManager.handleClick(x, y)) {
-				event.preventDefault();
-				return;
-			}
-		}
-	});
-	
-	// Mouse-Events für Building Debug-Drag-Mode
-	canvas.addEventListener("mousedown", event => {
-		if (state.mode === "building") {
-			const rect = canvas.getBoundingClientRect();
-			const x = event.clientX - rect.left;
-			const y = event.clientY - rect.top;
-			buildingsManager.handleMouseDown(x, y);
-		}
-	});
-	
-	canvas.addEventListener("mouseup", event => {
-		if (state.mode === "building") {
-			const rect = canvas.getBoundingClientRect();
-			const x = event.clientX - rect.left;
-			const y = event.clientY - rect.top;
-			buildingsManager.handleMouseUp(x, y);
-		}
-	});
 	
 	document.addEventListener("pointerup", () => {
 		pointer.down = false;

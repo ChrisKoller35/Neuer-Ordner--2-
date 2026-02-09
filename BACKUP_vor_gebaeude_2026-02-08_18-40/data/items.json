@@ -1,0 +1,138 @@
+{
+  "_comment": "Item-Definitionen für Cashfisch - Alle verfügbaren Items im Spiel",
+  "items": {
+    "Schwert": {
+      "id": "schwert",
+      "label": "Schwert",
+      "type": "weapon",
+      "icon": null,
+      "effect": "Erhöht den Schaden deiner Angriffe.",
+      "price": 50,
+      "stats": {
+        "damage": 2
+      }
+    },
+    "Schild": {
+      "id": "schild",
+      "label": "Schild",
+      "type": "weapon",
+      "icon": null,
+      "effect": "Blockiert gelegentlich eingehende Angriffe.",
+      "price": 40,
+      "stats": {
+        "blockChance": 0.15
+      }
+    },
+    "Orb der Zerstörung": {
+      "id": "orb-zerstoerung",
+      "label": "Orb der Zerstörung",
+      "type": "weapon",
+      "icon": null,
+      "effect": "Deine Projektile explodieren bei Kontakt.",
+      "price": 120,
+      "stats": {
+        "explosionRadius": 30
+      }
+    },
+    "Düsenantrieb": {
+      "id": "duesenantrieb",
+      "label": "Düsenantrieb",
+      "type": "misc",
+      "icon": null,
+      "effect": "Erhöht deine Bewegungsgeschwindigkeit.",
+      "price": 80,
+      "stats": {
+        "speedBonus": 0.15
+      }
+    },
+    "Schwanzflosse": {
+      "id": "schwanzflosse",
+      "label": "Schwanzflosse",
+      "type": "misc",
+      "icon": null,
+      "effect": "Verbessert deine Manövrierfähigkeit.",
+      "price": 60,
+      "stats": {
+        "agilityBonus": 0.2
+      }
+    },
+    "Rüstung der Meeresbewohner": {
+      "id": "ruestung-meeresbewohner",
+      "label": "Rüstung der Meeresbewohner",
+      "type": "armor",
+      "icon": "./src/Ruestungmeer.png",
+      "effect": "Ein Treffer wird neutralisiert (pro Level 1x). In der Stadt wird der Effekt wieder aufgeladen.",
+      "price": 150,
+      "stats": {
+        "hitAbsorb": 1
+      }
+    },
+    "Tiefsee-Laterne": {
+      "id": "tiefsee-laterne",
+      "label": "Tiefsee-Laterne",
+      "type": "misc",
+      "icon": null,
+      "effect": "Erhellt dunkle Bereiche und zeigt versteckte Schätze.",
+      "price": 45,
+      "stats": {
+        "visionRadius": 50
+      }
+    },
+    "Perlenring": {
+      "id": "perlenring",
+      "label": "Perlenring",
+      "type": "misc",
+      "icon": null,
+      "effect": "Erhöht die Münzausbeute um 10%.",
+      "price": 70,
+      "stats": {
+        "coinBonus": 0.1
+      }
+    },
+    "Harpunen-Klinge": {
+      "id": "harpunen-klinge",
+      "label": "Harpunen-Klinge",
+      "type": "weapon",
+      "icon": null,
+      "effect": "Erhöhte Reichweite und Durchschlagskraft.",
+      "price": 100,
+      "stats": {
+        "range": 1.5,
+        "piercing": true
+      }
+    },
+    "Stahlhelm": {
+      "id": "stahlhelm",
+      "label": "Stahlhelm",
+      "type": "armor",
+      "icon": null,
+      "effect": "Reduziert erlittenen Schaden um 15%.",
+      "price": 90,
+      "stats": {
+        "damageReduction": 0.15
+      }
+    },
+    "Algenmantel": {
+      "id": "algenmantel",
+      "label": "Algenmantel",
+      "type": "armor",
+      "icon": null,
+      "effect": "Regeneriert langsam Gesundheit über Zeit.",
+      "price": 110,
+      "stats": {
+        "healthRegen": 0.01
+      }
+    },
+    "Seestern-Amulett": {
+      "id": "seestern-amulett",
+      "label": "Seestern-Amulett",
+      "type": "misc",
+      "icon": null,
+      "effect": "Erhöht die maximale Energie um 25.",
+      "price": 85,
+      "stats": {
+        "energyBonus": 25
+      }
+    }
+  }
+}
