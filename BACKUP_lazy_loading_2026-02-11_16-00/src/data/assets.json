@@ -1,0 +1,137 @@
+{
+	"version": "1.0",
+	"description": "Asset-Manifest für Lazy Loading - gruppiert nach Szenen/Leveln",
+	
+	"groups": {
+		"core": {
+			"description": "Immer geladene Basis-Assets",
+			"preload": true,
+			"assets": {
+				"player": "./Player.png",
+				"shot": "./player-shot.png",
+				"heal": "./heal-potion.png",
+				"symbolGeldschein": "./Geldscheinsymbol.png"
+			}
+		},
+		
+		"menu": {
+			"description": "Titelbildschirm und Menü",
+			"preload": true,
+			"assets": {
+				"titelbild": "./Titelbild.png",
+				"titelbildZwei": "./Titelbildzwei.png",
+				"startbutton": "./Startbutton.png"
+			}
+		},
+		
+		"level1": {
+			"description": "Level 1 - Ozean (Jelly + Shark Boss)",
+			"preload": false,
+			"assets": {
+				"backgroundLevelOne": "./Backgroundlvlone.png",
+				"foe": "./foe-jelly.png",
+				"boss": "./boss-shark.png",
+				"coverRock": "./Fels.png"
+			}
+		},
+		
+		"level2": {
+			"description": "Level 2 - Lava Zone (Bogenschreck + Parfüm-Kraken)",
+			"preload": false,
+			"assets": {
+				"floorSprite": "./Bodenlava.png",
+				"bogenschreck": "./Aquischwer-Bogenschreck.png",
+				"parfumKraken": "./Parfüm-Kraken.png"
+			}
+		},
+		
+		"level3": {
+			"description": "Level 3 - Tiefsee (Oktopus + Ritterfisch)",
+			"preload": false,
+			"assets": {
+				"floorSprite": "./Boden.png",
+				"oktopus": "./Oktopus.png",
+				"oktopusProjectile": "./Oktopuspfeil.png",
+				"ritterfisch": "./Ritterfisch.png"
+			}
+		},
+		
+		"level4": {
+			"description": "Level 4 - Gold Zone (Yachtwal + Cashfish Boss)",
+			"preload": false,
+			"assets": {
+				"floorSprite": "./Bodengold.png",
+				"yachtwal": "./Yachtwal.png",
+				"cashfish": "./Cashfish.png"
+			}
+		},
+		
+		"city": {
+			"description": "Stadt-Modus",
+			"preload": false,
+			"assets": {
+				"cityPlayer": "./Playertopdown.png",
+				"cityBackground": "./Stadthaus.webp",
+				"npcHaendler": "./Npc/Haendler.png",
+				"npcMission": "./Npc/Mission.png",
+				"standwaffen": "./Standwaffen.png",
+				"ruestungMeer": "./Ruestungmeer.png",
+				"queststand": "./Queststand.png"
+			}
+		},
+		
+		"cityTiles": {
+			"description": "Stadt Boden-Tiles",
+			"preload": false,
+			"assets": {
+				"tile1": "./Bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
+				"tile2": "./Bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg",
+				"tile3": "./Bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg",
+				"tile4": "./Bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg",
+				"tile5": "./Bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg",
+				"tile6": "./Bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg"
+			}
+		},
+		
+		"abilities": {
+			"description": "Spieler-Fähigkeiten (Coral Allies etc.)",
+			"preload": false,
+			"assets": {
+				"coralAllyOne": "./Korallenbegleitereins.png",
+				"coralAllyTwo": "./Korallenbegleiterzwei.png"
+			}
+		},
+		
+		"symbols": {
+			"description": "UI Symbole",
+			"preload": false,
+			"assets": {
+				"symbolSchluessel": "./Schlüsselsymbol.png",
+				"symbolYacht": "./Yachtsymbol.png",
+				"allesymbole": "./Allesymbole.png"
+			}
+		},
+		
+		"narrator": {
+			"description": "Cutscene/Dialog Assets",
+			"preload": false,
+			"assets": {
+				"narrator": "./narrator.png"
+			}
+		}
+	},
+	
+	"levelMapping": {
+		"0": ["core", "level1"],
+		"1": ["core", "level1", "level2"],
+		"2": ["core", "level2", "level3"],
+		"3": ["core", "level3", "level4"]
+	},
+	
+	"sceneMapping": {
+		"menu": ["core", "menu"],
+		"game": ["core"],
+		"city": ["core", "city", "cityTiles"],
+		"cutscene": ["core", "narrator"]
+	}
+}

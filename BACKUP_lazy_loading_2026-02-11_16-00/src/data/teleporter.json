@@ -1,0 +1,31 @@
+{
+  "_comment": "Teleporter-System für Cashfisch - Verbindungen zwischen Orten",
+  "teleporter": {
+    "main_city": {
+      "id": "tp_main_city",
+      "name": "Stadt-Teleporter",
+      "location": "main_city",
+      "sprite": "./teleporter/teleporter.png",
+      "position": { "x": 0.5, "y": 0.4 },
+      "worldPosition": { "x": 960, "y": 400 },
+      "unlocked": true,
+      "destinations": ["harbor", "workshop", "academy", "barracks", "market", "laboratory", "garden"]
+    }
+  },
+  "config": {
+    "teleportCost": 0,
+    "teleportCooldown": 0,
+    "animationDuration": 800,
+    "particleColor": "#00ccff",
+    "requireConfirmation": true
+  },
+  "ui": {
+    "title": "Teleporter",
+    "subtitle": "Wähle dein Ziel",
+    "confirmButton": "Teleportieren",
+    "cancelButton": "Abbrechen",
+    "lockedText": "Noch nicht freigeschaltet",
+    "mapKey": "Tab",
+    "interactKey": "e"
+  }
+}
