@@ -1,0 +1,162 @@
+{
+  "_comment": "Gebäude-Definitionen für Cashfisch - 7 Gebäude mit NPCs",
+  "buildings": {
+    "harbor": {
+      "id": "harbor",
+      "name": "Hafen",
+      "description": "Handelsrouten, Import/Export, seltene Ressourcen",
+      "sprite": "./buildings/harbor.png",
+      "background": "./BuildingBackgrounds/Hafen.webp",
+      "mapPosition": { "x": 0.15, "y": 0.7 },
+      "mapIcon": "./buildings/harbor-icon.png",
+      "unlocked": true,
+      "npc": {
+        "id": "harbormaster",
+        "name": "Hafenmeister",
+        "sprite": "./Npc/harbormaster.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Willkommen im Hafen! Hier kommen die Schiffe mit seltenen Waren an.",
+          "menu": ["Handelsrouten", "Import/Export", "Schiffe ansehen"]
+        }
+      },
+      "features": ["trade_routes", "import_export", "rare_resources"]
+    },
+    "workshop": {
+      "id": "workshop",
+      "name": "Werkstatt",
+      "description": "Crafting, Upgrades, Reparaturen, Spezialausrüstung",
+      "sprite": "./buildings/workshop.png",
+      "background": "./BuildingBackgrounds/Werkstatt.webp",
+      "mapPosition": { "x": 0.35, "y": 0.4 },
+      "mapIcon": "./buildings/workshop-icon.png",
+      "unlocked": true,
+      "npc": {
+        "id": "blacksmith",
+        "name": "Schmied",
+        "sprite": "./Npc/blacksmith.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Ah, ein Kunde! Was soll ich für dich schmieden?",
+          "menu": ["Crafting", "Upgrades", "Reparaturen"]
+        }
+      },
+      "features": ["crafting", "upgrades", "repairs"]
+    },
+    "academy": {
+      "id": "academy",
+      "name": "Akademie",
+      "description": "Talente freischalten, Forschung, neue Baupläne",
+      "sprite": "./buildings/academy.png",
+      "background": "./BuildingBackgrounds/Akademie.webp",
+      "mapPosition": { "x": 0.5, "y": 0.25 },
+      "mapIcon": "./buildings/academy-icon.png",
+      "unlocked": true,
+      "npc": {
+        "id": "teacher",
+        "name": "Lehrer",
+        "sprite": "./Npc/teacher.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Wissen ist Macht! Was möchtest du lernen?",
+          "menu": ["Talente", "Forschung", "Baupläne"]
+        }
+      },
+      "features": ["talents", "research", "blueprints"]
+    },
+    "barracks": {
+      "id": "barracks",
+      "name": "Kaserne",
+      "description": "Armee verwalten, Training, Einheiten-Upgrades",
+      "sprite": "./buildings/barracks.png",
+      "background": "./BuildingBackgrounds/Kaserne.webp",
+      "mapPosition": { "x": 0.8, "y": 0.35 },
+      "mapIcon": "./buildings/barracks-icon.png",
+      "unlocked": false,
+      "unlockRequirement": { "level": 3, "coins": 500 },
+      "npc": {
+        "id": "captain",
+        "name": "Hauptmann",
+        "sprite": "./Npc/captain.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Soldat! Bereit für das Training?",
+          "menu": ["Armee verwalten", "Training", "Einheiten-Upgrades"]
+        }
+      },
+      "features": ["army", "training", "unit_upgrades"]
+    },
+    "market": {
+      "id": "market",
+      "name": "Marktplatz",
+      "description": "Preis-System, NPC-Händler, tägliche Angebote, Quest-Aufträge",
+      "sprite": "./buildings/market.png",
+      "background": "./BuildingBackgrounds/Marktplatz.webp",
+      "mapPosition": { "x": 0.65, "y": 0.6 },
+      "mapIcon": "./buildings/market-icon.png",
+      "unlocked": true,
+      "npc": {
+        "id": "merchant",
+        "name": "Markthändler",
+        "sprite": "./Npc/market-merchant.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Schau dir meine Waren an! Heute gibt es Sonderangebote!",
+          "menu": ["Kaufen", "Verkaufen", "Tagesangebote", "Aufträge"]
+        }
+      },
+      "features": ["buy", "sell", "daily_offers", "quests"]
+    },
+    "laboratory": {
+      "id": "laboratory",
+      "name": "Labor",
+      "description": "Fähigkeiten-Experimente, Teleporter-Technik, seltene Buffs",
+      "sprite": "./buildings/laboratory.png",
+      "background": "./buildings/laboratory-bg.png",
+      "mapPosition": { "x": 0.25, "y": 0.55 },
+      "mapIcon": "./buildings/laboratory-icon.png",
+      "unlocked": false,
+      "unlockRequirement": { "level": 2, "coins": 200 },
+      "npc": {
+        "id": "alchemist",
+        "name": "Alchemist",
+        "sprite": "./Npc/alchemist.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Ah, ein Versuchskaninchen... äh, ich meine Besucher!",
+          "menu": ["Experimente", "Teleporter-Tech", "Buffs brauen"]
+        }
+      },
+      "features": ["experiments", "teleporter_tech", "buffs"]
+    },
+    "garden": {
+      "id": "garden",
+      "name": "Gärtnerei",
+      "description": "Anbau, Heilkräuter, Buff-Zutaten, Handelsware",
+      "sprite": "./buildings/garden.png",
+      "background": "./BuildingBackgrounds/Gärtnerei.webp",
+      "mapPosition": { "x": 0.85, "y": 0.75 },
+      "mapIcon": "./buildings/garden-icon.png",
+      "unlocked": true,
+      "npc": {
+        "id": "gardener",
+        "name": "Gärtner",
+        "sprite": "./Npc/gardener.png",
+        "position": { "x": 0.5, "y": 0.6 },
+        "dialogues": {
+          "greeting": "Die Pflanzen brauchen Pflege! Willst du mir helfen?",
+          "menu": ["Anbauen", "Ernten", "Samen kaufen"]
+        }
+      },
+      "features": ["planting", "harvesting", "seeds"]
+    }
+  },
+  "mainCity": {
+    "id": "main_city",
+    "name": "Hauptstadt",
+    "description": "Deine Heimatbasis mit Shop und Missionen",
+    "mapPosition": { "x": 0.5, "y": 0.5 },
+    "mapIcon": "./buildings/city-icon.png",
+    "isMainHub": true
+  }
+}

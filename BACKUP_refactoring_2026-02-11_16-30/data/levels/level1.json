@@ -1,0 +1,31 @@
+{
+  "id": 1,
+  "banner": "Level 1: Freischwimmen",
+  "unlockBossScore": 50,
+  "spawnInterval": { "min": 1400, "max": 2100 },
+  "initialSpawnDelay": 520,
+  "spawnTable": [
+    { "type": "jelly", "weight": 1 }
+  ],
+  "introFlash": { 
+    "text": "Level 1 – Freischwimmen", 
+    "duration": 1400, 
+    "opacity": 0.78 
+  },
+  "heal": { "initialTimer": 6200 },
+  "boss": {
+    "type": "default",
+    "maxHp": null,
+    "speed": null,
+    "firstAttackDelay": null,
+    "horizontalTracking": 0.0017,
+    "horizontalMinFactor": 0.38,
+    "horizontalMaxFactor": 0.92,
+    "horizontalOscAmpFactor": 0.11,
+    "horizontalOscSpeed": 0.0019,
+    "horizontalForwardBoost": 2,
+    "horizontalBackBoost": 2.4,
+    "horizontalForwardBiasFactor": 0.02,
+    "horizontalEdgePad": 0
+  }
+}

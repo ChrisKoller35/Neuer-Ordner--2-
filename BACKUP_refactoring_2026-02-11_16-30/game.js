@@ -1,9 +1,9 @@
-// ============================================================
+﻿// ============================================================
 // CASHFISCH - Hauptspiel
 // ============================================================
 "use strict";
 
-// === Core Imports ===
+// Imports aus Modulen
 import { 
 	TAU, 
 	DEFAULT_BOSS_STATS,
@@ -34,7 +34,7 @@ import {
 
 import { updateAllGrids } from './core/spatial.js';
 
-// === JSON Data ===
+// JSON-Daten importieren (Vite unterstÃ¼tzt JSON-Imports)
 import itemsData from './data/items.json';
 import shopData from './data/shop.json';
 import missionsData from './data/missions.json';
@@ -43,7 +43,7 @@ import symbolsData from './data/symbols.json';
 import walkableGridsData from './data/walkableGrids.json';
 import spritesData from './data/sprites.json';
 
-// === City Module Imports ===
+// Stadt Sprite-Cache importieren
 import { 
 	CITY_SPRITE_CACHE, 
 	getCitySpriteCropShift, 
@@ -53,6 +53,7 @@ import {
 	buildCitySpriteCache as buildCitySpriteCacheModule
 } from './city/spriteCache.js';
 
+// Stadt-Konstanten importieren
 import {
 	USE_CITY_SPRITE,
 	CITY_ANIM_SOURCE,
@@ -87,49 +88,82 @@ import {
 	CITY_SPRITE_DEBUG_LABEL
 } from './city/constants.js';
 
+// Stadt UI-Modul importieren
 import { createCityUI } from './city/ui.js';
+
+// Stadt UI-Templates importieren
 import { createCityUIElements } from './city/templates.js';
+
+// Stadt Update-Modul importieren
 import { updateCity as updateCityModule } from './city/update.js';
+
+// Stadt Render-Modul importieren
 import { renderCity as renderCityModule } from './city/render.js';
+
+// Stadt State-Modul importieren
 import { buildCityState as buildCityStateModule } from './city/state.js';
+
+// Stadt Sprite-Debug-Modul importieren
 import { createCitySpriteDebug } from './city/spriteDebug.js';
 
-// === Game Module Imports ===
+// Foes-Module importieren
+import { createFoeSpawnSystem } from './foes/spawn.js';
 import { createFoeUpdateSystem } from './foes/update.js';
 import { createFoeRenderSystem } from './foes/render.js';
 import { createFoeArrowsSystem } from './foes/arrows.js';
 import { createFoeCollisionSystem } from './foes/collision.js';
-import { createGameRenderSystem } from './game/render.js';
-import { createAbilitiesSystem } from './player/abilities.js';
-import { createPlayerUpdateSystem } from './player/update.js';
-import { createLevelSystem } from './game/levels.js';
-import { createBackgroundRenderSystem } from './game/background.js';
-import { createCoverRockSystem } from './game/coverRocks.js';
-import { createPickupsSystem } from './game/pickups.js';
-import { createModels } from './game/models.js';
-import { createFloorHelpers, getLevelFloorSprite } from './game/floor.js';
-import { getHUDElements, getCitySpriteDebugElements } from './core/hudElements.js';
 
-// === Boss Module Imports ===
+// Game-Render-Modul importieren
+import { createGameRenderSystem } from './game/render.js';
+
+// Player-Abilities-Modul importieren
+import { createAbilitiesSystem } from './player/abilities.js';
+
+// Player-Update-Modul importieren
+import { createPlayerUpdateSystem } from './player/update.js';
+
+// Game-Level-Modul importieren
+import { createLevelSystem } from './game/levels.js';
+
+// Background-Render-Modul importieren
+import { createBackgroundRenderSystem } from './game/background.js';
+
+// Cover-Rock-Modul importieren
+import { createCoverRockSystem } from './game/coverRocks.js';
+
+// Pickups-Update-Modul importieren
+import { createPickupsSystem } from './game/pickups.js';
+
+// MODELS-Render-Funktionen importieren
+import { createModels } from './game/models.js';
+
+// Floor-Helper-Funktionen importieren
+import { createFloorHelpers, getLevelFloorSprite } from './game/floor.js';
+
+// Boss-Module importieren
 import { createBossRenderSystem } from './boss/render.js';
 import { createBossSpawnSystem } from './boss/spawn.js';
 import { createBossUpdateSystem } from './boss/update.js';
 import { createBossCollisionSystem } from './boss/collision.js';
 import { createBossUISystem } from './boss/ui.js';
 
-// === Player Systems ===
+// Progression-System importieren
 import { createProgressionState, createProgressionSystem } from './player/progression.js';
 import { createTalentTreeUI } from './player/talentUI.js';
 import { KEY_TALENT_TREE, CODE_TALENT_TREE } from './core/constants.js';
-import { createInitialState, clearAllStateArrays, clearBossArrays } from './core/initialState.js';
+
+// Upgrade-System importieren
 import { createUpgradeSystem } from './player/upgrades.js';
 import { createUpgradeUI } from './player/upgradeUI.js';
 
-// === Buildings System ===
+// Buildings-System importieren (GebÃ¤ude, Karte, Teleporter)
 import { createBuildingsManager } from './buildings/buildingsManager.js';
 
 let canvas = null;
 let ctx = null;
+
+// Floor-Funktionen werden weiter unten nach getLevelFloorSprite() definiert
+// (siehe LAZY SPRITE SYSTEM Block)
 
 const USE_CLASSIC_OKTOPUS_PROJECTILE = true; // Toggle to compare new blowdart prototype with classic sprite
 const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallback
@@ -137,22 +171,29 @@ const USE_WEBP_ASSETS = true; // Optional: generates/loads .webp with PNG fallba
 // Stadt-Sprite-Cache kommt aus ./city/spriteCache.js (importiert oben)
 const DEBUG_BUILD_LABEL = "BUILD v3";
 
-// Asset Loader konfigurieren (nutzt import.meta.url für relative Pfade)
+// Asset Loader konfigurieren (nutzt import.meta.url fÃ¼r relative Pfade)
 configureAssetLoader({ 
 	useWebP: USE_WEBP_ASSETS, 
 	baseUrl: import.meta.url 
 });
 
-function buildCitySpriteCache() { buildCitySpriteCacheModule(SPRITES.cityPlayer); }
+// Wrapper fÃ¼r buildCitySpriteCache - nutzt das importierte Modul
+function buildCitySpriteCache() {
+	buildCitySpriteCacheModule(SPRITES.cityPlayer);
+}
 
-// Lazy Sprite System
+// ============================================================
+// LAZY SPRITE SYSTEM - Assets werden bei Bedarf geladen
+// ============================================================
+
+// Floor-Helper initialisieren (werden in bootGame mit Canvas verbunden)
 let floorHelpers = null;
 const getLevel2FloorTop = () => floorHelpers?.getLevel2FloorTop() ?? null;
 const getLevel3FloorTop = () => floorHelpers?.getLevel3FloorTop() ?? null;
 const getLevel4FloorTop = () => floorHelpers?.getLevel4FloorTop() ?? null;
 const getLevel3GroundLine = () => floorHelpers?.getLevel3GroundLine() ?? null;
 
-// Lazy-Getter f�r Kompatibilit�t mit altem Code
+// Lazy-Getter für Kompatibilität mit altem Code
 Object.defineProperty(window, 'LEVEL2_FLOOR_SPRITE', { get: () => getLevelFloorSprite(2) });
 Object.defineProperty(window, 'LEVEL3_FLOOR_SPRITE', { get: () => getLevelFloorSprite(3) });
 Object.defineProperty(window, 'LEVEL4_FLOOR_SPRITE', { get: () => getLevelFloorSprite(4) });
@@ -173,7 +214,7 @@ function getCityTiles() {
 	return _cityTiles;
 }
 
-// SPRITES Proxy - lädt Assets bei erstem Zugriff
+// SPRITES Proxy - lÃ¤dt Assets bei erstem Zugriff
 const SPRITES = createLazySpriteProxy(SPRITE_PATHS);
 
 // cityTiles muss separat behandelt werden (ist ein Array)
@@ -184,16 +225,21 @@ Object.defineProperty(SPRITES, 'cityTiles', {
 
 let processedHealSprite = null;
 let pickupHideTimer = null;
-const coverRockMaskCache = new Map(); // Cache scaled alpha masks for cover rock collisions
+// Cache scaled alpha masks so cover rock collisions align to the sprite silhouette.
+const coverRockMaskCache = new Map();
 
-// Stadt Grid-System (f�r Debug-Editor via window exportiert)
+// ========== STADT SEITENANSICHT SYSTEM ==========
+// Konstanten importiert aus ./city/constants.js
+
+// Globales Grid - true = begehbar, false = blockiert
+// Wird Ã¼ber window exportiert fÃ¼r Debug-Editor
 window.CITY_WALKABLE_GRID = window.CITY_WALKABLE_GRID || {};
 window.CITY_GRID_EDIT_MODE = false;
 window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
 window.CITY_GRID_COLS = CITY_GRID_COLS;
 window.CITY_GRID_ROWS = CITY_GRID_ROWS;
 
-// Geb�ude Walkable Grids (aus JSON)
+// ========== GEBÃ„UDE WALKABLE GRIDS (aus JSON geladen) ==========
 window.BUILDING_WALKABLE_GRID_market = walkableGridsData.market;
 window.BUILDING_WALKABLE_GRID_workshop = walkableGridsData.workshop;
 window.BUILDING_WALKABLE_GRID_harbor = walkableGridsData.harbor;
@@ -282,7 +328,8 @@ function getCoverRockCollisionMask(sprite, width, height) {
 		return info;
 	}
 
-// MODELS: Render-Funktionen f�r Spielobjekte (aus models.js)
+
+// MODELS: Render-Funktionen für Spielobjekte (aus models.js)
 const MODELS = createModels(SPRITES, spriteReady);
 
 function bootGame() {
@@ -303,23 +350,41 @@ function bootGame() {
 	// Floor-Helpers initialisieren (mit Canvas verbinden)
 	floorHelpers = createFloorHelpers(() => canvas);
 
-	// HUD-Elemente holen (aus core/hudElements.js)
-	const hud = getHUDElements();
-	const { score: hudScore, coins: hudCoins, level: hudLevel, time: hudTime, hearts: hudHearts,
-		shield: hudShield, armor: hudArmor, playerLevel: hudPlayerLevel, xpBarFill: hudXpBarFill,
-		skillPoints: hudSkillPoints, skillPointsNum: hudSkillPointsNum, symbols: hudSymbols,
-		banner: bannerEl, endOverlay, endTitle, btnRestart, btnQuit, pickupMsg } = hud;
-	
-	// Debug-Elemente holen
-	const debugElements = getCitySpriteDebugElements();
-	const { panel: citySpriteDebugPanel, canvas: citySpriteDebugCanvas, ctx: citySpriteDebugCtx,
-		reset: citySpriteDebugReset, export: citySpriteDebugExport, output: citySpriteDebugOutput,
-		current: citySpriteDebugCurrent, copy: citySpriteDebugCopy } = debugElements;
+	const hudScore = document.getElementById("score");
+	const hudCoins = document.getElementById("coins");
+	const hudLevel = document.getElementById("lvl");
+	const hudTime = document.getElementById("time");
+	const hudHearts = document.getElementById("hearts");
+	const hudShield = document.getElementById("ab-shield");
+	const hudArmor = document.getElementById("hudArmor");
+	const hudPlayerLevel = document.getElementById("playerLevel");
+	const hudXpBarFill = document.getElementById("xpBarFill");
+	const hudSkillPoints = document.getElementById("skillPoints");
+	const hudSkillPointsNum = document.getElementById("skillPointsNum");
+	const hudSymbols = {
+		pferd: document.getElementById("sym-pferd"),
+		sprinter: document.getElementById("sym-sprinter"),
+		yacht: document.getElementById("sym-yacht")
+	};
+	const bannerEl = document.getElementById("banner");
+	const endOverlay = document.getElementById("endOverlay");
+	const endTitle = document.getElementById("endTitle");
+	const btnRestart = document.getElementById("btnRestart");
+	const btnQuit = document.getElementById("btnQuit");
+	const pickupMsg = document.getElementById("pickupMsg");
+	const citySpriteDebugPanel = document.getElementById("citySpriteDebugPanel");
+	const citySpriteDebugCanvas = document.getElementById("citySpriteDebugCanvas");
+	const citySpriteDebugCtx = citySpriteDebugCanvas ? citySpriteDebugCanvas.getContext("2d") : null;
+	const citySpriteDebugReset = document.getElementById("citySpriteDebugReset");
+	const citySpriteDebugExport = document.getElementById("citySpriteDebugExport");
+	const citySpriteDebugOutput = document.getElementById("citySpriteDebugOutput");
+	const citySpriteDebugCurrent = document.getElementById("citySpriteDebugCurrent");
+	const citySpriteDebugCopy = document.getElementById("citySpriteDebugCopy");
 	
 	// Stadt-UI-Elemente erstellen (Templates aus city/templates.js)
 	const { inventoryEl: cityInventoryEl, merchantEl: cityMerchantEl, missionEl: cityMissionEl } = createCityUIElements();
 
-	// State-Variablen f�r Debug-Modi (werden vom Modul gelesen)
+	// State-Variablen für Debug-Modi (werden vom Modul gelesen)
 	let cityAlignMode = false;
 	let cityCropMode = false;
 	let currentCityFrame = { row: 0, col: 0, flip: false };
@@ -343,21 +408,30 @@ function bootGame() {
 		setAlignSelectedFrame: (f) => { cityAlignSelectedFrame = f; }
 	});
 
+	// Wrapper-Funktionen fÃ¼r RÃ¼ckwÃ¤rtskompatibilitÃ¤t
+	const getCitySpriteOffset = (row, col) => citySpriteDebug.getOffset(row, col);
+	const updateCitySpriteOffset = (row, col, dx, dy) => citySpriteDebug.updateOffset(row, col, dx, dy);
+	const CITY_DEBUG_ROWS = citySpriteDebug.DEBUG_ROWS;
+	const CITY_DEBUG_COLS = citySpriteDebug.DEBUG_COLS;
+
 	const keys = new Set();
 	const pointer = { down: false, shoot: false };
 	let controlsArmed = false;
 	const DEBUG_SHORTCUTS = true;
-
+	// cityInventoryOpen, cityShopOpen, cityMissionOpen, cityDragState, cityDragGhost 
+	// werden jetzt vom cityUI-Modul verwaltet
 	const cityInventory = {
 		equipment: { weapon: null, armor: null, armor2: null },
 		items: Array.from({ length: 9 }, () => null)
 	};
 
-	// Item Definitions (aus JSON)
+	// ============================================================
+	// ITEM DEFINITIONS - aus JSON geladen
+	// ============================================================
 	const CITY_ITEM_DATA = itemsData.items;
 
-	// Konstanten f�r spezielle Items (R�ckw�rtskompatibilit�t)
-	const ARMOR_ITEM_NAME = "R�stung der Meeresbewohner";
+	// Konstanten für spezielle Items (Rückwärtskompatibilität)
+	const ARMOR_ITEM_NAME = "Rüstung der Meeresbewohner";
 	const ARMOR_ITEM_EFFECT = CITY_ITEM_DATA[ARMOR_ITEM_NAME]?.effect || "";
 	const ARMOR_ITEM_ICON = CITY_ITEM_DATA[ARMOR_ITEM_NAME]?.icon || null;
 
@@ -372,10 +446,147 @@ function bootGame() {
 	// Missionen aus JSON laden
 	const cityMissions = missionsData.missions;
 
-	// State aus Factory erstellen
-	const state = createInitialState(canvas);
+	const state = {
+		mode: "game",
+		started: false,
+		paused: false,
+		over: false,
+		win: false,
+		score: 0,
+		coins: 0,
+		hearts: 3,
+		maxHearts: 5,
+		level: 1,
+		levelScore: 0,
+		elapsed: 0,
+		lastTick: performance.now(),
+		frameDt: 16,
+		player: {
+			x: canvas.width * 0.28,
+			y: canvas.height * 0.6,
+			speed: 0.32,
+			baseSpeed: 0.32,
+			dir: 1,
+			invulnFor: 0,
+			shotCooldown: 0,
+			energyMax: 100,
+			energy: 100,
+			energyCost: 35,
+			energyRegenRate: 0.04,
+			energyRegenDelay: 1200,
+			energyRegenTimer: 0,
+			perfumeSlowTimer: 0,
+			shieldUnlocked: false,
+			shieldActive: false,
+			shieldTimer: 0,
+			shieldCooldown: 0,
+			shieldCooldownMax: SHIELD_COOLDOWN,
+			shieldDuration: SHIELD_DURATION,
+			shieldLastActivation: 0,
+			shieldLastBlock: 0
+		},
+		boss: {
+			x: canvas.width * 0.72,
+			y: canvas.height * 0.32,
+			speed: DEFAULT_BOSS_STATS.speed,
+			dir: -1,
+			active: false,
+			pulse: 0,
+			maxHp: DEFAULT_BOSS_STATS.maxHp,
+			hp: DEFAULT_BOSS_STATS.maxHp,
+			attackTimer: DEFAULT_BOSS_STATS.firstAttackDelay,
+			lastAttack: null,
+			finFlip: false,
+			spriteKey: null,
+			spriteScale: null,
+			spriteOffsetX: null,
+			spriteOffsetY: null,
+			spriteFlip: true,
+			shadowRadius: 48,
+			shadowOffsetX: 16,
+			shadowOffsetY: 52,
+			entryTargetX: canvas.width * 0.72,
+			entryTargetY: canvas.height * 0.48,
+			entering: false,
+			entryProgress: 0,
+			entrySpeed: DEFAULT_BOSS_STATS.speed * 1.4,
+			verticalTracking: 0.0024,
+			verticalMin: canvas.height * 0.24,
+			verticalMax: canvas.height * 0.68,
+			verticalOffset: -canvas.height * 0.12,
+			horizontalTracking: 0.0024,
+			horizontalMin: canvas.width * 0.52,
+			horizontalMax: canvas.width * 0.9,
+			horizontalOffset: canvas.width * 0.12,
+			horizontalOscAmp: canvas.width * 0.08,
+			horizontalOscSpeed: 0.0026,
+			horizontalForwardBoost: 2.2,
+			horizontalBackBoost: 1.25,
+			horizontalForwardBias: canvas.width * 0.1,
+			horizontalEdgePad: null,
+			oscPhase: 0
+		},
+		foes: [],
+		foeSpawnTimer: 0,
+		shots: [],
+		bossTorpedoes: [],
+		bossSweeps: [],
+		bossWakeWaves: [],
+		bossPerfumeOrbs: [],
+		bossFragranceClouds: [],
+		bossWhirlpools: [],
+		bossKatapultShots: [],
+		bossShockwaves: [],
+		bossSpeedboats: [],
+		bossCoinBursts: [],
+		bossCoinExplosions: [],
+		bossDiamondBeams: [],
+		bossCardBoomerangs: [],
+		bossTreasureWaves: [],
+		bossCrownColumns: [],
+		cashfishUltLock: 0,
+		cashfishUltHistory: { tsunamiUsed: false, crownUsed: false },
+		healPickups: [],
+		healSpawnTimer: 9600,
+		healBursts: [],
+		symbolDrops: [],
+		coinDrops: [],
+		coralEffects: [],
+		coralAllies: [],
+		coralAbility: {
+			unlocked: false,
+			active: false,
+			timer: 0,
+			cooldown: 0,
+			cooldownMax: 14000,
+			duration: 6000
+		},
+		tsunamiWave: null,
+		tsunamiAbility: {
+			unlocked: false,
+			used: false,
+			active: false
+		},
+		symbolInventory: { pferd: false, sprinter: false, yacht: false },
+		pendingSymbolAdvance: null,
+		eventFlash: null,
+		foeArrows: [],
+		unlockBossScore: 50,
+		bubbles: [],
+		coverRocks: [],
+		coverRockSpawned: false,
+		levelIndex: 0,
+		levelConfig: null,
+		foeSpawnInterval: { min: 1400, max: 2100 },
+		city: null,
+		armorShieldCharges: 0,
+		// Progression-System (Level, XP, Talente)
+		progression: createProgressionState()
+	};
 
-	// City UI initialisieren
+	// ============================================================
+	// CITY UI - aus Modul initialisieren
+	// ============================================================
 	const cityUI = createCityUI({
 		elements: {
 			inventoryEl: cityInventoryEl,
@@ -393,18 +604,32 @@ function bootGame() {
 		armorItemName: ARMOR_ITEM_NAME
 	});
 
-	// City UI Shortcuts (Wrapper f�r h�ufige Aufrufe)
+	// FÃ¼r RÃ¼ckwÃ¤rtskompatibilitÃ¤t: Wrapper-Funktionen
 	const syncCityInventoryVisibility = () => cityUI.syncInventoryVisibility();
 	const syncCityShopVisibility = () => cityUI.syncShopVisibility();
 	const syncCityMissionVisibility = () => cityUI.syncMissionVisibility();
+	const updateCityInventoryUI = () => cityUI.updateInventoryUI();
 	const updateCityShopUI = () => cityUI.updateShopUI();
 	const updateCityMissionUI = () => cityUI.updateMissionUI();
+	const tryAddCityItem = (itemName) => cityUI.tryAddItem(itemName);
 
-	// Event-Listener �ber das Modul einrichten
+	// cityInventoryOpen/cityShopOpen/cityMissionOpen als Getter/Setter
+	const getCityInventoryOpen = () => cityUI.isInventoryOpen();
+	const setCityInventoryOpen = (v) => cityUI.setInventoryOpen(v);
+	const getCityShopOpen = () => cityUI.isShopOpen();
+	const setCityShopOpen = (v) => cityUI.setShopOpen(v);
+	const getCityMissionOpen = () => cityUI.isMissionOpen();
+	const setCityMissionOpen = (v) => cityUI.setMissionOpen(v);
+
+	// Event-Listener Ã¼ber das Modul einrichten
 	cityUI.setupEventListeners();
+
+	// Initial UI aktualisieren
 	cityUI.updateAllUI();
 
-	// Progression System
+	// ============================================================
+	// PROGRESSION SYSTEM - Level, XP, Talente
+	// ============================================================
 	let talentTreeUI = null; // Forward declaration
 	
 	const progressionSystem = createProgressionSystem({
@@ -425,13 +650,28 @@ function bootGame() {
 		state,
 		progressionSystem
 	});
+
+	// Talenteffekte beim Start anwenden
 	progressionSystem.applyTalentEffects();
 
-	// Upgrade System
-	const upgradeSystem = createUpgradeSystem({ state, player: state.player });
-	const upgradeUI = createUpgradeUI({ canvas, state, upgradeSystem });
+	// ============================================================
+	// UPGRADE SYSTEM - Spieler-Upgrades beim NPC
+	// ============================================================
+	const upgradeSystem = createUpgradeSystem({
+		state,
+		player: state.player
+	});
+
+	const upgradeUI = createUpgradeUI({
+		canvas,
+		state,
+		upgradeSystem
+	});
+
+	// Upgrade-Effekte beim Start anwenden
 	upgradeSystem.applyUpgradeEffects();
 
+	// Keyboard-Handler fÃ¼r Talentbaum (U-Taste)
 	function handleTalentTreeKeyDown(e) {
 		const key = e.key;
 		const code = e.code;
@@ -465,7 +705,7 @@ function bootGame() {
 	}
 	window.addEventListener('keydown', handleDebugCheat);
 
-	// Click-Handler für XP-Anzeige
+	// Click-Handler fÃ¼r XP-Anzeige
 	const xpDisplayEl = document.querySelector('.xp-display');
 	if (xpDisplayEl) {
 		xpDisplayEl.addEventListener('click', () => {
@@ -673,12 +913,12 @@ function bootGame() {
 			state.player.shieldTimer = 0;
 			state.player.shieldLastActivation = 0;
 			state.player.shieldLastBlock = 0;
-			triggerEventFlash("unlock", { text: "Neue Fähigkeit: Schutzschild", duration: 1500, opacity: 0.86 });
+			triggerEventFlash("unlock", { text: "Neue FÃ¤higkeit: Schutzschild", duration: 1500, opacity: 0.86 });
 			updateHUD();
 		}
 
 		function concludeBossVictory(nextLevelIndex) {
-			if (nextLevelIndex < levels.getLevelConfigsLength()) {
+			if (nextLevelIndex < getLevelConfigsLength()) {
 				advanceLevel(nextLevelIndex, { skipFlash: false, invulnDuration: 1800 });
 				return;
 			}
@@ -800,7 +1040,7 @@ function bootGame() {
 		state.coverRockSpawned = true;
 		const rock = spawnCoverRock({ x: canvas.width * 0.5 });
 		if (rock) {
-			triggerEventFlash("cover", { text: "Felsbrocken fällt!", duration: 1100, opacity: 0.75 });
+			triggerEventFlash("cover", { text: "Felsbrocken fÃ¤llt!", duration: 1100, opacity: 0.75 });
 		}
 	}
 
@@ -816,7 +1056,24 @@ function bootGame() {
 		};
 	}
 
-	// LEVEL_CONFIGS: src/game/levels.js (importiert als 'levels')
+	// ============================================================
+	// LEVEL CONFIGURATIONS
+	// Die Level-Daten sind auch als JSON in src/data/levels/ gespeichert
+	// fÃ¼r zukÃ¼nftige Erweiterungen mit einem Build-System (Vite)
+	// ============================================================
+	// ============================================================
+	// LEVEL_CONFIGS ausgelagert nach src/game/levels.js
+	// Wrapper-Funktionen delegieren ans levels-Modul
+	// ============================================================
+
+	// Getter fÃ¼r LEVEL_CONFIGS.length (wird vom levels-Modul bereitgestellt)
+	function getLevelConfigsLength() {
+		return levels.getLevelConfigsLength();
+	}
+
+	function getLevelConfig(index) {
+		return levels.getLevelConfig(index);
+	}
 
 	function scheduleNextFoeSpawn(initial = false) {
 		const interval = state.foeSpawnInterval || { min: 1400, max: 2100 };
@@ -870,7 +1127,7 @@ function bootGame() {
 	function debugJumpToLevel(targetIndex, options = {}) {
 		if (!DEBUG_SHORTCUTS) return;
 		const skipToBoss = options.skipToBoss === true;
-		const levelIndex = Math.max(0, Math.min(levels.getLevelConfigsLength() - 1, targetIndex | 0));
+		const levelIndex = Math.max(0, Math.min(getLevelConfigsLength() - 1, targetIndex | 0));
 		resetGame();
 		state.eventFlash = null;
 		advanceLevel(levelIndex, { skipFlash: true, healHeart: false, invulnDuration: 800 });
@@ -895,7 +1152,21 @@ function bootGame() {
 		triggerEventFlash("debug", { text: label, duration: 1000, opacity: 0.52 });
 	}
 
-	// Ausgelagerte Module: boss/*, foes/*, player/*, game/*, city/*
+	// ============================================================
+	// Boss-Spawn-Funktionen ausgelagert nach src/boss/spawn.js
+	// ============================================================
+
+	// renderFoeArrows ausgelagert nach src/foes/render.js
+
+	// ============================================================
+	// Weitere Boss-Spawn-Funktionen ausgelagert nach src/boss/spawn.js
+	// (spawnBossFinSweep, spawnFragranceCloud, spawnBossPerfumeVolley, spawnBossFragranceWave)
+	// ============================================================
+
+	// spawnOktopusBolt und spawnBogenschreckArrow â†’ ausgelagert nach src/foes/arrows.js
+	// Werden Ã¼ber foeArrows.spawnOktopusBolt() und foeArrows.spawnBogenschreckArrow() aufgerufen
+
+	// playerShoot ist jetzt in src/player/update.js ausgelagert
 
 	function hasKey(keySet) {
 		for (const key of keySet) {
@@ -936,6 +1207,16 @@ function bootGame() {
 		return event.code === "Digit5" || event.code === "Numpad5" || event.key === "5" || event.key === "%";
 	}
 
+	// Context fÃ¼r Stadt-State-Erstellung
+	const cityStateCtx = {
+		get canvas() { return canvas; },
+		cityData
+	};
+
+	function buildCityState() {
+		return buildCityStateModule(cityStateCtx);
+	}
+
 	function enterCity() {
 		// City-Assets vorladen (non-blocking)
 		ManifestAssets.preloadForScene("city").catch(err => {
@@ -948,14 +1229,33 @@ function bootGame() {
 		state.over = false;
 		state.win = false;
 		state.level = 5;
-		state.levelIndex = levels.getLevelConfigsLength();
+		state.levelIndex = getLevelConfigsLength();
 		state.elapsed = 0;
 		state.lastTick = performance.now();
 		state.eventFlash = null;
 		state.pendingSymbolAdvance = null;
-		state.city = buildCityStateModule({ get canvas() { return canvas; }, cityData });
-		clearAllStateArrays(state);
+		state.city = buildCityState();
+		state.foes.length = 0;
+		state.foeArrows.length = 0;
+		state.shots.length = 0;
+		state.healPickups.length = 0;
+		state.symbolDrops.length = 0;
+		state.coinDrops.length = 0;
+		state.coralAllies.length = 0;
+		state.coralEffects.length = 0;
 		state.boss.active = false;
+		state.bossTorpedoes.length = 0;
+		state.bossSweeps.length = 0;
+		state.bossWakeWaves.length = 0;
+		state.bossPerfumeOrbs.length = 0;
+		state.bossFragranceClouds.length = 0;
+		state.bossCoinBursts.length = 0;
+		state.bossCoinExplosions.length = 0;
+		state.bossDiamondBeams.length = 0;
+		state.bossCardBoomerangs.length = 0;
+		state.bossWhirlpools.length = 0;
+		state.bossKatapultShots.length = 0;
+		state.bossSpeedboats.length = 0;
 		state.tsunamiWave = null;
 		state.eventFlash = null;
 		pointer.shoot = false;
@@ -1013,7 +1313,15 @@ function bootGame() {
 		state.boss.finFlip = false;
 		state.boss.entering = false;
 		state.boss.entryProgress = 0;
-		clearAllStateArrays(state);
+		state.foes.length = 0;
+		state.foeArrows.length = 0;
+		state.shots.length = 0;
+		state.healPickups.length = 0;
+		state.healBursts.length = 0;
+		state.symbolDrops.length = 0;
+		state.coinDrops.length = 0;
+		state.coralAllies.length = 0;
+		state.coralEffects.length = 0;
 		state.coralAbility.unlocked = false;
 		state.coralAbility.active = false;
 		state.coralAbility.timer = 0;
@@ -1024,6 +1332,17 @@ function bootGame() {
 		state.tsunamiAbility.active = false;
 		state.pendingSymbolAdvance = null;
 		state.eventFlash = null;
+		state.bossTorpedoes.length = 0;
+		state.bossSweeps.length = 0;
+		state.bossWakeWaves.length = 0;
+		state.bossPerfumeOrbs.length = 0;
+		state.bossFragranceClouds.length = 0;
+		state.bossCoinBursts.length = 0;
+		state.bossCoinExplosions.length = 0;
+		state.bossDiamondBeams.length = 0;
+		state.bossCardBoomerangs.length = 0;
+		state.bubbles.length = 0;
+		state.coverRocks.length = 0;
 		state.coverRockSpawned = false;
 		state.city = null;
 		applyLevelConfig(0, { skipFlash: false });
@@ -1042,12 +1361,29 @@ function bootGame() {
 
 	function showGameOver(titleText) {
 		state.over = true;
-		clearAllStateArrays(state);
+		state.bossTorpedoes.length = 0;
+		state.bossSweeps.length = 0;
+		state.bossWakeWaves.length = 0;
+		state.healPickups.length = 0;
 		state.eventFlash = null;
+		state.healBursts.length = 0;
+		state.healBursts.length = 0;
+		state.foeArrows.length = 0;
+		state.bossPerfumeOrbs.length = 0;
+		state.bossFragranceClouds.length = 0;
+		state.bossCoinBursts.length = 0;
+		state.bossCoinExplosions.length = 0;
+		state.bossDiamondBeams.length = 0;
+		state.bossCardBoomerangs.length = 0;
+		state.symbolDrops.length = 0;
+		state.coinDrops.length = 0;
+		state.coralAllies.length = 0;
+		state.coralEffects.length = 0;
 		state.coralAbility.active = false;
 		state.coralAbility.timer = 0;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
+		state.coverRocks.length = 0;
 		state.coverRockSpawned = false;
 		state.player.shieldActive = false;
 		state.player.shieldTimer = 0;
@@ -1056,7 +1392,7 @@ function bootGame() {
 		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
 		state.pendingSymbolAdvance = null;
 		if (endOverlay) endOverlay.style.display = "flex";
-		if (endTitle) endTitle.textContent = titleText || "Danke fürs Spielen!";
+		if (endTitle) endTitle.textContent = titleText || "Danke fÃ¼rs Spielen!";
 		hidePickupMessage();
 	}
 
@@ -1067,11 +1403,35 @@ function bootGame() {
 		const symbolKind = LEVEL_SYMBOL_SEQUENCE[currentLevelIndex];
 		state.boss.active = false;
 		state.boss.hp = 0;
-		clearAllStateArrays(state);
+		state.bossTorpedoes.length = 0;
+		state.bossSweeps.length = 0;
+		state.bossWakeWaves.length = 0;
+		state.bossPerfumeOrbs.length = 0;
+		state.bossFragranceClouds.length = 0;
+		state.bossWhirlpools.length = 0;
+		state.bossKatapultShots.length = 0;
+		state.bossShockwaves.length = 0;
+		state.bossSpeedboats.length = 0;
+		state.bossCoinBursts.length = 0;
+		state.bossCoinExplosions.length = 0;
+		state.bossDiamondBeams.length = 0;
+		state.bossCardBoomerangs.length = 0;
+		state.bossTreasureWaves.length = 0;
+		state.bossCrownColumns.length = 0;
+		state.foes.length = 0;
+		state.foeArrows.length = 0;
+		state.shots.length = 0;
+		state.healPickups.length = 0;
+		state.healBursts.length = 0;
+		state.symbolDrops.length = 0;
+		state.coinDrops.length = 0;
+		state.coralAllies.length = 0;
+		state.coralEffects.length = 0;
 		state.coralAbility.active = false;
 		state.coralAbility.timer = 0;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
+		state.coverRocks.length = 0;
 		state.coverRockSpawned = false;
 		state.foeSpawnTimer = Number.POSITIVE_INFINITY;
 		state.cashfishUltLock = 0;
@@ -1127,7 +1487,16 @@ function bootGame() {
 		state.boss.lastAttack = null;
 		state.boss.finFlip = false;
 		state.foeSpawnTimer = Number.POSITIVE_INFINITY;
-		clearBossArrays(state);
+		state.bossTorpedoes.length = 0;
+		state.bossSweeps.length = 0;
+		state.bossPerfumeOrbs.length = 0;
+		state.bossFragranceClouds.length = 0;
+		state.bossCoinBursts.length = 0;
+		state.bossCoinExplosions.length = 0;
+		state.bossDiamondBeams.length = 0;
+		state.bossCardBoomerangs.length = 0;
+		state.bossTreasureWaves.length = 0;
+		state.bossCrownColumns.length = 0;
 		state.cashfishUltLock = 0;
 		state.cashfishUltHistory = { tsunamiUsed: false, crownUsed: false };
 		if (bannerEl) bannerEl.textContent = "Bosskampf! Besiege die Bedrohung";
@@ -1137,9 +1506,9 @@ function bootGame() {
 		if (hudScore) hudScore.textContent = state.score.toString();
 		if (hudCoins) hudCoins.textContent = state.coins.toString();
 		if (hudLevel) hudLevel.textContent = state.level.toString();
-		if (hudHearts) hudHearts.textContent = "❤".repeat(state.hearts);
+		if (hudHearts) hudHearts.textContent = "â¤".repeat(state.hearts);
 		if (hudTime) hudTime.textContent = (state.elapsed / 1000).toFixed(1);
-		if (bannerEl && state.boss.active) bannerEl.textContent = `Bosskampf – HP ${state.boss.hp}/${state.boss.maxHp}`;
+		if (bannerEl && state.boss.active) bannerEl.textContent = `Bosskampf â€“ HP ${state.boss.hp}/${state.boss.maxHp}`;
 		if (hudShield) {
 			const player = state.player;
 			const unlocked = !!player.shieldUnlocked;
@@ -1151,11 +1520,11 @@ function bootGame() {
 				const seconds = Math.ceil(player.shieldCooldown / 1000);
 				hudShield.textContent = seconds.toString();
 			} else {
-				hudShield.textContent = "🛡";
+				hudShield.textContent = "ðŸ›¡";
 			}
-			if (!unlocked) hudShield.title = "Schild (Shift/E) – besiege Boss 1";
+			if (!unlocked) hudShield.title = "Schild (Shift/E) â€“ besiege Boss 1";
 			else if (player.shieldActive) hudShield.title = "Schild aktiv";
-			else if (player.shieldCooldown > 0) hudShield.title = `Schild lädt (${Math.ceil(player.shieldCooldown / 1000)}s)`;
+			else if (player.shieldCooldown > 0) hudShield.title = `Schild lÃ¤dt (${Math.ceil(player.shieldCooldown / 1000)}s)`;
 			else hudShield.title = "Schild bereit (Shift/E)";
 		}
 		if (hudArmor) {
@@ -1164,7 +1533,7 @@ function bootGame() {
 			hudArmor.classList.toggle("active", armorReady);
 			hudArmor.classList.toggle("inactive", !armorReady);
 			hudArmor.style.display = armorEquipped ? "inline-flex" : "none";
-			hudArmor.title = armorEquipped ? (armorReady ? "Rüstung aktiv – nächster Treffer wird neutralisiert" : "Rüstung verbraucht (lädt in der Stadt)") : "";
+			hudArmor.title = armorEquipped ? (armorReady ? "RÃ¼stung aktiv â€“ nÃ¤chster Treffer wird neutralisiert" : "RÃ¼stung verbraucht (lÃ¤dt in der Stadt)") : "";
 		}
 		if (hudSymbols) {
 			for (const [kind, el] of Object.entries(hudSymbols)) {
@@ -1199,6 +1568,9 @@ function bootGame() {
 		}
 	}
 
+	// updatePlayer ist jetzt in src/player/update.js ausgelagert
+
+	// City Update Context - fÃ¼r das ausgelagerte Modul
 	const cityUpdateCtx = {
 		getState: () => state,
 		hasKey,
@@ -1210,14 +1582,50 @@ function bootGame() {
 		}
 	};
 
+	// Wrapper fÃ¼r updateCity - nutzt das importierte Modul
 	function updateCity(dt) {
 		updateCityModule(cityUpdateCtx, dt);
 	}
 
+	// Cover-Rock-Funktionen - delegieren an das Cover-Rock-Modul (Wrapper fÃ¼r Hoisting)
+	function isPointInsideCover(rock, x, y, padX = 0, padY = 0) {
+		return coverRocks.isPointInsideCover(rock, x, y, padX, padY);
+	}
+	function computeCoverSurfaceNormal(rock, x, y) {
+		return coverRocks.computeCoverSurfaceNormal(rock, x, y);
+	}
+	function resolveCoverCollisionForPoint(rock, currX, currY, prevX, prevY) {
+		return coverRocks.resolveCoverCollisionForPoint(rock, currX, currY, prevX, prevY);
+	}
+	function applyCoverAvoidance(entity, opts = {}) {
+		return coverRocks.applyCoverAvoidance(entity, opts);
+	}
+	function processCoverDetour(entity, dt, bounds = {}) {
+		return coverRocks.processCoverDetour(entity, dt, bounds);
+	}
+	function getRitterfischLaneTarget(foe, rock, minY, maxY) {
+		return coverRocks.getRitterfischLaneTarget(foe, rock, minY, maxY);
+	}
+	function resolvePlayerCoverCollision(player, prevX, prevY) {
+		return coverRocks.resolvePlayerCoverCollision(player, prevX, prevY);
+	}
+	function resolveFoeCoverCollision(foe, prevX, prevY) {
+		return coverRocks.resolveFoeCoverCollision(foe, prevX, prevY);
+	}
+	function findCoverRockHit(x, y, padX = 0, padY = 0) {
+		return coverRocks.findCoverRockHit(x, y, padX, padY);
+	}
+	function registerCoverRockImpact(rock, strength = 1) {
+		return coverRocks.registerCoverRockImpact(rock, strength);
+	}
+
+	// updateBubbles ist jetzt in src/game/pickups.js
+	// updateCoverRocks ist jetzt in src/game/coverRocks.js
+
 	function update(dt) {
 		state.frameDt = dt;
 		
-		// Spatial Grid: Alle Grids aktualisieren für effiziente Kollisionserkennung
+		// Spatial Grid: Alle Grids aktualisieren fÃ¼r effiziente Kollisionserkennung
 		updateAllGrids(state);
 		
 		playerUpdater.updatePlayer(dt);
@@ -1262,7 +1670,19 @@ function bootGame() {
 		state.elapsed += dt;
 	}
 
-	// Update-Funktionen: src/boss/update.js, src/foes/update.js, src/player/update.js, src/game/pickups.js
+	// ============================================================
+	// updateBoss ausgelagert nach src/boss/update.js
+	// updateFoes ausgelagert nach src/foes/update.js
+	// updateShots ist jetzt in src/player/update.js ausgelagert
+	// ============================================================
+
+	// updateFoeArrows ausgelagert nach src/foes/arrows.js
+	// updateHealPickups, updateCoralEffects, updateSymbolDrops, updateCoinDrops
+	// sind jetzt in src/game/pickups.js ausgelagert
+
+	// ============================================================
+	// updateBossAttacks ausgelagert nach src/boss/update.js
+	// ============================================================
 
 	function damagePlayer(amount = 1) {
 		const player = state.player;
@@ -1274,7 +1694,7 @@ function bootGame() {
 		}
 		if (state.mode === "game" && cityInventory.equipment.armor === ARMOR_ITEM_NAME && state.armorShieldCharges > 0) {
 			state.armorShieldCharges = 0;
-			triggerEventFlash("armorBlock", { text: "Rüstung schützt!", duration: 1200, opacity: 0.9 });
+			triggerEventFlash("armorBlock", { text: "RÃ¼stung schÃ¼tzt!", duration: 1200, opacity: 0.9 });
 			updateHUD();
 			return;
 		}
@@ -1293,14 +1713,54 @@ function bootGame() {
 		state.levelScore += reward;
 		spawnCoinDrop({ x: foe.x, y: foe.y, value: getCoinValueForFoe(foe) });
 		
-		// XP für besiegten Gegner vergeben
+		// XP fÃ¼r besiegten Gegner vergeben
 		const xpGained = progressionSystem.awardXP(foe.type || 'default');
 		
 		if (!state.boss.active && state.levelScore >= state.unlockBossScore && bannerEl) {
-			bannerEl.textContent = "Boss wittert deine Präsenz...";
+			bannerEl.textContent = "Boss wittert deine PrÃ¤senz...";
 		}
 	}
 
+	// ============================================================
+	// Foe/Pickup Collision-Handler ausgelagert nach src/foes/collision.js
+	// handleShotFoeHits, handleShotFoeArrowHits, handleShotTorpedoHits
+	// handlePlayerFoeCollisions, handlePlayerFoeArrowCollisions
+	// handlePlayerHealPickups, handlePlayerCoinDrops, handlePlayerSymbolDrops
+	// ============================================================
+
+	// handleShotBossHits ausgelagert nach src/boss/collision.js
+	// handlePlayerTorpedoCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerFinSweepCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerWakeWaveCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerWhirlpoolEffects ausgelagert nach src/boss/collision.js
+	// handlePlayerCoinExplosions ausgelagert nach src/boss/collision.js
+	// handlePlayerDiamondBeams ausgelagert nach src/boss/collision.js
+	// handlePlayerTreasureWaves ausgelagert nach src/boss/collision.js
+	// handlePlayerCardBoomerangs ausgelagert nach src/boss/collision.js
+	// handlePlayerCrownColumns ausgelagert nach src/boss/collision.js
+	// handlePlayerKatapultCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerShockwaveCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerSpeedboatCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerPerfumeOrbCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerFragranceCloudCollisions ausgelagert nach src/boss/collision.js
+	// handlePlayerBossCollision ausgelagert nach src/boss/collision.js
+
+	// renderBackground, renderBubbles, renderFloorOverlay, renderCoverRocks, renderTsunamiWave
+	// sind jetzt in src/game/background.js ausgelagert
+
+	// renderHeals, renderCoralEffects, renderCoralAllies, renderCoinDrops, renderHealBursts,
+	// renderSymbolDrops, renderDebugLabel, renderPlayer, renderShots, renderEventFlash
+	// sind jetzt in src/game/render.js ausgelagert
+
+	// Boss-Render-Funktionen sind jetzt in boss/render.js ausgelagert
+
+	// renderFoes ausgelagert nach src/foes/render.js
+
+	// renderBossHpBar ausgelagert nach src/boss/ui.js
+
+	// renderBoss ausgelagert nach src/boss/ui.js
+
+	// Context-Objekt fÃ¼r das Render-Modul
 	const cityRenderCtx = {
 		get ctx() { return ctx; },
 		get canvas() { return canvas; },
@@ -1321,6 +1781,7 @@ function bootGame() {
 		get citySpriteDebugPanel() { return citySpriteDebugPanel; }
 	};
 
+	// Context-Objekt fÃ¼r das Game-Render-Modul
 	const gameRenderCtx = {
 		getCtx: () => ctx,
 		getCanvas: () => canvas,
@@ -1336,19 +1797,7 @@ function bootGame() {
 	};
 	const gameRenderer = createGameRenderSystem(gameRenderCtx);
 
-	// Cover-Rock-Modul (vor Boss-Modulen initialisiert)
-	const coverRockCtx = {
-		getState: () => state,
-		getCanvas: () => canvas,
-		clamp,
-		getSPRITES: () => SPRITES,
-		spriteReady,
-		getCoverRockCollisionMask,
-		getLevel3GroundLine,
-		damagePlayer
-	};
-	const coverRocks = createCoverRockSystem(coverRockCtx);
-
+	// Context-Objekt fÃ¼r das Boss-Render-Modul
 	const bossRenderCtx = {
 		get ctx() { return ctx; },
 		get canvas() { return canvas; },
@@ -1356,25 +1805,27 @@ function bootGame() {
 	};
 	const bossRenderer = createBossRenderSystem(bossRenderCtx);
 
+	// Context-Objekt fÃ¼r das Boss-Spawn-Modul
 	const bossSpawnCtx = {
 		getCanvas: () => canvas,
 		getState: () => state,
-		findCoverRockHit: coverRocks.findCoverRockHit,
-		registerCoverRockImpact: coverRocks.registerCoverRockImpact,
+		findCoverRockHit,
+		registerCoverRockImpact,
 		triggerEventFlash
 	};
 	const bossSpawner = createBossSpawnSystem(bossSpawnCtx);
 
+	// Context-Objekt fÃ¼r das Boss-Update-Modul
 	const bossUpdateCtx = {
 		getCanvas: () => canvas,
 		getState: () => state,
 		getSPRITES: () => SPRITES,
 		spriteReady,
 		activateBoss,
-		applyCoverAvoidance: coverRocks.applyCoverAvoidance,
-		processCoverDetour: coverRocks.processCoverDetour,
-		findCoverRockHit: coverRocks.findCoverRockHit,
-		registerCoverRockImpact: coverRocks.registerCoverRockImpact,
+		applyCoverAvoidance,
+		processCoverDetour,
+		findCoverRockHit,
+		registerCoverRockImpact,
 		// Spawn-Funktionen aus dem Spawn-Modul
 		spawnBossTorpedoBurst: () => bossSpawner.spawnBossTorpedoBurst(),
 		spawnBossFinSweep: () => bossSpawner.spawnBossFinSweep(),
@@ -1393,6 +1844,7 @@ function bootGame() {
 	};
 	const bossUpdater = createBossUpdateSystem(bossUpdateCtx);
 
+	// Context-Objekt fÃ¼r das Boss-Collision-Modul
 	const bossCollisionCtx = {
 		getCanvas: () => canvas,
 		getState: () => state,
@@ -1403,6 +1855,7 @@ function bootGame() {
 	};
 	const bossCollision = createBossCollisionSystem(bossCollisionCtx);
 
+	// Context-Objekt fÃ¼r das Boss-UI-Modul
 	const bossUICtx = {
 		getCtx: () => ctx,
 		getCanvas: () => canvas,
@@ -1411,32 +1864,45 @@ function bootGame() {
 	};
 	const bossUI = createBossUISystem(bossUICtx);
 
-	// Foes-Module
+	// ============================================================
+	// Foes-Module Initialisierung
+	// ============================================================
 
+	// Context-Objekt fÃ¼r das Foes-Arrows-Modul
 	const foeArrowsCtx = {
 		get canvas() { return canvas; },
 		get state() { return state; },
-		findCoverRockHit: coverRocks.findCoverRockHit,
-		registerCoverRockImpact: coverRocks.registerCoverRockImpact,
+		findCoverRockHit,
+		registerCoverRockImpact,
 		USE_CLASSIC_OKTOPUS_PROJECTILE
 	};
 	const foeArrows = createFoeArrowsSystem(foeArrowsCtx);
 
+	// Context-Objekt fÃ¼r das Foes-Spawn-Modul
+	const foeSpawnCtx = {
+		get canvas() { return canvas; },
+		get state() { return state; },
+		clamp
+	};
+	const foeSpawner = createFoeSpawnSystem(foeSpawnCtx);
+
+	// Context-Objekt fÃ¼r das Foes-Update-Modul
 	const foeUpdateCtx = {
 		get canvas() { return canvas; },
 		get state() { return state; },
 		clamp,
 		spawnBogenschreckArrow: (foe) => foeArrows.spawnBogenschreckArrow(foe),
 		spawnOktopusBolt: (foe) => foeArrows.spawnOktopusBolt(foe),
-		applyCoverAvoidance: coverRocks.applyCoverAvoidance,
-		processCoverDetour: coverRocks.processCoverDetour,
-		getRitterfischLaneTarget: coverRocks.getRitterfischLaneTarget,
-		resolveFoeCoverCollision: coverRocks.resolveFoeCoverCollision,
+		applyCoverAvoidance,
+		processCoverDetour,
+		getRitterfischLaneTarget,
+		resolveFoeCoverCollision,
 		spawnLevelFoe: () => spawnLevelFoe(),
 		scheduleNextFoeSpawn: (initial) => scheduleNextFoeSpawn(initial)
 	};
 	const foeUpdater = createFoeUpdateSystem(foeUpdateCtx);
 
+	// Context-Objekt fÃ¼r das Foes-Render-Modul
 	const foeRenderCtx = {
 		get ctx() { return ctx; },
 		get state() { return state; },
@@ -1446,6 +1912,7 @@ function bootGame() {
 	};
 	const foeRenderer = createFoeRenderSystem(foeRenderCtx);
 
+	// Context-Objekt fÃ¼r das Foes-Collision-Modul
 	const foeCollisionCtx = {
 		get state() { return state; },
 		getFoeHitbox,
@@ -1458,7 +1925,9 @@ function bootGame() {
 	};
 	const foeCollision = createFoeCollisionSystem(foeCollisionCtx);
 
-	// Abilities-Modul
+	// ============================================================
+	// Abilities-Modul Initialisierung
+	// ============================================================
 	const abilitiesCtx = {
 		getState: () => state,
 		getCanvas: () => canvas,
@@ -1470,7 +1939,9 @@ function bootGame() {
 	};
 	const abilities = createAbilitiesSystem(abilitiesCtx);
 
-	// Player-Update-Modul
+	// ============================================================
+	// Player-Update-Modul Initialisierung
+	// ============================================================
 	const playerUpdateCtx = {
 		getState: () => state,
 		getCanvas: () => canvas,
@@ -1483,11 +1954,13 @@ function bootGame() {
 		KEY_RIGHT,
 		KEY_UP,
 		KEY_DOWN,
-		resolvePlayerCoverCollision: coverRocks.resolvePlayerCoverCollision
+		resolvePlayerCoverCollision
 	};
 	const playerUpdater = createPlayerUpdateSystem(playerUpdateCtx);
 
-	// Background-Modul
+	// ============================================================
+	// Background-Modul Initialisierung
+	// ============================================================
 	const backgroundCtx = {
 		getCtx: () => ctx,
 		getCanvas: () => canvas,
@@ -1503,7 +1976,24 @@ function bootGame() {
 	};
 	const backgroundRenderer = createBackgroundRenderSystem(backgroundCtx);
 
-	// Pickups-Update-Modul
+	// ============================================================
+	// Cover-Rock-Modul Initialisierung
+	// ============================================================
+	const coverRockCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		clamp,
+		getSPRITES: () => SPRITES,
+		spriteReady,
+		getCoverRockCollisionMask,
+		getLevel3GroundLine,
+		damagePlayer
+	};
+	const coverRocks = createCoverRockSystem(coverRockCtx);
+
+	// ============================================================
+	// Pickups-Update-Modul Initialisierung
+	// ============================================================
 	const pickupsCtx = {
 		getState: () => state,
 		getCanvas: () => canvas,
@@ -1513,7 +2003,9 @@ function bootGame() {
 	};
 	const pickups = createPickupsSystem(pickupsCtx);
 
-	// Level-Modul
+	// ============================================================
+	// Level-Modul Initialisierung
+	// ============================================================
 	const levelCtx = {
 		getState: () => state,
 		getCanvas: () => canvas,
@@ -1555,7 +2047,7 @@ function bootGame() {
 	buildingsManager.init();
 
 	function render() {
-		// Building-Modus (Gebäude-Szene)
+		// Building-Modus (GebÃ¤ude-Szene)
 		if (state.mode === "building") {
 			buildingsManager.render(ctx);
 			gameRenderer.renderDebugLabel();
@@ -1612,28 +2104,36 @@ function bootGame() {
 	}
 
 	function tick(now) {
-		// Delta-Time Capping: Verhindert Physik-Sprünge bei Tab-Wechsel oder Lag
+		// Delta-Time Capping: Verhindert Physik-SprÃ¼nge bei Tab-Wechsel oder Lag
 		const rawDt = now - state.lastTick;
 		const dt = clamp(rawDt, MIN_DELTA_TIME, MAX_DELTA_TIME);
 		
-		// Tab-Wechsel Erkennung: Wenn rawDt sehr groß war, Reset-Logik
+		// Tab-Wechsel Erkennung: Wenn rawDt sehr groÃŸ war, Reset-Logik
 		if (rawDt > LONG_FRAME_THRESHOLD) {
-			// Optional: Logging für Debug-Zwecke
+			// Optional: Logging fÃ¼r Debug-Zwecke
 			// console.log(`Long frame detected: ${rawDt.toFixed(0)}ms (capped to ${dt}ms)`);
 		}
 		
 		state.lastTick = now;
 		if (state.started && !state.over && !state.paused) {
-			const buildingKeys = {
-				left: keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
-				right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
-				up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
-				down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
-			};
 			if (state.mode === "building") {
+				// Building-Modus: Keys aus dem keys-Set lesen
+				const buildingKeys = {
+					left: keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
+					right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
+					up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
+					down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
+				};
 				buildingsManager.update(dt, buildingKeys);
 			} else if (state.mode === "city") {
 				updateCity(dt);
+				// Buildings-Manager auch in Stadt updaten (fÃ¼r Teleporter)
+				const buildingKeys = {
+					left: keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
+					right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
+					up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
+					down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
+				};
 				buildingsManager.update(dt, buildingKeys);
 			} else {
 				update(dt);
@@ -1645,7 +2145,7 @@ function bootGame() {
 	}
 
 	document.addEventListener("keydown", event => {
-		// Buildings-Manager Keyboard-Handler (Map, Teleporter, Gebäude)
+		// Buildings-Manager Keyboard-Handler (Map, Teleporter, GebÃ¤ude)
 		if (state.mode === "city" || state.mode === "building") {
 			if (buildingsManager.handleKeyDown(event.key, event.code)) {
 				event.preventDefault();
@@ -1654,10 +2154,10 @@ function bootGame() {
 		}
 		
 		if (state.mode === "city") {
-			// Inventar öffnen/schließen
+			// Inventar Ã¶ffnen/schlieÃŸen
 			if (event.key === "i" || event.key === "I") {
 				cityUI.setInventoryOpen(!cityUI.isInventoryOpen());
-				if (bannerEl) bannerEl.textContent = cityUI.isInventoryOpen() ? "Inventar geöffnet (I)" : "Inventar geschlossen";
+				if (bannerEl) bannerEl.textContent = cityUI.isInventoryOpen() ? "Inventar geÃ¶ffnet (I)" : "Inventar geschlossen";
 				event.preventDefault();
 				return;
 			}
@@ -1665,9 +2165,9 @@ function bootGame() {
 		if (isCityShortcutCandidate(event)) {
 			const modeLabel = state.started ? (state.mode === "city" ? "city" : "game") : "title";
 			const keyInfo = `${event.key || "?"}/${event.code || "?"}`;
-			if (bannerEl) bannerEl.textContent = `Shortcut erkannt (${keyInfo}) – Modus: ${modeLabel}`;
+			if (bannerEl) bannerEl.textContent = `Shortcut erkannt (${keyInfo}) â€“ Modus: ${modeLabel}`;
 			const bootToast = document.getElementById("bootToast");
-			if (bootToast) bootToast.textContent = `Taste erkannt: ${keyInfo} – Modus: ${modeLabel}`;
+			if (bootToast) bootToast.textContent = `Taste erkannt: ${keyInfo} â€“ Modus: ${modeLabel}`;
 			console.log("City shortcut keydown", { key: event.key, code: event.code, alt: event.altKey, shift: event.shiftKey, mode: modeLabel });
 		}
 		if (isCityShortcut(event)) {
@@ -1741,7 +2241,7 @@ function bootGame() {
 	});
 
 	canvas.addEventListener("pointerdown", event => {
-		// Building-Modus: Grid-Editor und Debug-Drag haben Priorität
+		// Building-Modus: Grid-Editor und Debug-Drag haben PrioritÃ¤t
 		if (state.mode === "building") {
 			const rect = canvas.getBoundingClientRect();
 			const scaleX = canvas.width / rect.width;
@@ -1749,7 +2249,7 @@ function bootGame() {
 			const x = (event.clientX - rect.left) * scaleX;
 			const y = (event.clientY - rect.top) * scaleY;
 			if (buildingsManager.handleMouseDown(x, y, event.button)) {
-				// Pointer-Capture für kontinuierliches Malen
+				// Pointer-Capture fÃ¼r kontinuierliches Malen
 				canvas.setPointerCapture(event.pointerId);
 				event.preventDefault();
 				event.stopPropagation();
@@ -1766,13 +2266,13 @@ function bootGame() {
 			const city = state.city;
 			if (!city) return;
 			
-			// Kamera-Offset berücksichtigen für Welt-Koordinaten
+			// Kamera-Offset berÃ¼cksichtigen fÃ¼r Welt-Koordinaten
 			const cameraX = city.camera ? city.camera.x : 0;
 			const cameraY = city.camera ? city.camera.y : 0;
 			const worldX = localX + cameraX;
 			const worldY = localY + cameraY;
 			
-			// Klick auf NPCs prüfen (Seitenansicht - keine Perspektiv-Korrektur nötig)
+			// Klick auf NPCs prÃ¼fen (Seitenansicht - keine Perspektiv-Korrektur nÃ¶tig)
 			const npcClickRadius = 100;
 			
 			const merchant = city.npcs && city.npcs.find(npc => npc.id === "merchant");
@@ -1781,7 +2281,7 @@ function bootGame() {
 				if (dist <= npcClickRadius) {
 					cityUI.setShopOpen(true);
 					updateCityShopUI();
-					if (bannerEl) bannerEl.textContent = "Händler geöffnet";
+					if (bannerEl) bannerEl.textContent = "HÃ¤ndler geÃ¶ffnet";
 					return;
 				}
 			}
@@ -1791,7 +2291,7 @@ function bootGame() {
 				if (dist <= npcClickRadius) {
 					cityUI.setMissionOpen(true);
 					updateCityMissionUI();
-					if (bannerEl) bannerEl.textContent = "Missionen geöffnet";
+					if (bannerEl) bannerEl.textContent = "Missionen geÃ¶ffnet";
 					return;
 				}
 			}
@@ -1801,7 +2301,7 @@ function bootGame() {
 				const dist = Math.hypot(worldX - upgradeNpc.x, worldY - upgradeNpc.y);
 				if (dist <= npcClickRadius) {
 					upgradeUI.show();
-					if (bannerEl) bannerEl.textContent = "Upgrade-Schmiede geöffnet";
+					if (bannerEl) bannerEl.textContent = "Upgrade-Schmiede geÃ¶ffnet";
 					return;
 				}
 			}
@@ -1836,10 +2336,10 @@ function bootGame() {
 
 	canvas.addEventListener("contextmenu", event => event.preventDefault());
 	
-	// Mouse-Events für Buildings-Manager (Karte) und Grid-Editor
+	// Mouse-Events fÃ¼r Buildings-Manager (Karte) und Grid-Editor
 	canvas.addEventListener("pointermove", event => {
 		const rect = canvas.getBoundingClientRect();
-		// Skalierung berücksichtigen wenn Canvas anders skaliert ist
+		// Skalierung berÃ¼cksichtigen wenn Canvas anders skaliert ist
 		const scaleX = canvas.width / rect.width;
 		const scaleY = canvas.height / rect.height;
 		const x = (event.clientX - rect.left) * scaleX;
@@ -1861,7 +2361,7 @@ function bootGame() {
 		}
 	});
 	
-	// Mouse-Events für Building Debug-Drag-Mode und Grid-Editor
+	// Mouse-Events fÃ¼r Building Debug-Drag-Mode und Grid-Editor
 	canvas.addEventListener("mousedown", event => {
 		if (state.mode === "building") {
 			const rect = canvas.getBoundingClientRect();
@@ -1887,7 +2387,7 @@ function bootGame() {
 		}
 	});
 	
-	// Rechtsklick-Menü verhindern im Building-Modus (für Grid-Editor)
+	// Rechtsklick-MenÃ¼ verhindern im Building-Modus (fÃ¼r Grid-Editor)
 	canvas.addEventListener("contextmenu", event => {
 		if (state.mode === "building") {
 			event.preventDefault();
@@ -1897,7 +2397,7 @@ function bootGame() {
 	document.addEventListener("pointerup", (event) => {
 		pointer.down = false;
 		pointer.shoot = false;
-		// Building Grid-Editor beenden (auch wenn Maus außerhalb des Canvas)
+		// Building Grid-Editor beenden (auch wenn Maus auÃŸerhalb des Canvas)
 		if (state.mode === "building") {
 			buildingsManager.handleMouseUp(0, 0, event.button);
 			// Pointer-Capture freigeben
@@ -1943,7 +2443,7 @@ function bootGame() {
 			if (!bootGame.initialized) bootGame();
 			enterCity();
 		};
-		// Debug-Funktion: Hole Stadt-Daten für Floor-Editor
+		// Debug-Funktion: Hole Stadt-Daten fÃ¼r Floor-Editor
 		window.cashGetCityData = () => {
 			if (!state.city) return null;
 			const city = state.city;
@@ -1994,5 +2494,3 @@ if (typeof window !== "undefined") {
 	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootGame, { once: true });
 	else bootGame();
 }
-
-

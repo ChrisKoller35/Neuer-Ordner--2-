@@ -1,0 +1,39 @@
+{
+  "_comment": "Sprite-Pfade für Lazy Loading - werden NICHT sofort geladen",
+  "sprites": {
+    "player": "./Player.png",
+    "cityPlayer": "./Playertopdown.png",
+    "foe": "./foe-jelly.png",
+    "boss": "./boss-shark.png",
+    "shot": "./player-shot.png",
+    "heal": "./heal-potion.png",
+    "bogenschreck": "./Aquischwer-Bogenschreck.png",
+    "parfumKraken": "./Parfüm-Kraken.png",
+    "ritterfisch": "./Ritterfisch.png",
+    "yachtwal": "./Yachtwal.png",
+    "oktopus": "./Oktopus.png",
+    "oktopusProjectile": "./Oktopuspfeil.png",
+    "cashfish": "./Cashfish.png",
+    "coverRock": "./Fels.png",
+    "symbolSchluessel": "./Schlüsselsymbol.png",
+    "symbolGeldschein": "./Geldscheinsymbol.png",
+    "symbolYacht": "./Yachtsymbol.png",
+    "backgroundLevelOne": "./Backgroundlvlone.png",
+    "coralAllyOne": "./Korallenbegleitereins.png",
+    "coralAllyTwo": "./Korallenbegleiterzwei.png",
+    "npcHaendler": "./Npc/Haendler.png",
+    "npcMission": "./Npc/Mission.png",
+    "standwaffen": "./Standwaffen.png",
+    "ruestungMeer": "./Ruestungmeer.png",
+    "queststand": "./Queststand.png",
+    "cityBackground": "./Stadthaus.webp"
+  },
+  "cityTiles": [
+    "./Bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
+    "./Bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg",
+    "./Bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg",
+    "./Bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg",
+    "./Bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg",
+    "./Bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg"
+  ]
+}
