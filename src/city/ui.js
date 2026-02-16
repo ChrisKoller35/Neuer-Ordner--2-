@@ -26,6 +26,7 @@ export function createCityUI(ctx) {
 		shopItems,
 		missions,
 		onResetGame,
+		onStartMission,
 		onUpdateHUD,
 		armorItemName
 	} = ctx;
@@ -382,10 +383,16 @@ export function createCityUI(ctx) {
 				}
 				if (action === "start-mission") {
 					if (!missionSelection) return;
+					const selectedMissionId = missionSelection;
 					missionOpen = false;
 					missionSelection = null;
 					syncMissionVisibility();
-					if (onResetGame) onResetGame();
+					// Pass missionId to game for proper level handling
+					if (onStartMission) {
+						onStartMission(selectedMissionId);
+					} else if (onResetGame) {
+						onResetGame();
+					}
 					if (elements.bannerEl) elements.bannerEl.textContent = "Mission gestartet";
 					return;
 				}

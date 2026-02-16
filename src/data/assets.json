@@ -2,6 +2,13 @@
 	"version": "1.0",
 	"description": "Asset-Manifest für Lazy Loading - gruppiert nach Szenen/Leveln",
 	
+	"playerVariants": {
+		"player": "./Player.png",
+		"pinkqualle": "./Playerpinkqualle.png",
+		"kleinerdrache": "./playerkleinerdrache.png",
+		"engelfisch": "./Playerengelfisch.png"
+	},
+	
 	"groups": {
 		"core": {
 			"description": "Immer geladene Basis-Assets",
@@ -66,6 +73,42 @@
 			}
 		},
 		
+		"level5": {
+			"description": "Level 5 - Mission 2 Start (Shadowfish + Leviathan Boss)",
+			"preload": false,
+			"assets": {
+				"shadowfish": "./foes/shadowfish.png",
+				"leviathan": "./foes/leviathan.png"
+			}
+		},
+		
+		"level6": {
+			"description": "Level 6 - Mission 2 (Stingray + Hydra Boss)",
+			"preload": false,
+			"assets": {
+				"stingray": "./foes/stingray.png",
+				"hydra": "./foes/hydra.png"
+			}
+		},
+		
+		"level7": {
+			"description": "Level 7 - Mission 2 (Seadrake + Deepsea-Kraken Boss)",
+			"preload": false,
+			"assets": {
+				"seadrake": "./foes/seadrake.png",
+				"deepseaKraken": "./foes/deepsea-kraken.png"
+			}
+		},
+		
+		"level8": {
+			"description": "Level 8 - Mission 2 Finale (Abyssal + Titan Boss)",
+			"preload": false,
+			"assets": {
+				"abyssal": "./foes/abyssal.png",
+				"titan": "./foes/titan.png"
+			}
+		},
+		
 		"city": {
 			"description": "Stadt-Modus",
 			"preload": false,
@@ -125,7 +168,11 @@
 		"0": ["core", "level1"],
 		"1": ["core", "level1", "level2"],
 		"2": ["core", "level2", "level3"],
-		"3": ["core", "level3", "level4"]
+		"3": ["core", "level3", "level4"],
+		"4": ["core", "level5"],
+		"5": ["core", "level5", "level6"],
+		"6": ["core", "level6", "level7"],
+		"7": ["core", "level7", "level8"]
 	},
 	
 	"sceneMapping": {

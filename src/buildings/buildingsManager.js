@@ -277,7 +277,7 @@ export function createBuildingsManager(ctx) {
 			return buildingSystem.handleKeyDown(key, code);
 		}
 		
-		// Teleporter in der Stadt
+		// Teleporter in der Stadt (inkl. P-Taste für Portal-Editor)
 		const state = getState();
 		if (state?.mode === 'city') {
 			return teleporterSystem.handleKeyDown(key, code);
@@ -305,6 +305,13 @@ export function createBuildingsManager(ctx) {
 				return; // Event wurde behandelt
 			}
 		}
+		
+		// Teleporter in der Stadt (Debug-Drag-Modus)
+		if (state?.mode === 'city' && teleporterSystem?.handleMouseMove) {
+			if (teleporterSystem.handleMouseMove(x, y)) {
+				return;
+			}
+		}
 	}
 	
 	/**
@@ -315,7 +322,17 @@ export function createBuildingsManager(ctx) {
 		
 		// Building Debug-Drag-Modus und Grid-Editor
 		if (buildingSystem?.isActive() && buildingSystem.handleMouseDown) {
-			return buildingSystem.handleMouseDown(x, y, button);
+			if (buildingSystem.handleMouseDown(x, y, button)) {
+				return true;
+			}
+		}
+		
+		// Teleporter in der Stadt (Debug-Drag-Modus)
+		const state = getState();
+		if (state?.mode === 'city' && teleporterSystem?.handleMouseDown) {
+			if (teleporterSystem.handleMouseDown(x, y, button)) {
+				return true;
+			}
 		}
 		
 		return false;
@@ -329,7 +346,17 @@ export function createBuildingsManager(ctx) {
 		
 		// Building Debug-Drag-Modus und Grid-Editor
 		if (buildingSystem?.isActive() && buildingSystem.handleMouseUp) {
-			return buildingSystem.handleMouseUp(button);
+			if (buildingSystem.handleMouseUp(button)) {
+				return true;
+			}
+		}
+		
+		// Teleporter in der Stadt (Debug-Drag-Modus)
+		const state = getState();
+		if (state?.mode === 'city' && teleporterSystem?.handleMouseUp) {
+			if (teleporterSystem.handleMouseUp(button)) {
+				return true;
+			}
 		}
 		
 		return false;

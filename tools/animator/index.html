@@ -427,8 +427,10 @@
             <button class="primary" onclick="showExportModal()">⬇ Als PNG exportieren</button>
         </div>
         <div style="flex:1"></div>
-        <div>
+        <div style="display: flex; gap: 10px; align-items: center;">
             <span class="mode-indicator" id="modeIndicator">Zeichnen-Modus</span>
+            <span class="mode-indicator select-mode" id="polygonIndicator" style="display: none;">📍 Polygon (P)</span>
+            <span class="mode-indicator select-mode" id="deformIndicator" style="display: none;">🔷 Verzerren (V)</span>
         </div>
         <button onclick="toggleMode()" style="margin-left: 10px;">🔄 Modus wechseln (M)</button>
     </div>
@@ -462,6 +464,15 @@
             </div>
             
             <div class="panel-section">
+                <h3>Ansicht</h3>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="showGhostToggle" onchange="toggleGhost()" style="width: auto;">
+                    <span style="font-size: 13px;">Ghost anzeigen (Original-Position)</span>
+                </label>
+                <p class="help-text">Zeigt die Original-Positionen der markierten Bereiche als Referenz.</p>
+            </div>
+            
+            <div class="panel-section">
                 <h3>Animation</h3>
                 <div class="properties-grid">
                     <div class="prop-group">
@@ -480,10 +491,14 @@
                 <h3>Tastenkürzel</h3>
                 <p class="help-text">
                     <b>M</b> - Modus wechseln<br>
+                    <b>P</b> - Polygon-Auswahl<br>
                     <b>K</b> - Keyframe setzen/löschen<br>
+                    <b>G</b> - Ghost ein/aus<br>
+                    <b>V</b> - Ecken-Verzerrung<br>
                     <b>Leertaste</b> - Play/Pause<br>
                     <b>←/→</b> - Frame vor/zurück<br>
-                    <b>Entf</b> - Bereich löschen
+                    <b>Entf</b> - Bereich löschen<br>
+                    <b>Esc</b> - Polygon abbrechen
                 </p>
             </div>
         </div>
@@ -550,6 +565,9 @@
         const state = {
             image: null,
             imageLoaded: false,
+            imageScale: 1,      // Skalierung des Bildes auf Canvas
+            imageOffsetX: 0,    // Offset für Zentrierung
+            imageOffsetY: 0,
             parts: [],
             selectedPartId: null,
             currentFrame: 0,
@@ -562,11 +580,23 @@
             isDrawing: false,
             drawStart: { x: 0, y: 0 },
             
+            // Ghost mode (false = ausgeschnitten, true = sichtbar als Referenz)
+            showGhost: false,
+            
             // Drag state
             isDragging: false,
             dragStart: { x: 0, y: 0 },
             dragPartStart: { x: 0, y: 0, rotation: 0 },
-            dragMode: null, // 'move', 'rotate', 'pivot'
+            dragMode: null, // 'move', 'rotate', 'pivot', 'corner'
+            dragCornerIndex: null, // 0-3 für die Ecken
+            
+            // Deform mode: false = Ecken bewegen Teil, true = Ecken verzerren Form
+            deformMode: false,
+            
+            // Polygon mode: Punkte setzen um Bereich zu markieren
+            polygonMode: false,
+            polygonPoints: [],      // Array von {x, y} Punkten
+            polygonHoverFirst: false, // Hover über erstem Punkt?
             
             // View
             zoom: 1,
@@ -644,19 +674,35 @@
                     state.image = img;
                     state.imageLoaded = true;
                     
-                    // Canvas an Bildgröße anpassen (max 800x600)
-                    const maxW = 800, maxH = 600;
-                    let w = img.width, h = img.height;
-                    if (w > maxW || h > maxH) {
-                        const scale = Math.min(maxW / w, maxH / h);
-                        w *= scale;
-                        h *= scale;
+                    // Canvas-Größe basierend auf Bild-Seitenverhältnis
+                    const maxW = 900, maxH = 650;
+                    const imgAspect = img.width / img.height;
+                    
+                    let canvasW, canvasH;
+                    if (imgAspect > maxW / maxH) {
+                        // Bild ist breiter als Canvas-Bereich
+                        canvasW = maxW;
+                        canvasH = maxW / imgAspect;
+                    } else {
+                        // Bild ist höher als Canvas-Bereich
+                        canvasH = maxH;
+                        canvasW = maxH * imgAspect;
                     }
-                    canvas.width = Math.max(800, w);
-                    canvas.height = Math.max(600, h);
+                    
+                    // Mindestgröße
+                    canvasW = Math.max(400, canvasW);
+                    canvasH = Math.max(300, canvasH);
+                    
+                    canvas.width = Math.round(canvasW);
+                    canvas.height = Math.round(canvasH);
+                    
+                    // Skalierung berechnen für korrektes Mapping
+                    state.imageScale = canvas.width / img.width;
+                    state.imageOffsetX = 0;
+                    state.imageOffsetY = 0;
                     
                     document.getElementById('dropZone').classList.add('hidden');
-                    setStatus('Bild geladen: ' + file.name);
+                    setStatus(`Bild geladen: ${file.name} (${img.width}x${img.height})`);
                     render();
                 };
                 img.src = e.target.result;
@@ -681,17 +727,26 @@
                 // Pivot-Punkt (Standard: Mitte)
                 pivotX: x + width / 2,
                 pivotY: y + height / 2,
-                // Keyframes mit 3D-Transformationen
+                // Keyframes mit 3D-Transformationen + Ecken-Offsets
                 // z: Tiefe (-100 = weit weg/klein, +100 = nah/groß)
                 // skewX/Y: Perspektivische Verzerrung
+                // c0-c3: Ecken-Offsets (oben-links, oben-rechts, unten-rechts, unten-links)
                 keyframes: {
-                    0: { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0 }
+                    0: { 
+                        x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0,
+                        // Ecken-Offsets (relativ zur Standard-Position)
+                        c0x: 0, c0y: 0,  // oben-links
+                        c1x: 0, c1y: 0,  // oben-rechts
+                        c2x: 0, c2y: 0,  // unten-rechts
+                        c3x: 0, c3y: 0   // unten-links
+                    }
                 }
             };
             
             state.parts.push(part);
             state.selectedPartId = id;
             updatePartsList();
+            updatePropertiesPanel();
             updateTimeline();
             render();
             
@@ -806,7 +861,16 @@
                 scaleX: lerp(prev.scaleX || 1, next.scaleX || 1, t),
                 scaleY: lerp(prev.scaleY || 1, next.scaleY || 1, t),
                 skewX: lerp(prev.skewX || 0, next.skewX || 0, t),
-                skewY: lerp(prev.skewY || 0, next.skewY || 0, t)
+                skewY: lerp(prev.skewY || 0, next.skewY || 0, t),
+                // Ecken-Offsets interpolieren
+                c0x: lerp(prev.c0x || 0, next.c0x || 0, t),
+                c0y: lerp(prev.c0y || 0, next.c0y || 0, t),
+                c1x: lerp(prev.c1x || 0, next.c1x || 0, t),
+                c1y: lerp(prev.c1y || 0, next.c1y || 0, t),
+                c2x: lerp(prev.c2x || 0, next.c2x || 0, t),
+                c2y: lerp(prev.c2y || 0, next.c2y || 0, t),
+                c3x: lerp(prev.c3x || 0, next.c3x || 0, t),
+                c3y: lerp(prev.c3y || 0, next.c3y || 0, t)
             };
         }
         
@@ -909,12 +973,55 @@
         function onMouseDown(e) {
             const pos = getMousePos(e);
             
+            // Polygon-Modus hat Priorität
+            if (state.polygonMode) {
+                handlePolygonClick(pos);
+                return;
+            }
+            
             if (state.mode === 'draw') {
                 // Neuen Bereich zeichnen
                 state.isDrawing = true;
                 state.drawStart = pos;
             } else {
-                // Select mode: Part auswählen oder bewegen
+                // Select mode: Erst Ecken prüfen, dann Part
+                const selectedPart = getSelectedPart();
+                
+                // Ecken-Check für ausgewähltes Part (hat Priorität)
+                if (selectedPart) {
+                    const cornerIndex = hitTestCorners(pos, selectedPart);
+                    if (cornerIndex >= 0) {
+                        // Ecke ziehen
+                        state.isDragging = true;
+                        state.dragStart = pos;
+                        state.dragCornerIndex = cornerIndex;
+                        
+                        if (state.deformMode) {
+                            // Verzerr-Modus: Einzelne Ecke verzerren (Animation)
+                            state.dragMode = 'corner';
+                            const transform = getInterpolatedTransform(selectedPart, state.currentFrame);
+                            state.dragPartStart = {
+                                c0x: transform.c0x || 0, c0y: transform.c0y || 0,
+                                c1x: transform.c1x || 0, c1y: transform.c1y || 0,
+                                c2x: transform.c2x || 0, c2y: transform.c2y || 0,
+                                c3x: transform.c3x || 0, c3y: transform.c3y || 0
+                            };
+                        } else {
+                            // Normal-Modus: Teil bewegen
+                            state.dragMode = 'corner-move';
+                            state.dragPartStart = { 
+                                x: selectedPart.x, 
+                                y: selectedPart.y,
+                                pivotX: selectedPart.pivotX,
+                                pivotY: selectedPart.pivotY
+                            };
+                        }
+                        render();
+                        return;
+                    }
+                }
+                
+                // Part auswählen oder bewegen
                 const hit = hitTestParts(pos);
                 if (hit) {
                     selectPart(hit.id);
@@ -941,6 +1048,19 @@
             const pos = getMousePos(e);
             document.getElementById('mousePos').textContent = `${Math.round(pos.x)}, ${Math.round(pos.y)}`;
             
+            // Polygon-Modus: Hover über erstem Punkt prüfen
+            if (state.polygonMode && state.polygonPoints.length >= 3) {
+                const first = state.polygonPoints[0];
+                const dx = pos.x - first.x;
+                const dy = pos.y - first.y;
+                const wasHover = state.polygonHoverFirst;
+                state.polygonHoverFirst = (dx * dx + dy * dy <= 15 * 15);
+                if (wasHover !== state.polygonHoverFirst) {
+                    canvas.style.cursor = state.polygonHoverFirst ? 'pointer' : 'crosshair';
+                    render();
+                }
+            }
+            
             if (state.isDrawing) {
                 render();
                 // Preview-Rechteck zeichnen
@@ -963,8 +1083,23 @@
                 const dx = pos.x - state.dragStart.x;
                 const dy = pos.y - state.dragStart.y;
                 
-                if (state.dragMode === 'move') {
-                    // Part-Position bewegen
+                if (state.dragMode === 'corner') {
+                    // Ecke ziehen - Keyframe updaten (Verzerr-Modus)
+                    const transform = getInterpolatedTransform(part, state.currentFrame);
+                    if (!part.keyframes[state.currentFrame]) {
+                        part.keyframes[state.currentFrame] = { ...transform };
+                    }
+                    
+                    const cornerNames = ['c0', 'c1', 'c2', 'c3'];
+                    const cornerName = cornerNames[state.dragCornerIndex];
+                    
+                    part.keyframes[state.currentFrame][cornerName + 'x'] = state.dragPartStart[cornerName + 'x'] + dx;
+                    part.keyframes[state.currentFrame][cornerName + 'y'] = state.dragPartStart[cornerName + 'y'] + dy;
+                    
+                    updateTimeline();
+                    updatePropertiesPanel();
+                } else if (state.dragMode === 'corner-move' || state.dragMode === 'move') {
+                    // Part-Position bewegen (Ecke ziehen ohne Verzerr-Modus ODER normales Bewegen)
                     part.x = state.dragPartStart.x + dx;
                     part.y = state.dragPartStart.y + dy;
                     part.pivotX = state.dragPartStart.pivotX + dx;
@@ -1005,6 +1140,37 @@
             
             state.isDragging = false;
             state.dragMode = null;
+            state.dragCornerIndex = null;
+            render();
+        }
+        
+        // Polygon-Modus: Punkt hinzufügen oder Form schließen
+        function handlePolygonClick(pos) {
+            const points = state.polygonPoints;
+            
+            // Prüfen ob auf ersten Punkt geklickt (Form schließen)
+            if (points.length >= 3) {
+                const first = points[0];
+                const dx = pos.x - first.x;
+                const dy = pos.y - first.y;
+                if (dx * dx + dy * dy <= 15 * 15) {
+                    // Form schließen und Part erstellen
+                    const part = createPartFromPolygon(points);
+                    state.polygonPoints = [];
+                    state.polygonMode = false;
+                    document.getElementById('polygonIndicator').style.display = 'none';
+                    canvas.style.cursor = state.mode === 'draw' ? 'crosshair' : 'default';
+                    if (part) {
+                        setStatus(`Polygon-Part "${part.name}" erstellt mit ${points.length} Punkten`);
+                    }
+                    render();
+                    return;
+                }
+            }
+            
+            // Neuen Punkt hinzufügen
+            points.push({ x: pos.x, y: pos.y });
+            setStatus(`Polygon: ${points.length} Punkt${points.length !== 1 ? 'e' : ''} - Klick auf ersten Punkt schließt die Form`);
             render();
         }
         
@@ -1018,6 +1184,100 @@
                 }
             }
             return null;
+        }
+        
+        // Hit-Test für Ecken eines Parts
+        function hitTestCorners(pos, part) {
+            if (!part) return -1;
+            
+            const transform = getInterpolatedTransform(part, state.currentFrame);
+            const cornerRadius = 10; // Klick-Radius für Ecken
+            
+            // Für Polygon-Parts: Bounding-Box-Ecken (nur im V-Modus)
+            if (part.polygon) {
+                if (!state.deformMode) return -1; // Nur im V-Modus draggable
+                const corners = getPolygonBoundingBoxCorners(part, transform);
+                for (let i = 0; i < 4; i++) {
+                    const dx = pos.x - corners[i].x;
+                    const dy = pos.y - corners[i].y;
+                    if (dx * dx + dy * dy <= cornerRadius * cornerRadius) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+            
+            // Für Rechteck-Parts: Standard-Ecken
+            const corners = getPartCorners(part, transform);
+            
+            for (let i = 0; i < 4; i++) {
+                const dx = pos.x - corners[i].x;
+                const dy = pos.y - corners[i].y;
+                if (dx * dx + dy * dy <= cornerRadius * cornerRadius) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        // Berechne Bounding-Box-Ecken für ein Polygon-Part (mit Animations-Offsets)
+        function getPolygonBoundingBoxCorners(part, transform) {
+            return [
+                { x: part.x + (transform.c0x || 0), y: part.y + (transform.c0y || 0) },
+                { x: part.x + part.width + (transform.c1x || 0), y: part.y + (transform.c1y || 0) },
+                { x: part.x + part.width + (transform.c2x || 0), y: part.y + part.height + (transform.c2y || 0) },
+                { x: part.x + (transform.c3x || 0), y: part.y + part.height + (transform.c3y || 0) }
+            ];
+        }
+        
+        // Transformiert einen Polygon-Punkt basierend auf der Bounding-Box-Verzerrung
+        // Verwendet bilineare Interpolation
+        function transformPolygonPoint(point, part, transform) {
+            // Relative Position des Punkts in der Bounding-Box (0-1)
+            const u = (point.x - part.x) / part.width;
+            const v = (point.y - part.y) / part.height;
+            
+            // Bounding-Box-Ecken mit Offsets
+            const c0 = { x: part.x + (transform.c0x || 0), y: part.y + (transform.c0y || 0) };
+            const c1 = { x: part.x + part.width + (transform.c1x || 0), y: part.y + (transform.c1y || 0) };
+            const c2 = { x: part.x + part.width + (transform.c2x || 0), y: part.y + part.height + (transform.c2y || 0) };
+            const c3 = { x: part.x + (transform.c3x || 0), y: part.y + part.height + (transform.c3y || 0) };
+            
+            // Bilineare Interpolation
+            // P = (1-u)*(1-v)*TL + u*(1-v)*TR + u*v*BR + (1-u)*v*BL
+            const x = (1-u)*(1-v)*c0.x + u*(1-v)*c1.x + u*v*c2.x + (1-u)*v*c3.x;
+            const y = (1-u)*(1-v)*c0.y + u*(1-v)*c1.y + u*v*c2.y + (1-u)*v*c3.y;
+            
+            return { x, y };
+        }
+        
+        // Gibt die transformierten Polygon-Punkte zurück
+        function getTransformedPolygon(part, transform) {
+            if (!part.polygon) return [];
+            return part.polygon.map(p => transformPolygonPoint(p, part, transform));
+        }
+        
+        // Berechne die aktuellen Ecken-Positionen eines Parts (für DARSTELLUNG)
+        // Animation-Offsets (V-Modus) werden auf Rechteck-Ecken addiert
+        function getPartCorners(part, transform) {
+            // Normal/Deform-Modus: Rechteck-Ecken + Animation-Offsets
+            return [
+                { x: part.x + (transform.c0x || 0), y: part.y + (transform.c0y || 0) },
+                { x: part.x + part.width + (transform.c1x || 0), y: part.y + (transform.c1y || 0) },
+                { x: part.x + part.width + (transform.c2x || 0), y: part.y + part.height + (transform.c2y || 0) },
+                { x: part.x + (transform.c3x || 0), y: part.y + part.height + (transform.c3y || 0) }
+            ];
+        }
+        
+        // Berechne die Quellbereich-Ecken (welcher Teil des Bildes ausgeschnitten wird)
+        function getSourceCorners(part) {
+            // Quellbereich ist immer das Rechteck
+            return [
+                { x: part.x, y: part.y },
+                { x: part.x + part.width, y: part.y },
+                { x: part.x + part.width, y: part.y + part.height },
+                { x: part.x, y: part.y + part.height }
+            ];
         }
         
         // ============================================================
@@ -1036,6 +1296,31 @@
                 case 'k':
                 case 'K':
                     setKeyframe();
+                    break;
+                case 'g':
+                case 'G':
+                    // Ghost-Toggle
+                    const checkbox = document.getElementById('showGhostToggle');
+                    checkbox.checked = !checkbox.checked;
+                    toggleGhost();
+                    break;
+                case 'v':
+                case 'V':
+                    // Verzerr-Modus Toggle
+                    toggleDeformMode();
+                    break;
+                case 'p':
+                case 'P':
+                    // Polygon-Modus Toggle
+                    togglePolygonMode();
+                    break;
+                case 'Escape':
+                    // Polygon abbrechen
+                    if (state.polygonMode && state.polygonPoints.length > 0) {
+                        state.polygonPoints = [];
+                        setStatus('Polygon abgebrochen');
+                        render();
+                    }
                     break;
                 case ' ':
                     e.preventDefault();
@@ -1071,6 +1356,93 @@
             setStatus(`Modus: ${state.mode === 'draw' ? 'Zeichnen' : 'Auswahl'}`);
         }
         
+        function toggleGhost() {
+            state.showGhost = document.getElementById('showGhostToggle').checked;
+            render();
+        }
+        
+        function toggleDeformMode() {
+            state.deformMode = !state.deformMode;
+            const indicator = document.getElementById('deformIndicator');
+            if (state.deformMode) {
+                indicator.style.display = 'inline-block';
+                indicator.style.background = '#e94560';
+                setStatus('Verzerr-Modus: AN - Ecken verformen jetzt die Form');
+            } else {
+                indicator.style.display = 'none';
+                setStatus('Verzerr-Modus: AUS - Ecken bewegen das Teil');
+            }
+            render();
+        }
+        
+        function togglePolygonMode() {
+            state.polygonMode = !state.polygonMode;
+            const indicator = document.getElementById('polygonIndicator');
+            if (state.polygonMode) {
+                indicator.style.display = 'inline-block';
+                indicator.style.background = '#4CAF50';
+                state.polygonPoints = [];
+                canvas.style.cursor = 'crosshair';
+                setStatus('Polygon-Modus: Klicke um Punkte zu setzen. Klick auf ersten Punkt schließt die Form.');
+            } else {
+                indicator.style.display = 'none';
+                state.polygonPoints = [];
+                canvas.style.cursor = state.mode === 'draw' ? 'crosshair' : 'default';
+                setStatus('Polygon-Modus: AUS');
+            }
+            render();
+        }
+        
+        // Erstellt ein Part aus Polygon-Punkten
+        function createPartFromPolygon(points) {
+            if (points.length < 3) return null;
+            
+            // Bounding Box berechnen
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const p of points) {
+                minX = Math.min(minX, p.x);
+                minY = Math.min(minY, p.y);
+                maxX = Math.max(maxX, p.x);
+                maxY = Math.max(maxY, p.y);
+            }
+            
+            const width = maxX - minX;
+            const height = maxY - minY;
+            
+            // Part mit Polygon-Daten erstellen
+            const id = Date.now();
+            const colorIndex = state.parts.length % partColors.length;
+            
+            const part = {
+                id,
+                name: 'Teil ' + (state.parts.length + 1),
+                color: partColors[colorIndex],
+                // Bounding Box Position
+                x: minX, y: minY, width, height,
+                // Pivot-Punkt (Zentrum des Polygons)
+                pivotX: minX + width / 2,
+                pivotY: minY + height / 2,
+                // Polygon-Punkte (relativ zur Bounding Box für V-Modus)
+                polygon: points.map(p => ({ x: p.x, y: p.y })),
+                // Keyframes
+                keyframes: {
+                    0: { 
+                        x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0,
+                        c0x: 0, c0y: 0, c1x: 0, c1y: 0, c2x: 0, c2y: 0, c3x: 0, c3y: 0
+                    }
+                }
+            };
+            
+            state.parts.push(part);
+            state.selectedPartId = id;
+            updatePartsList();
+            updatePropertiesPanel();
+            updateTimeline();
+            render();
+            
+            return part;
+        }
+        
         // ============================================================
         // RENDERING
         // ============================================================
@@ -1078,17 +1450,51 @@
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Wenn keine Parts vorhanden, zeige das ganze Bild als Referenz
-            if (state.image && state.parts.length === 0) {
-                ctx.globalAlpha = 1;
-                ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
-            }
-            
-            // Wenn Parts vorhanden, zeige das Bild abgedunkelt als Referenz
-            if (state.image && state.parts.length > 0) {
-                ctx.globalAlpha = 0.3;
-                ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1;
+            // Bild mit korrektem Seitenverhältnis zeichnen
+            if (state.image) {
+                // Berechne wie das Bild auf das Canvas passt (ohne Verzerrung)
+                const imgW = state.image.width;
+                const imgH = state.image.height;
+                
+                // Das Bild füllt das Canvas komplett (da Canvas-Größe angepasst wurde)
+                const drawW = canvas.width;
+                const drawH = canvas.height;
+                
+                if (state.parts.length === 0) {
+                    // Keine Parts: Bild voll anzeigen
+                    ctx.globalAlpha = 1;
+                    ctx.drawImage(state.image, 0, 0, drawW, drawH);
+                } else if (state.showGhost) {
+                    // Ghost-Modus: Bild komplett als Referenz zeigen (alter Modus)
+                    ctx.globalAlpha = 0.3;
+                    ctx.drawImage(state.image, 0, 0, drawW, drawH);
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Parts vorhanden: Bild mit ausgeschnittenen Part-Bereichen als Referenz
+                    // Das verhindert den "Ghost"-Effekt (Duplikate im Hintergrund)
+                    ctx.save();
+                    
+                    // Clipping-Path erstellen: Canvas minus Part-Bereiche
+                    ctx.beginPath();
+                    // Äußeres Rechteck (das gesamte Canvas)
+                    ctx.rect(0, 0, canvas.width, canvas.height);
+                    
+                    // Part-Bereiche als "Löcher" ausschneiden (mit evenodd)
+                    for (const part of state.parts) {
+                        // Rechteck für diesen Part (wird ausgeschnitten)
+                        ctx.rect(part.x, part.y, part.width, part.height);
+                    }
+                    
+                    // evenodd = überlappende Bereiche werden ausgeschnitten
+                    ctx.clip('evenodd');
+                    
+                    // Bild abgedunkelt zeichnen (nur die nicht-part Bereiche sind sichtbar)
+                    ctx.globalAlpha = 0.3;
+                    ctx.drawImage(state.image, 0, 0, drawW, drawH);
+                    ctx.restore();
+                    
+                    ctx.globalAlpha = 1;
+                }
             }
             
             // Parts zeichnen - MIT Bildinhalt!
@@ -1096,77 +1502,409 @@
                 const isSelected = part.id === state.selectedPartId;
                 const transform = getInterpolatedTransform(part, state.currentFrame);
                 
+                // ZIEL-Ecken berechnen (Rechteck + Animation-Offsets)
+                const corners = getPartCorners(part, transform);
+                
+                // Prüfen ob Animation-Ecken verzerrt sind (V-Modus)
+                const hasCornerDeformation = (transform.c0x || 0) !== 0 || (transform.c0y || 0) !== 0 ||
+                                             (transform.c1x || 0) !== 0 || (transform.c1y || 0) !== 0 ||
+                                             (transform.c2x || 0) !== 0 || (transform.c2y || 0) !== 0 ||
+                                             (transform.c3x || 0) !== 0 || (transform.c3y || 0) !== 0;
+                
                 ctx.save();
                 
-                // Z-Achse: Tiefe simulieren (z beeinflusst Skalierung + Y-Position)
-                // z = -100 → klein + oben (weit weg)
-                // z = +100 → groß + unten (nah dran)
-                const zScale = 1 + (transform.z || 0) / 200; // z=100 → 1.5x, z=-100 → 0.5x
-                const zOffsetY = (transform.z || 0) * 0.3;   // z=100 → +30px nach unten
+                // Z-Achse: Tiefe simulieren
+                const zScale = 1 + (transform.z || 0) / 200;
+                const zOffsetY = (transform.z || 0) * 0.3;
                 
                 // Transform anwenden (um den Pivot-Punkt)
                 ctx.translate(part.pivotX + transform.x, part.pivotY + transform.y + zOffsetY);
                 ctx.rotate(transform.rotation || 0);
-                
-                // Skew (perspektivische Verzerrung) anwenden
                 ctx.transform(1, transform.skewY || 0, transform.skewX || 0, 1, 0, 0);
-                
-                // Skalierung (inkl. Z-Tiefe)
                 ctx.scale((transform.scaleX || 1) * zScale, (transform.scaleY || 1) * zScale);
                 ctx.translate(-part.pivotX, -part.pivotY);
                 
-                // BILDINHALT des Parts zeichnen
+                // BILDINHALT zeichnen
                 if (state.image) {
-                    // Berechne Source-Koordinaten im Originalbild
-                    const scaleX = state.image.width / canvas.width;
-                    const scaleY = state.image.height / canvas.height;
-                    const srcX = part.x * scaleX;
-                    const srcY = part.y * scaleY;
-                    const srcW = part.width * scaleX;
-                    const srcH = part.height * scaleY;
+                    const scale = state.image.width / canvas.width;
                     
-                    ctx.drawImage(state.image, 
-                        srcX, srcY, srcW, srcH,           // Source
-                        part.x, part.y, part.width, part.height  // Destination
-                    );
+                    if (part.polygon) {
+                        // Polygon-Part: Mit Clipping zeichnen
+                        drawPolygonPart(ctx, part, transform, scale);
+                    } else if (hasCornerDeformation) {
+                        // Verzerrt: Quell-Quad auf Ziel-Quad (mit Animation) zeichnen
+                        const sourceCorners = getSourceCorners(part);
+                        drawQuadToQuad(ctx, state.image, sourceCorners, corners, scale);
+                    } else {
+                        // Nicht verzerrt: Einfaches Rechteck
+                        const srcX = part.x * scale;
+                        const srcY = part.y * scale;
+                        const srcW = part.width * scale;
+                        const srcH = part.height * scale;
+                        ctx.drawImage(state.image, 
+                            srcX, srcY, srcW, srcH,
+                            part.x, part.y, part.width, part.height
+                        );
+                    }
                 }
                 
                 // Rahmen zeichnen
+                if (part.polygon) {
+                    // Polygon-Rahmen (transformiert)
+                    const transformedPoly = getTransformedPolygon(part, transform);
+                    ctx.beginPath();
+                    ctx.moveTo(transformedPoly[0].x, transformedPoly[0].y);
+                    for (let i = 1; i < transformedPoly.length; i++) {
+                        ctx.lineTo(transformedPoly[i].x, transformedPoly[i].y);
+                    }
+                    ctx.closePath();
+                } else {
+                    // Rechteck-Rahmen als Quad (folgt den Ecken)
+                    ctx.beginPath();
+                    ctx.moveTo(corners[0].x, corners[0].y);
+                    ctx.lineTo(corners[1].x, corners[1].y);
+                    ctx.lineTo(corners[2].x, corners[2].y);
+                    ctx.lineTo(corners[3].x, corners[3].y);
+                    ctx.closePath();
+                }
                 ctx.strokeStyle = part.color;
                 ctx.lineWidth = isSelected ? 3 : 2;
                 ctx.setLineDash(isSelected ? [] : [5, 3]);
-                ctx.strokeRect(part.x, part.y, part.width, part.height);
-                
+                ctx.stroke();
                 ctx.setLineDash([]);
                 
-                // Pivot-Punkt
+                // Ecken-Handles zeichnen
                 if (isSelected) {
-                    ctx.beginPath();
-                    ctx.arc(part.pivotX, part.pivotY, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = '#fff';
-                    ctx.fill();
-                    ctx.strokeStyle = part.color;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Kreuz im Pivot
-                    ctx.beginPath();
-                    ctx.moveTo(part.pivotX - 10, part.pivotY);
-                    ctx.lineTo(part.pivotX + 10, part.pivotY);
-                    ctx.moveTo(part.pivotX, part.pivotY - 10);
-                    ctx.lineTo(part.pivotX, part.pivotY + 10);
-                    ctx.strokeStyle = part.color;
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
+                    // Für Polygon-Parts: Bounding-Box Ecken (nur im V-Modus sichtbar)
+                    if (part.polygon) {
+                        if (state.deformMode) {
+                            // Bounding-Box Ecken als Kontroll-Handles für Verzerrung
+                            const bbox = getPolygonBoundingBoxCorners(part, transform);
+                            const cornerLabels = ['TL', 'TR', 'BR', 'BL'];
+                            
+                            // Gestrichelte Bounding-Box
+                            ctx.beginPath();
+                            ctx.moveTo(bbox[0].x, bbox[0].y);
+                            ctx.lineTo(bbox[1].x, bbox[1].y);
+                            ctx.lineTo(bbox[2].x, bbox[2].y);
+                            ctx.lineTo(bbox[3].x, bbox[3].y);
+                            ctx.closePath();
+                            ctx.strokeStyle = '#e94560';
+                            ctx.lineWidth = 1;
+                            ctx.setLineDash([4, 4]);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            
+                            // Ecken-Handles
+                            for (let i = 0; i < 4; i++) {
+                                const c = bbox[i];
+                                ctx.save();
+                                ctx.translate(c.x, c.y);
+                                ctx.rotate(Math.PI / 4);
+                                ctx.fillStyle = '#e94560';
+                                ctx.fillRect(-5, -5, 10, 10);
+                                ctx.strokeStyle = '#fff';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(-5, -5, 10, 10);
+                                ctx.restore();
+                                
+                                ctx.fillStyle = '#fff';
+                                ctx.font = 'bold 9px sans-serif';
+                                ctx.fillText(cornerLabels[i], c.x - 7, c.y + 20);
+                            }
+                        }
+                        
+                        // Pivot immer anzeigen
+                        ctx.beginPath();
+                        ctx.arc(part.pivotX, part.pivotY, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = '#fff';
+                        ctx.fill();
+                        ctx.strokeStyle = part.color;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    } else {
+                        // Rechteck-Part: Standard-Ecken
+                        const cornerLabels = ['TL', 'TR', 'BR', 'BL'];
+                        for (let i = 0; i < 4; i++) {
+                            const c = corners[i];
+                            
+                            if (state.deformMode) {
+                                // Verzerr-Modus: Diamant-Form (45° gedreht)
+                                ctx.save();
+                                ctx.translate(c.x, c.y);
+                                ctx.rotate(Math.PI / 4);
+                                ctx.fillStyle = '#e94560';  // Rot
+                                ctx.fillRect(-5, -5, 10, 10);
+                                ctx.strokeStyle = '#fff';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(-5, -5, 10, 10);
+                                ctx.restore();
+                            } else {
+                                // Normal-Modus: Quadratischer Handle
+                                ctx.fillStyle = '#fff';
+                                ctx.fillRect(c.x - 6, c.y - 6, 12, 12);
+                                ctx.strokeStyle = part.color;
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(c.x - 6, c.y - 6, 12, 12);
+                            }
+                            
+                            // Label
+                            ctx.fillStyle = state.deformMode ? '#fff' : part.color;
+                            ctx.font = 'bold 9px sans-serif';
+                            ctx.fillText(cornerLabels[i], c.x - 7, c.y + (state.deformMode ? 20 : 3));
+                        }
+                        
+                        // Pivot-Punkt
+                        ctx.beginPath();
+                        ctx.arc(part.pivotX, part.pivotY, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = '#fff';
+                        ctx.fill();
+                        ctx.strokeStyle = part.color;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // Kreuz im Pivot
+                        ctx.beginPath();
+                        ctx.moveTo(part.pivotX - 10, part.pivotY);
+                        ctx.lineTo(part.pivotX + 10, part.pivotY);
+                        ctx.moveTo(part.pivotX, part.pivotY - 10);
+                        ctx.lineTo(part.pivotX, part.pivotY + 10);
+                        ctx.strokeStyle = part.color;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
                 }
                 
-                // Name
+                // Name (bei Polygon an Bounding-Box-Position)
                 ctx.fillStyle = part.color;
                 ctx.font = 'bold 12px sans-serif';
-                ctx.fillText(part.name, part.x + 5, part.y - 5);
+                if (part.polygon) {
+                    ctx.fillText(part.name, part.x + 5, part.y - 8);
+                } else {
+                    ctx.fillText(part.name, corners[0].x + 5, corners[0].y - 8);
+                }
                 
                 ctx.restore();
             }
+            
+            // Polygon-Vorschau zeichnen (wenn im Polygon-Modus)
+            if (state.polygonMode && state.polygonPoints.length > 0) {
+                drawPolygonPreview();
+            }
+        }
+        
+        // Zeichnet die Polygon-Vorschau während der Erstellung
+        function drawPolygonPreview() {
+            const points = state.polygonPoints;
+            if (points.length === 0) return;
+            
+            ctx.save();
+            
+            // Linien zwischen den Punkten
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Punkte zeichnen
+            for (let i = 0; i < points.length; i++) {
+                const p = points[i];
+                const isFirst = i === 0;
+                const radius = isFirst && state.polygonHoverFirst ? 10 : 6;
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = isFirst ? '#4CAF50' : '#81C784';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Nummerierung
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText(i + 1, p.x + 10, p.y - 5);
+            }
+            
+            // Hinweis beim ersten Punkt wenn genug Punkte vorhanden
+            if (points.length >= 3 && state.polygonHoverFirst) {
+                ctx.fillStyle = '#4CAF50';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText('Klick zum Schließen', points[0].x + 15, points[0].y + 20);
+            }
+            
+            ctx.restore();
+        }
+        
+        // Zeichnet ein Polygon-Part (mit Clipping und Verzerrung)
+        function drawPolygonPart(ctx, part, transform, scale) {
+            if (!part.polygon || part.polygon.length < 3) return;
+            
+            // Transformierte Polygon-Punkte berechnen (mit Bounding-Box-Verzerrung)
+            const transformedPoly = getTransformedPolygon(part, transform);
+            
+            ctx.save();
+            
+            // Clipping-Pfad aus transformiertem Polygon erstellen
+            ctx.beginPath();
+            ctx.moveTo(transformedPoly[0].x, transformedPoly[0].y);
+            for (let i = 1; i < transformedPoly.length; i++) {
+                ctx.lineTo(transformedPoly[i].x, transformedPoly[i].y);
+            }
+            ctx.closePath();
+            ctx.clip();
+            
+            // Prüfen ob Verzerrung aktiv ist
+            const hasDeformation = (transform.c0x || 0) !== 0 || (transform.c0y || 0) !== 0 ||
+                                   (transform.c1x || 0) !== 0 || (transform.c1y || 0) !== 0 ||
+                                   (transform.c2x || 0) !== 0 || (transform.c2y || 0) !== 0 ||
+                                   (transform.c3x || 0) !== 0 || (transform.c3y || 0) !== 0;
+            
+            if (hasDeformation) {
+                // Bei Verzerrung: Bild als Quad verzerren
+                const srcCorners = getSourceCorners(part);
+                const dstCorners = getPolygonBoundingBoxCorners(part, transform);
+                drawQuadToQuad(ctx, state.image, srcCorners, dstCorners, scale);
+            } else {
+                // Keine Verzerrung: Bild normal zeichnen
+                const drawW = canvas.width;
+                const drawH = canvas.height;
+                ctx.drawImage(state.image, 0, 0, drawW, drawH);
+            }
+            
+            ctx.restore();
+        }
+        
+        // Zeichnet ein Bild auf ein verzerrtes Quad (perspektivische Transformation)
+        // Verwendet Streifen-Technik für Canvas 2D Approximation
+        function drawQuadImage(ctx, img, srcX, srcY, srcW, srcH, corners) {
+            const strips = 20; // Anzahl der horizontalen Streifen
+            
+            for (let i = 0; i < strips; i++) {
+                const t0 = i / strips;
+                const t1 = (i + 1) / strips;
+                
+                // Lineare Interpolation der Ecken für diesen Streifen
+                const left0 = lerpPoint(corners[0], corners[3], t0);
+                const right0 = lerpPoint(corners[1], corners[2], t0);
+                const left1 = lerpPoint(corners[0], corners[3], t1);
+                const right1 = lerpPoint(corners[1], corners[2], t1);
+                
+                // Source-Bereich für diesen Streifen
+                const stripSrcY = srcY + srcH * t0;
+                const stripSrcH = srcH / strips;
+                
+                // Berechne die affine Transformation für diesen Streifen
+                ctx.save();
+                
+                // Clipping auf das Trapez für diesen Streifen
+                ctx.beginPath();
+                ctx.moveTo(left0.x, left0.y);
+                ctx.lineTo(right0.x, right0.y);
+                ctx.lineTo(right1.x, right1.y);
+                ctx.lineTo(left1.x, left1.y);
+                ctx.closePath();
+                ctx.clip();
+                
+                // Affine Transformation berechnen (3 Punkte -> 3 Punkte)
+                const srcP0 = { x: srcX, y: stripSrcY };
+                const srcP1 = { x: srcX + srcW, y: stripSrcY };
+                const srcP2 = { x: srcX, y: stripSrcY + stripSrcH };
+                
+                // Ziel-Punkte (obere Kante des Streifens)
+                const dstWidth = Math.sqrt(Math.pow(right0.x - left0.x, 2) + Math.pow(right0.y - left0.y, 2));
+                const dstHeight = Math.sqrt(Math.pow(left1.x - left0.x, 2) + Math.pow(left1.y - left0.y, 2));
+                
+                // Einfachere Transformation: Scale + Translate + Rotate
+                const angle = Math.atan2(right0.y - left0.y, right0.x - left0.x);
+                const scaleX = dstWidth / srcW;
+                const scaleY = dstHeight / stripSrcH || scaleX;
+                
+                ctx.translate(left0.x, left0.y);
+                ctx.rotate(angle);
+                ctx.scale(scaleX, scaleY);
+                ctx.translate(-srcX, -stripSrcY);
+                
+                ctx.drawImage(img, srcX, stripSrcY, srcW, stripSrcH * 1.1, srcX, stripSrcY, srcW, stripSrcH * 1.1);
+                
+                ctx.restore();
+            }
+        }
+        
+        // Zeichnet Bildinhalt von einem Quell-Quad auf ein Ziel-Quad
+        // srcCorners: Ecken im Canvas-Koordinatensystem (werden mit scale auf Bild-Koordinaten umgerechnet)
+        // dstCorners: Ziel-Ecken im Canvas
+        function drawQuadToQuad(ctx, img, srcCorners, dstCorners, scale) {
+            const strips = 20; // Anzahl der horizontalen Streifen
+            
+            for (let i = 0; i < strips; i++) {
+                const t0 = i / strips;
+                const t1 = (i + 1) / strips;
+                
+                // Source-Streifen-Ecken (in Canvas-Koordinaten)
+                const srcLeft0 = lerpPoint(srcCorners[0], srcCorners[3], t0);
+                const srcRight0 = lerpPoint(srcCorners[1], srcCorners[2], t0);
+                const srcLeft1 = lerpPoint(srcCorners[0], srcCorners[3], t1);
+                const srcRight1 = lerpPoint(srcCorners[1], srcCorners[2], t1);
+                
+                // Ziel-Streifen-Ecken
+                const dstLeft0 = lerpPoint(dstCorners[0], dstCorners[3], t0);
+                const dstRight0 = lerpPoint(dstCorners[1], dstCorners[2], t0);
+                const dstLeft1 = lerpPoint(dstCorners[0], dstCorners[3], t1);
+                const dstRight1 = lerpPoint(dstCorners[1], dstCorners[2], t1);
+                
+                // Source-Bereich im Bild (mit scale umrechnen)
+                const srcX = Math.min(srcLeft0.x, srcRight0.x, srcLeft1.x, srcRight1.x) * scale;
+                const srcY = Math.min(srcLeft0.y, srcRight0.y) * scale;
+                const srcW = (Math.max(srcLeft0.x, srcRight0.x, srcLeft1.x, srcRight1.x) - 
+                             Math.min(srcLeft0.x, srcRight0.x, srcLeft1.x, srcRight1.x)) * scale;
+                const srcH = (Math.max(srcLeft1.y, srcRight1.y) - Math.min(srcLeft0.y, srcRight0.y)) * scale;
+                
+                if (srcW <= 0 || srcH <= 0) continue;
+                
+                ctx.save();
+                
+                // Clipping auf das Ziel-Trapez
+                ctx.beginPath();
+                ctx.moveTo(dstLeft0.x, dstLeft0.y);
+                ctx.lineTo(dstRight0.x, dstRight0.y);
+                ctx.lineTo(dstRight1.x, dstRight1.y);
+                ctx.lineTo(dstLeft1.x, dstLeft1.y);
+                ctx.closePath();
+                ctx.clip();
+                
+                // Transformation berechnen
+                const dstWidth = Math.sqrt(Math.pow(dstRight0.x - dstLeft0.x, 2) + Math.pow(dstRight0.y - dstLeft0.y, 2));
+                const dstHeight = Math.sqrt(Math.pow(dstLeft1.x - dstLeft0.x, 2) + Math.pow(dstLeft1.y - dstLeft0.y, 2));
+                
+                const angle = Math.atan2(dstRight0.y - dstLeft0.y, dstRight0.x - dstLeft0.x);
+                const scaleX = dstWidth / (srcW / scale);
+                const scaleY = dstHeight / (srcH / scale) || scaleX;
+                
+                ctx.translate(dstLeft0.x, dstLeft0.y);
+                ctx.rotate(angle);
+                ctx.scale(scaleX, scaleY);
+                
+                // Zeichne das Quellfragment
+                ctx.drawImage(img, 
+                    srcX, srcY, srcW, srcH * 1.1,
+                    0, 0, srcW / scale, (srcH / scale) * 1.1
+                );
+                
+                ctx.restore();
+            }
+        }
+        
+        // Hilfsfunktion: Punkt-Interpolation
+        function lerpPoint(p1, p2, t) {
+            return {
+                x: p1.x + (p2.x - p1.x) * t,
+                y: p1.y + (p2.y - p1.y) * t
+            };
         }
         
         // ============================================================
@@ -1253,6 +1991,51 @@
                                onchange="updatePartTransform(${part.id}, 'skewY', parseFloat(this.value))">
                     </div>
                 </div>
+                <h4 style="color: #888; font-size: 11px; margin: 10px 0 5px;">ECKEN-VERFORMUNG</h4>
+                <p class="help-text" style="margin-bottom: 5px;">Ziehe die Ecken (TL/TR/BR/BL) im Auswahl-Modus oder gib Werte ein:</p>
+                <div class="properties-grid">
+                    <div class="prop-group">
+                        <span class="prop-label">↖ TL X</span>
+                        <input type="number" value="${Math.round(transform.c0x || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c0x', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↖ TL Y</span>
+                        <input type="number" value="${Math.round(transform.c0y || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c0y', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↗ TR X</span>
+                        <input type="number" value="${Math.round(transform.c1x || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c1x', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↗ TR Y</span>
+                        <input type="number" value="${Math.round(transform.c1y || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c1y', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↘ BR X</span>
+                        <input type="number" value="${Math.round(transform.c2x || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c2x', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↘ BR Y</span>
+                        <input type="number" value="${Math.round(transform.c2y || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c2y', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↙ BL X</span>
+                        <input type="number" value="${Math.round(transform.c3x || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c3x', parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">↙ BL Y</span>
+                        <input type="number" value="${Math.round(transform.c3y || 0)}" 
+                               onchange="updatePartTransform(${part.id}, 'c3y', parseFloat(this.value))">
+                    </div>
+                </div>
+                <button onclick="resetCorners(${part.id})" style="margin-top: 8px; width: 100%; padding: 4px;">Ecken zurücksetzen</button>
                 <p class="help-text" style="margin-top: 8px;">Z: -100=weit weg, +100=nah<br>Skew: Perspektive neigen</p>
             `;
         }
@@ -1279,6 +2062,32 @@
             part.keyframes[state.currentFrame][prop] = value;
             updateTimeline();
             render();
+        }
+        
+        function resetCorners(id) {
+            const part = state.parts.find(p => p.id === id);
+            if (!part) return;
+            
+            // Keyframe erstellen falls nicht vorhanden
+            if (!part.keyframes[state.currentFrame]) {
+                const interpolated = getInterpolatedTransform(part, state.currentFrame);
+                part.keyframes[state.currentFrame] = { ...interpolated };
+            }
+            
+            // Alle Ecken auf 0 setzen
+            part.keyframes[state.currentFrame].c0x = 0;
+            part.keyframes[state.currentFrame].c0y = 0;
+            part.keyframes[state.currentFrame].c1x = 0;
+            part.keyframes[state.currentFrame].c1y = 0;
+            part.keyframes[state.currentFrame].c2x = 0;
+            part.keyframes[state.currentFrame].c2y = 0;
+            part.keyframes[state.currentFrame].c3x = 0;
+            part.keyframes[state.currentFrame].c3y = 0;
+            
+            updateTimeline();
+            updatePropertiesPanel();
+            render();
+            setStatus('Ecken zurückgesetzt');
         }
         
         function updateTimeline() {
@@ -1320,13 +2129,40 @@
         // ============================================================
         
         function saveProject() {
+            // Speichere das Originalbild als Base64
+            let imageData = null;
+            if (state.image) {
+                // Originalbild in voller Auflösung speichern
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = state.image.width;
+                tempCanvas.height = state.image.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(state.image, 0, 0);
+                imageData = tempCanvas.toDataURL('image/png');
+            }
+            
             const project = {
-                version: 1,
+                version: 2,
                 totalFrames: state.totalFrames,
                 fps: parseInt(document.getElementById('animFPS').value) || 12,
-                parts: state.parts,
+                // Bildinfos
+                imageWidth: state.image?.width || 0,
+                imageHeight: state.image?.height || 0,
+                canvasWidth: canvas.width,
+                canvasHeight: canvas.height,
+                // Parts mit normalisierten Koordinaten (0-1)
+                parts: state.parts.map(part => ({
+                    ...part,
+                    // Normalisierte Koordinaten für Bild-unabhängige Animation
+                    normalizedX: part.x / canvas.width,
+                    normalizedY: part.y / canvas.height,
+                    normalizedW: part.width / canvas.width,
+                    normalizedH: part.height / canvas.height,
+                    normalizedPivotX: part.pivotX / canvas.width,
+                    normalizedPivotY: part.pivotY / canvas.height
+                })),
                 // Bild als DataURL speichern
-                image: state.image ? canvas.toDataURL() : null
+                image: imageData
             };
             
             const json = JSON.stringify(project, null, 2);
@@ -1335,7 +2171,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'animation.cashfish-anim';
+            a.download = 'animation.anim.json';
             a.click();
             
             URL.revokeObjectURL(url);
@@ -1345,7 +2181,7 @@
         function loadProject() {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = '.cashfish-anim,.json';
+            input.accept = '.anim.json,.cashfish-anim,.json';
             input.onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1368,18 +2204,28 @@
                             img.onload = () => {
                                 state.image = img;
                                 state.imageLoaded = true;
+                                
+                                // Canvas-Größe aus Projekt wiederherstellen
+                                if (project.canvasWidth && project.canvasHeight) {
+                                    canvas.width = project.canvasWidth;
+                                    canvas.height = project.canvasHeight;
+                                }
+                                
                                 document.getElementById('dropZone').classList.add('hidden');
+                                updatePartsList();
+                                updatePropertiesPanel();
+                                updateTimeline();
                                 render();
                             };
                             img.src = project.image;
+                        } else {
+                            updatePartsList();
+                            updatePropertiesPanel();
+                            updateTimeline();
+                            render();
                         }
                         
-                        updatePartsList();
-                        updatePropertiesPanel();
-                        updateTimeline();
                         updateFrameDisplay();
-                        render();
-                        
                         setStatus('Projekt geladen!');
                     } catch (err) {
                         alert('Fehler beim Laden: ' + err.message);
@@ -1441,6 +2287,15 @@
                 for (const part of state.parts) {
                     const transform = getInterpolatedTransform(part, frame);
                     
+                    // Ecken berechnen
+                    const corners = getPartCorners(part, transform);
+                    
+                    // Prüfen ob Animation-Ecken verzerrt sind (V-Modus)
+                    const hasCornerDeformation = (transform.c0x || 0) !== 0 || (transform.c0y || 0) !== 0 ||
+                                                 (transform.c1x || 0) !== 0 || (transform.c1y || 0) !== 0 ||
+                                                 (transform.c2x || 0) !== 0 || (transform.c2y || 0) !== 0 ||
+                                                 (transform.c3x || 0) !== 0 || (transform.c3y || 0) !== 0;
+                    
                     ectx.save();
                     ectx.scale(scale, scale);
                     ectx.translate(offsetX / scale, offsetY / scale);
@@ -1462,15 +2317,25 @@
                     
                     // Teil des Originalbilds zeichnen
                     if (state.image) {
-                        const srcX = part.x * (state.image.width / canvas.width);
-                        const srcY = part.y * (state.image.height / canvas.height);
-                        const srcW = part.width * (state.image.width / canvas.width);
-                        const srcH = part.height * (state.image.height / canvas.height);
+                        const imgScale = state.image.width / canvas.width;
                         
-                        ectx.drawImage(state.image, 
-                            srcX, srcY, srcW, srcH,
-                            part.x, part.y, part.width, part.height
-                        );
+                        // Quell-Ecken (Rechteck)
+                        const sourceCorners = getSourceCorners(part);
+                        
+                        if (hasCornerDeformation) {
+                            // Quad-zu-Quad Rendering
+                            drawQuadToQuad(ectx, state.image, sourceCorners, corners, imgScale);
+                        } else {
+                            // Standard-Rendering (kein Animations-Offset)
+                            const srcX = part.x * imgScale;
+                            const srcY = part.y * imgScale;
+                            const srcW = part.width * imgScale;
+                            const srcH = part.height * imgScale;
+                            ectx.drawImage(state.image, 
+                                srcX, srcY, srcW, srcH,
+                                part.x, part.y, part.width, part.height
+                            );
+                        }
                     }
                     
                     ectx.restore();

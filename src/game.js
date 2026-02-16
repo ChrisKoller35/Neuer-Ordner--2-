@@ -29,10 +29,17 @@ import {
 	ManifestAssets,
 	createLazySpriteProxy,
 	getLazySprite,
-	AssetManager
+	AssetManager,
+	updateLazySpriteSource
 } from './core/assets.js';
 
 import { updateAllGrids } from './core/spatial.js';
+
+// === Chunk Loading System ===
+import { createChunkLoader } from './core/chunkLoader.js';
+
+// === Overworld (Top-Down Open-World Stadt) ===
+import { createOverworldState, updateOverworld, renderOverworld } from './overworld/overworld.js';
 
 // === JSON Data ===
 import itemsData from './data/items.json';
@@ -160,6 +167,60 @@ Object.defineProperty(window, 'LEVEL4_FLOOR_SPRITE', { get: () => getLevelFloorS
 // Sprite-Pfade aus JSON (Lazy Loading)
 const SPRITE_PATHS = spritesData.sprites;
 const CITY_TILE_PATHS = spritesData.cityTiles;
+const PLAYER_VARIANTS = spritesData.playerVariants || {
+	player: './Player.png',
+	pinkqualle: './Playerpinkqualle.png',
+	kleinerdrache: './playerkleinerdrache.png',
+	engelfisch: './Playerengelfisch.png'
+};
+
+// Aktiver Spieler-Sprite (wird von Charakterauswahl gesetzt)
+let _selectedPlayerSprite = null;
+let _lastSelectedCharacter = null;
+
+function getSelectedPlayerSprite() {
+	// Hole den aktuell ausgewählten Charakter
+	const selectedChar = (typeof window !== 'undefined' && window.selectedCharacter) || 'player';
+	
+	// Wenn sich die Auswahl geändert hat, Cache invalidieren und Sprite-Pfad aktualisieren
+	if (_lastSelectedCharacter !== selectedChar) {
+		_selectedPlayerSprite = null;
+		_lastSelectedCharacter = selectedChar;
+		
+		// Aktualisiere den Lazy-Sprite-Pfad
+		const spritePath = PLAYER_VARIANTS[selectedChar] || PLAYER_VARIANTS.player;
+		updateLazySpriteSource('player', spritePath);
+	}
+	
+	// Sprite laden falls nicht gecacht
+	if (!_selectedPlayerSprite) {
+		const spritePath = PLAYER_VARIANTS[selectedChar] || PLAYER_VARIANTS.player;
+		_selectedPlayerSprite = AssetManager.load(spritePath, "player");
+		console.log('[Cashfisch] Player-Sprite geladen:', selectedChar, spritePath);
+	}
+	
+	return _selectedPlayerSprite;
+}
+
+// Funktion zum Zurücksetzen des Player-Sprite-Caches (bei Charakterwechsel)
+function resetPlayerSpriteCache() {
+	const selectedChar = (typeof window !== 'undefined' && window.selectedCharacter) || 'player';
+	const spritePath = PLAYER_VARIANTS[selectedChar] || PLAYER_VARIANTS.player;
+	
+	// Lokalen Cache zurücksetzen
+	_selectedPlayerSprite = null;
+	_lastSelectedCharacter = null;
+	
+	// Lazy-Sprite-System aktualisieren
+	updateLazySpriteSource('player', spritePath);
+	
+	console.log('[Cashfisch] Player-Sprite-Cache zurückgesetzt für:', selectedChar);
+}
+
+// Exportiere für externe Nutzung
+if (typeof window !== 'undefined') {
+	window.resetPlayerSpriteCache = resetPlayerSpriteCache;
+}
 
 // Lazy-geladene City Tiles
 let _cityTilesLoaded = false;
@@ -175,6 +236,8 @@ function getCityTiles() {
 
 // SPRITES Proxy - lädt Assets bei erstem Zugriff
 const SPRITES = createLazySpriteProxy(SPRITE_PATHS);
+
+// Player-Sprite wird über updateLazySpriteSource aktualisiert (siehe resetPlayerSpriteCache)
 
 // cityTiles muss separat behandelt werden (ist ein Array)
 Object.defineProperty(SPRITES, 'cityTiles', {
@@ -374,8 +437,114 @@ function bootGame() {
 
 	// State aus Factory erstellen
 	const state = createInitialState(canvas);
+	
+	// Chunk Loading System erstellen
+	const chunkLoaderCtx = {
+		getState: () => state,
+		getCanvas: () => canvas,
+		SPRITES,
+		spriteReady
+	};
+	const chunkLoader = createChunkLoader(chunkLoaderCtx);
+	state.chunkLoader = chunkLoader;
+	state.showChunkDebug = true;  // Debug-Anzeige aktivieren (kann später deaktiviert werden)
 
 	// City UI initialisieren
+	// Mission-Start-Funktion für unterschiedliche Missionen
+	function startMission(missionId) {
+		// Finde die Mission in den Daten
+		const mission = cityMissions.find(m => m.id === missionId);
+		const startLevel = mission ? mission.startLevel : 0;
+		
+		// Grundlegendes Reset
+		state.mode = "game";
+		state.started = true;
+		state.paused = false;
+		state.over = false;
+		state.win = false;
+		state.score = 0;
+		state.coins = 0;
+		state.hearts = 3;
+		state.levelIndex = startLevel;
+		state.levelScore = 0;
+		state.elapsed = 0;
+		state.lastTick = performance.now();
+		state.player.x = canvas.width * 0.28;
+		state.player.y = canvas.height * 0.6;
+		state.player.dir = 1;
+		state.player.baseSpeed = state.player.baseSpeed == null ? 0.32 : state.player.baseSpeed;
+		state.player.speed = state.player.baseSpeed;
+		state.player.perfumeSlowTimer = 0;
+		
+		// Bei Mission 2+ behalten wir alle Abilities
+		if (missionId === "mission-1" || !missionId) {
+			// Mission 1: Alles zurücksetzen
+			state.player.shieldUnlocked = false;
+			state.coralAbility.unlocked = false;
+			state.tsunamiAbility.unlocked = false;
+		} else {
+			// Mission 2+: Spieler startet mit allen freigeschalteten Abilities
+			state.player.shieldUnlocked = true;
+			state.coralAbility.unlocked = true;
+			state.tsunamiAbility.unlocked = true;
+		}
+		
+		// Shield/Abilities Reset (Status, nicht Unlock)
+		state.player.shieldActive = false;
+		state.armorShieldCharges = cityInventory.equipment.armor === ARMOR_ITEM_NAME ? 1 : 0;
+		cityUI.reset();
+		state.player.shieldTimer = 0;
+		state.player.shieldCooldown = 0;
+		state.player.shieldLastActivation = 0;
+		state.player.shieldLastBlock = 0;
+		state.player.invulnFor = 0;
+		state.player.shotCooldown = 0;
+		
+		// Boss Reset
+		state.boss.entryTargetX = canvas.width * 0.72;
+		state.boss.entryTargetY = canvas.height * 0.48;
+		state.boss.x = state.boss.entryTargetX;
+		state.boss.y = state.boss.entryTargetY;
+		state.boss.dir = -1;
+		state.boss.active = false;
+		state.boss.pulse = 0;
+		state.boss.lastAttack = null;
+		state.boss.finFlip = false;
+		state.boss.entering = false;
+		state.boss.entryProgress = 0;
+		
+		// Clear arrays
+		clearAllStateArrays(state);
+		
+		// Ability status reset (nicht unlock)
+		state.coralAbility.active = false;
+		state.coralAbility.timer = 0;
+		state.coralAbility.cooldown = 0;
+		state.tsunamiWave = null;
+		state.tsunamiAbility.used = false;
+		state.tsunamiAbility.active = false;
+		state.pendingSymbolAdvance = null;
+		state.eventFlash = null;
+		state.coverRockSpawned = false;
+		state.city = null;
+		
+		// Level anwenden
+		applyLevelConfig(startLevel, { skipFlash: false });
+		state.boss.x = state.boss.entryTargetX == null ? canvas.width * 0.72 : state.boss.entryTargetX;
+		state.boss.y = state.boss.entryTargetY == null ? canvas.height * 0.48 : state.boss.entryTargetY;
+		state.boss.entering = false;
+		state.boss.entryProgress = 0;
+		state.boss.dir = -1;
+		primeFoes();
+		seedBubbles();
+		updateHUD();
+		hidePickupMessage();
+		if (endOverlay) endOverlay.style.display = "none";
+		controlsArmed = true;
+		
+		console.log(`Mission ${missionId} gestartet bei Level ${startLevel + 1}`);
+	}
+
 	const cityUI = createCityUI({
 		elements: {
 			inventoryEl: cityInventoryEl,
@@ -389,6 +558,7 @@ function bootGame() {
 		shopItems: cityShopItems,
 		missions: cityMissions,
 		onResetGame: () => resetGame(),
+		onStartMission: (missionId) => startMission(missionId),
 		onUpdateHUD: () => updateHUD(),
 		armorItemName: ARMOR_ITEM_NAME
 	});
@@ -1214,6 +1384,60 @@ function bootGame() {
 		updateCityModule(cityUpdateCtx, dt);
 	}
 
+	/**
+	 * Update camera to follow player in world mode
+	 */
+	function updateCamera(dt) {
+		if (!state.worldMode || !state.camera || !state.camera.enabled) return;
+		
+		const camera = state.camera;
+		const player = state.player;
+		
+		// Calculate where camera should look (centered on player with dead zone)
+		const playerScreenX = player.x - camera.x;
+		const playerScreenY = player.y - camera.y;
+		
+		// Horizontal following with dead zone
+		const centerX = canvas.width / 2;
+		const leftBound = centerX - camera.deadZoneX / 2;
+		const rightBound = centerX + camera.deadZoneX / 2;
+		
+		if (playerScreenX < leftBound) {
+			camera.targetX = player.x - leftBound;
+		} else if (playerScreenX > rightBound) {
+			camera.targetX = player.x - rightBound;
+		}
+		
+		// Vertical following with dead zone
+		const centerY = canvas.height / 2;
+		const topBound = centerY - camera.deadZoneY / 2;
+		const bottomBound = centerY + camera.deadZoneY / 2;
+		
+		if (playerScreenY < topBound) {
+			camera.targetY = player.y - topBound;
+		} else if (playerScreenY > bottomBound) {
+			camera.targetY = player.y - bottomBound;
+		}
+		
+		// Clamp target to world bounds
+		camera.targetX = Math.max(0, Math.min(camera.targetX, camera.worldWidth - camera.viewWidth));
+		camera.targetY = Math.max(0, Math.min(camera.targetY, camera.worldHeight - camera.viewHeight));
+		
+		// Smooth interpolation towards target
+		const lerpFactor = 1 - Math.pow(1 - camera.followSpeed, dt / 16);
+		camera.x += (camera.targetX - camera.x) * lerpFactor;
+		camera.y += (camera.targetY - camera.y) * lerpFactor;
+		
+		// Snap if very close
+		if (Math.abs(camera.x - camera.targetX) < 0.5) camera.x = camera.targetX;
+		if (Math.abs(camera.y - camera.targetY) < 0.5) camera.y = camera.targetY;
+		
+		// Update chunk loading based on camera position
+		if (state.chunkLoader && state.useChunkLoading) {
+			state.chunkLoader.updateLoadedChunks();
+		}
+	}
+
 	function update(dt) {
 		state.frameDt = dt;
 		
@@ -1221,6 +1445,7 @@ function bootGame() {
 		updateAllGrids(state);
 		
 		playerUpdater.updatePlayer(dt);
+		updateCamera(dt);  // Camera follows player after movement
 		abilities.updateCoralAllies(dt);
 		pickups.updateCoralEffects(dt);
 		pickups.updateBubbles(dt);
@@ -1532,6 +1757,59 @@ function bootGame() {
 		renderCityModule(cityRenderCtx);
 	}
 
+	// === OVERWORLD (Top-Down Open-World Stadt) ===
+	function enterOverworld() {
+		state.mode = "overworld";
+		state.started = true;
+		state.paused = false;
+		state.over = false;
+		state.win = false;
+		state.overworld = createOverworldState(canvas);
+		clearAllStateArrays(state);
+		state.boss.active = false;
+		pointer.shoot = false;
+		cityUI.reset();
+		if (bannerEl) bannerEl.textContent = "Unterwasser-Oberwelt";
+		if (endOverlay) endOverlay.style.display = "none";
+		// HTML UI Elemente verstecken
+		if (cityInventoryEl) cityInventoryEl.style.display = "none";
+		if (cityMerchantEl) cityMerchantEl.style.display = "none";
+		if (cityMissionEl) cityMissionEl.style.display = "none";
+		if (citySpriteDebugPanel) citySpriteDebugPanel.style.display = "none";
+		const gameWrap = document.getElementById("gameWrap");
+		const startScreen = document.getElementById("startScreen");
+		const cutWrap = document.getElementById("cutWrap");
+		if (gameWrap) gameWrap.style.display = "block";
+		if (startScreen) startScreen.style.display = "none";
+		if (cutWrap) cutWrap.style.display = "none";
+		controlsArmed = true;
+		updateHUD();
+		console.log('[Cashfisch] Overworld betreten');
+	}
+
+	function exitOverworld() {
+		state.overworld = null;
+		enterCity();
+		console.log('[Cashfisch] Overworld verlassen → Stadt');
+	}
+
+	function updateOverworldMode(dt) {
+		if (!state.overworld) return;
+		const input = {
+			left:  keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
+			right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
+			up:    keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
+			down:  keys.has('s') || keys.has('S') || keys.has('ArrowDown')
+		};
+		updateOverworld(state.overworld, input, dt, canvas);
+	}
+
+	function renderOverworldMode() {
+		if (!state.overworld) return;
+		renderOverworld(ctx, state.overworld);
+		gameRenderer.renderDebugLabel();
+	}
+
 	// Buildings-Manager initialisieren
 	const buildingsManager = createBuildingsManager({
 		getState: () => state,
@@ -1555,6 +1833,12 @@ function bootGame() {
 	buildingsManager.init();
 
 	function render() {
+		// Overworld-Modus (Top-Down Open-World)
+		if (state.mode === "overworld") {
+			renderOverworldMode();
+			return;
+		}
+
 		// Building-Modus (Gebäude-Szene)
 		if (state.mode === "building") {
 			buildingsManager.render(ctx);
@@ -1577,8 +1861,19 @@ function bootGame() {
 		if (cityMerchantEl) cityMerchantEl.style.display = "none";
 		if (cityMissionEl) cityMissionEl.style.display = "none";
 		if (citySpriteDebugPanel) citySpriteDebugPanel.style.display = "none";
+		
+		// Background (handles its own camera transform for world mode)
 		backgroundRenderer.renderBackground();
 		backgroundRenderer.renderBubbles();
+		
+		// Apply camera transform for world objects
+		const useCamera = state.worldMode && state.camera && state.camera.enabled;
+		if (useCamera) {
+			ctx.save();
+			ctx.translate(-Math.round(state.camera.x), -Math.round(state.camera.y));
+		}
+		
+		// World objects (transformed by camera)
 		foeRenderer.renderFoes();
 		backgroundRenderer.renderCoverRocks();
 		backgroundRenderer.renderTsunamiWave();
@@ -1587,7 +1882,6 @@ function bootGame() {
 		gameRenderer.renderCoralAllies();
 		gameRenderer.renderCoinDrops();
 		gameRenderer.renderSymbolDrops();
-		bossUI.renderBossHpBar();
 		bossRenderer.renderBossDiamondBeams();
 		bossRenderer.renderBossFinSweeps();
 		bossRenderer.renderBossWakeWaves();
@@ -1605,9 +1899,17 @@ function bootGame() {
 		gameRenderer.renderShots();
 		bossUI.renderBoss();
 		gameRenderer.renderHealBursts();
-		gameRenderer.renderEventFlash();
 		gameRenderer.renderPlayer();
 		backgroundRenderer.renderFloorOverlay();
+		
+		// Restore camera transform
+		if (useCamera) {
+			ctx.restore();
+		}
+		
+		// UI elements (not affected by camera)
+		bossUI.renderBossHpBar();
+		gameRenderer.renderEventFlash();
 		gameRenderer.renderDebugLabel();
 	}
 
@@ -1630,7 +1932,9 @@ function bootGame() {
 				up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
 				down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
 			};
-			if (state.mode === "building") {
+			if (state.mode === "overworld") {
+				updateOverworldMode(dt);
+			} else if (state.mode === "building") {
 				buildingsManager.update(dt, buildingKeys);
 			} else if (state.mode === "city") {
 				updateCity(dt);
@@ -1659,6 +1963,12 @@ function bootGame() {
 				cityUI.setInventoryOpen(!cityUI.isInventoryOpen());
 				if (bannerEl) bannerEl.textContent = cityUI.isInventoryOpen() ? "Inventar geöffnet (I)" : "Inventar geschlossen";
 				event.preventDefault();
+				return;
+			}
+			// Overworld betreten mit "O"
+			if (event.key === "o" || event.key === "O") {
+				event.preventDefault();
+				enterOverworld();
 				return;
 			}
 		}
@@ -1703,6 +2013,47 @@ function bootGame() {
 				enterCity();
 				return;
 			}
+			// Alt+Shift+9: Level 9 (Mission 3 - World Mode Multi-Scene)
+			if (event.code === "Digit9") {
+				event.preventDefault();
+				debugJumpToLevel(8, { skipToBoss: false }); // Level 9 - Korallenexpedition (World Mode)
+				return;
+			}
+			// Alt+Shift+0: Overworld (Top-Down Open-World Stadt)
+			if (event.code === "Digit0") {
+				event.preventDefault();
+				enterOverworld();
+				return;
+			}
+		}
+		// Ctrl+Shift+6-9: Direkt zum Boss von Level 5-8 springen
+		if (DEBUG_SHORTCUTS && event.ctrlKey && event.shiftKey) {
+			if (event.code === "Digit6") {
+				event.preventDefault();
+				debugJumpToLevel(4, { skipToBoss: true }); // Level 5 Boss (Leviathan)
+				return;
+			}
+			if (event.code === "Digit7") {
+				event.preventDefault();
+				debugJumpToLevel(5, { skipToBoss: true }); // Level 6 Boss (Hydra)
+				return;
+			}
+			if (event.code === "Digit8") {
+				event.preventDefault();
+				debugJumpToLevel(6, { skipToBoss: true }); // Level 7 Boss (Deepsea-Kraken)
+				return;
+			}
+			if (event.code === "Digit9") {
+				event.preventDefault();
+				debugJumpToLevel(7, { skipToBoss: true }); // Level 8 Boss (Titan)
+				return;
+			}
+		}
+		// ESC in Overworld → zurück zur Stadt
+		if (state.mode === "overworld" && (event.key === "Escape" || event.code === "Escape")) {
+			event.preventDefault();
+			exitOverworld();
+			return;
 		}
 		keys.add(event.key);
 		if (state.started && !state.over && !state.paused && state.mode === "game" && isShieldActivationKey(event)) {
@@ -1717,7 +2068,7 @@ function bootGame() {
 		}
 		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
 			event.preventDefault();
-			if (state.mode === "city") return;
+			if (state.mode === "city" || state.mode === "overworld") return;
 			pointer.shoot = true;
 			if (!state.started) {
 				if (!controlsArmed) return;
@@ -1863,7 +2214,7 @@ function bootGame() {
 	
 	// Mouse-Events für Building Debug-Drag-Mode und Grid-Editor
 	canvas.addEventListener("mousedown", event => {
-		if (state.mode === "building") {
+		if (state.mode === "building" || state.mode === "city") {
 			const rect = canvas.getBoundingClientRect();
 			const scaleX = canvas.width / rect.width;
 			const scaleY = canvas.height / rect.height;
@@ -1877,7 +2228,7 @@ function bootGame() {
 	});
 	
 	canvas.addEventListener("mouseup", event => {
-		if (state.mode === "building") {
+		if (state.mode === "building" || state.mode === "city") {
 			const rect = canvas.getBoundingClientRect();
 			const scaleX = canvas.width / rect.width;
 			const scaleY = canvas.height / rect.height;
@@ -1889,7 +2240,7 @@ function bootGame() {
 	
 	// Rechtsklick-Menü verhindern im Building-Modus (für Grid-Editor)
 	canvas.addEventListener("contextmenu", event => {
-		if (state.mode === "building") {
+		if (state.mode === "building" || state.mode === "city") {
 			event.preventDefault();
 		}
 	});
@@ -1898,7 +2249,7 @@ function bootGame() {
 		pointer.down = false;
 		pointer.shoot = false;
 		// Building Grid-Editor beenden (auch wenn Maus außerhalb des Canvas)
-		if (state.mode === "building") {
+		if (state.mode === "building" || state.mode === "city") {
 			buildingsManager.handleMouseUp(0, 0, event.button);
 			// Pointer-Capture freigeben
 			if (canvas.hasPointerCapture && canvas.hasPointerCapture(event.pointerId)) {

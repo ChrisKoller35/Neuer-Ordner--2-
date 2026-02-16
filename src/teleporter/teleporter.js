@@ -19,6 +19,11 @@ export const TELEPORTER_CONFIG = {
 	teleportDuration: 800
 };
 
+// ===== CITY PORTAL POSITION STORAGE =====
+const CITY_PORTAL_STORAGE_KEY = 'CITY_TELEPORTER_POSITION';
+// Fest eingebaute Position (vom Benutzer mit Portal-Editor festgelegt)
+const DEFAULT_CITY_PORTAL_POSITION = { x: 1350.54262597656, y: 521.276874023439 };
+
 /**
  * Erstellt das Teleporter-System
  * @param {Object} ctx - Kontext mit Abhängigkeiten
@@ -49,16 +54,63 @@ export function createTeleporterSystem(ctx) {
 	
 	// Teleporter-Position in der Stadt (FESTE Weltkoordinaten)
 	// Diese Position ist relativ zur Stadt-Welt, nicht zur Canvas
-	let teleporterWorldPosition = { x: 960, y: 400 };
+	let teleporterWorldPosition = { ...DEFAULT_CITY_PORTAL_POSITION };
+	
+	// ===== DEBUG DRAG MODE für Stadt-Portal =====
+	let debugDragMode = false;
+	let isDragging = false;
+	
+	// Lädt gespeicherte Position aus localStorage
+	function loadSavedPosition() {
+		try {
+			const saved = localStorage.getItem(CITY_PORTAL_STORAGE_KEY);
+			if (saved) {
+				const pos = JSON.parse(saved);
+				teleporterWorldPosition = { x: pos.x, y: pos.y };
+				console.log('[Teleporter] Stadt-Portal-Position geladen:', teleporterWorldPosition);
+			}
+		} catch (e) {
+			console.warn('[Teleporter] Fehler beim Laden der Position:', e);
+		}
+	}
+	
+	// Speichert aktuelle Position
+	function savePosition() {
+		try {
+			localStorage.setItem(CITY_PORTAL_STORAGE_KEY, JSON.stringify(teleporterWorldPosition));
+			console.log('[Teleporter] Stadt-Portal-Position gespeichert:', teleporterWorldPosition);
+		} catch (e) {
+			console.warn('[Teleporter] Fehler beim Speichern:', e);
+		}
+	}
+	
+	// Exportiert Position in Zwischenablage
+	function exportPositionToClipboard() {
+		savePosition();
+		const exportData = `// Stadt-Portal Position
+CITY_TELEPORTER: { x: ${teleporterWorldPosition.x}, y: ${teleporterWorldPosition.y} }`;
+		
+		navigator.clipboard.writeText(exportData).then(() => {
+			alert('✅ Stadt-Portal-Position gespeichert & kopiert!\n\n' + exportData);
+		}).catch(err => {
+			alert('Position: x=' + teleporterWorldPosition.x + ', y=' + teleporterWorldPosition.y);
+		});
+	}
 	
 	/**
 	 * Initialisiert den Teleporter
 	 */
 	function init() {
+		// Zuerst gespeicherte Position laden
+		loadSavedPosition();
+		
 		const data = getTeleporterData();
 		// Position als feste Weltkoordinaten (nicht prozentual)
-		if (data?.teleporter?.main_city?.worldPosition) {
-			teleporterWorldPosition = data.teleporter.main_city.worldPosition;
+		// Nur überschreiben wenn KEINE gespeicherte Position existiert
+		if (!localStorage.getItem(CITY_PORTAL_STORAGE_KEY)) {
+			if (data?.teleporter?.main_city?.worldPosition) {
+				teleporterWorldPosition = data.teleporter.main_city.worldPosition;
+			}
 		}
 		
 		// Sprite laden oder Platzhalter
@@ -259,6 +311,35 @@ export function createTeleporterSystem(ctx) {
 		if (isTeleporting) {
 			renderTeleportEffect(ctx2d, canvas);
 		}
+		
+		// ===== DEBUG DRAG MODE UI =====
+		if (debugDragMode) {
+			// Highlight um Teleporter
+			ctx2d.strokeStyle = '#ff00ff';
+			ctx2d.lineWidth = 3;
+			ctx2d.setLineDash([5, 5]);
+			ctx2d.beginPath();
+			ctx2d.arc(x, y, 50, 0, Math.PI * 2);
+			ctx2d.stroke();
+			ctx2d.setLineDash([]);
+			
+			// Info-Panel
+			ctx2d.fillStyle = 'rgba(255, 0, 255, 0.95)';
+			ctx2d.fillRect(10, 10, 320, 110);
+			ctx2d.fillStyle = '#ffffff';
+			ctx2d.font = 'bold 16px Arial';
+			ctx2d.textAlign = 'left';
+			ctx2d.textBaseline = 'top';
+			ctx2d.fillText('🔧 STADT-PORTAL EDITOR', 20, 18);
+			ctx2d.font = '12px Arial';
+			ctx2d.fillText('Klicke & ziehe das Portal', 20, 40);
+			ctx2d.fillStyle = '#00ffff';
+			ctx2d.fillText(`Position: x=${teleporterWorldPosition.x.toFixed(0)}, y=${teleporterWorldPosition.y.toFixed(0)}`, 20, 58);
+			ctx2d.fillStyle = '#ffff00';
+			ctx2d.fillText('[C] Speichern & Kopieren', 20, 78);
+			ctx2d.fillStyle = '#ff6666';
+			ctx2d.fillText('[P] Editor beenden', 20, 96);
+		}
 	}
 	
 	/**
@@ -288,8 +369,24 @@ export function createTeleporterSystem(ctx) {
 	function handleKeyDown(key, code) {
 		if (isTeleporting) return false;
 		
-		// E-Taste bei Teleporter
-		if (isNearTeleporter && 
+		// P für Debug-Drag-Modus toggle
+		if (key.toLowerCase() === 'p' || code === 'KeyP') {
+			debugDragMode = !debugDragMode;
+			console.log(`%c[Teleporter] PORTAL EDITOR: ${debugDragMode ? 'AKTIVIERT' : 'DEAKTIVIERT'}`, 'color: magenta; font-weight: bold; font-size: 14px;');
+			if (debugDragMode) {
+				alert('🔧 STADT-PORTAL EDITOR aktiviert!\n\nZiehe das Portal mit der Maus.\n[C] = Speichern & Kopieren\n[P] = Beenden');
+			}
+			return true;
+		}
+		
+		// C zum Speichern (im Debug-Modus)
+		if ((key.toLowerCase() === 'c' || code === 'KeyC') && debugDragMode) {
+			exportPositionToClipboard();
+			return true;
+		}
+		
+		// E-Taste bei Teleporter (nur wenn Debug-Modus AUS)
+		if (!debugDragMode && isNearTeleporter && 
 			(key.toLowerCase() === TELEPORTER_CONFIG.interactKey || 
 			 code === TELEPORTER_CONFIG.interactCode)) {
 			
@@ -300,6 +397,47 @@ export function createTeleporterSystem(ctx) {
 			return true;
 		}
 		
+		return false;
+	}
+	
+	/**
+	 * Maus-Handler für Debug-Drag-Modus
+	 */
+	function handleMouseDown(mouseX, mouseY, button = 0) {
+		if (!debugDragMode || button !== 0) return false;
+		
+		const camera = getCameraOffset ? getCameraOffset() : { x: 0, y: 0 };
+		const screenX = teleporterWorldPosition.x - camera.x;
+		const screenY = teleporterWorldPosition.y - camera.y;
+		
+		// Prüfe ob Klick in Nähe des Teleporters
+		const dist = Math.sqrt((mouseX - screenX) ** 2 + (mouseY - screenY) ** 2);
+		if (dist < 100) {
+			isDragging = true;
+			console.log('[Teleporter] Ziehe Portal...');
+			return true;
+		}
+		return false;
+	}
+	
+	function handleMouseMove(mouseX, mouseY) {
+		if (!debugDragMode || !isDragging) return false;
+		
+		const camera = getCameraOffset ? getCameraOffset() : { x: 0, y: 0 };
+		
+		// Berechne Weltkoordinaten aus Mausposition
+		teleporterWorldPosition.x = mouseX + camera.x;
+		teleporterWorldPosition.y = mouseY + camera.y;
+		
+		return true;
+	}
+	
+	function handleMouseUp(button = 0) {
+		if (isDragging) {
+			isDragging = false;
+			console.log('[Teleporter] Portal platziert bei:', teleporterWorldPosition);
+			return true;
+		}
 		return false;
 	}
 	
@@ -327,11 +465,15 @@ export function createTeleporterSystem(ctx) {
 		update,
 		render,
 		handleKeyDown,
+		handleMouseDown,
+		handleMouseMove,
+		handleMouseUp,
 		startTeleport,
 		setPosition,
 		getStatus,
 		get isNearTeleporter() { return isNearTeleporter; },
-		get isTeleporting() { return isTeleporting; }
+		get isTeleporting() { return isTeleporting; },
+		get isDebugMode() { return debugDragMode; }
 	};
 }
 

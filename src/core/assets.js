@@ -606,6 +606,20 @@ export const ManifestAssets = {
 const lazySpriteDefinitions = new Map();
 
 /**
+ * Aktualisiert einen Lazy-Sprite-Pfad und löscht den Cache
+ * Wird für Charakterauswahl verwendet
+ * @param {string} key - Sprite-Key (z.B. "player")
+ * @param {string} newPath - Neuer Pfad zum Sprite
+ */
+export function updateLazySpriteSource(key, newPath) {
+	// Definition aktualisieren
+	lazySpriteDefinitions.set(key, { path: newPath, group: 'player' });
+	// Cache löschen
+	lazyLoadedSprites.delete(key);
+	console.log(`[LazySprite] Sprite "${key}" aktualisiert auf: ${newPath}`);
+}
+
+/**
  * Registriert ein Sprite für Lazy Loading
  * @param {string} key - Eindeutiger Schlüssel
  * @param {string} path - Pfad zum Sprite

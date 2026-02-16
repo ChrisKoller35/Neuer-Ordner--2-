@@ -386,14 +386,19 @@ export function createFoeUpdateSystem(deps) {
             applyFoeCoverAvoidance(foe, dt, primaryCoverRock, prevX, prevY);
         }
 
+        // World Mode: Calculate left boundary based on camera position
+        const worldMode = state.worldMode === true;
+        const cameraX = (worldMode && state.camera) ? state.camera.x : 0;
+        const leftBoundary = cameraX - 160;  // Remove foes that are far left of camera
+
         // Object Pool: NUR Foes die aus dem Pool kommen zurückgeben
         const deadFoes = state.foes.filter(foe => 
-            (foe.dead || foe.x <= (foe.type === "ritterfisch" ? -160 : -90)) && foe._pooled
+            (foe.dead || foe.x <= (foe.type === "ritterfisch" ? leftBoundary - 70 : leftBoundary)) && foe._pooled
         );
         foePool.releaseAll(deadFoes);
         
         // Filter out dead/offscreen foes
-        state.foes = state.foes.filter(foe => !foe.dead && foe.x > (foe.type === "ritterfisch" ? -160 : -90));
+        state.foes = state.foes.filter(foe => !foe.dead && foe.x > (foe.type === "ritterfisch" ? leftBoundary - 70 : leftBoundary));
 
         // Spawn new foes
         if (!state.over && !state.boss.active && !state.pendingSymbolAdvance) {

@@ -25,26 +25,50 @@ export function createFoeSpawnSystem(deps) {
      */
     function spawnFoe(opts = {}) {
         const type = opts.type || "jelly";
+        
+        // Mission 2 Gegner haben einfaches Verhalten wie Jelly
+        const isMission2Foe = ["shadowfish", "stingray", "seadrake", "abyssal"].includes(type);
+        
         const scale = opts.scale || (type === "bogenschreck" ? 0.52 + Math.random() * 0.1
             : type === "ritterfisch" ? 0.58 + Math.random() * 0.08
             : type === "oktopus" ? 0.48 + Math.random() * 0.1
+            : type === "shadowfish" ? 0.45 + Math.random() * 0.15
+            : type === "stingray" ? 0.50 + Math.random() * 0.12
+            : type === "seadrake" ? 0.55 + Math.random() * 0.15
+            : type === "abyssal" ? 0.48 + Math.random() * 0.14
             : 0.38 + Math.random() * 0.24);
         const hp = opts.hp || (type === "bogenschreck" ? 3
             : type === "ritterfisch" ? 5
             : type === "oktopus" ? 6
+            : type === "shadowfish" ? 2
+            : type === "stingray" ? 3
+            : type === "seadrake" ? 4
+            : type === "abyssal" ? 5
             : 2);
         const baseSpeed = type === "bogenschreck" ? 0.035 + Math.random() * 0.012
             : type === "ritterfisch" ? 0.028 + Math.random() * 0.014
             : type === "oktopus" ? 0.032 + Math.random() * 0.012
+            : type === "shadowfish" ? 0.055 + Math.random() * 0.02
+            : type === "stingray" ? 0.05 + Math.random() * 0.018
+            : type === "seadrake" ? 0.045 + Math.random() * 0.015
+            : type === "abyssal" ? 0.04 + Math.random() * 0.012
             : 0.06 + Math.random() * 0.02;
         
         // Object Pool: Wiederverwendung statt Neuerstellung
         const foe = foePool.acquire();
         foe.type = type;
-        foe.x = opts.x != null ? opts.x : canvas.width + 45 + Math.random() * 50;
+        
+        // World Mode: Spawn relative to camera position
+        const worldMode = state.worldMode === true;
+        const cameraX = (worldMode && state.camera) ? state.camera.x : 0;
+        const viewRight = cameraX + canvas.width;
+        
+        // Spawn to the right of the visible area
+        foe.x = opts.x != null ? opts.x : viewRight + 45 + Math.random() * 50;
         foe.y = opts.y != null ? opts.y : canvas.height * 0.24 + Math.random() * (canvas.height * 0.57);
         foe.vx = opts.vx != null ? opts.vx : -baseSpeed;
         foe.vy = opts.vy != null ? opts.vy : 0;
+        foe.speed = opts.speed != null ? opts.speed : baseSpeed; // Für updateJelly
         foe.hp = hp;
         foe.maxHp = hp;
         foe.scale = scale;
@@ -125,10 +149,18 @@ export function createFoeSpawnSystem(deps) {
         const baseWidth = foe.type === "bogenschreck" ? 38
             : foe.type === "ritterfisch" ? 44
             : foe.type === "oktopus" ? 36
+            : foe.type === "shadowfish" ? 30
+            : foe.type === "stingray" ? 36
+            : foe.type === "seadrake" ? 40
+            : foe.type === "abyssal" ? 34
             : 28;
         const baseHeight = foe.type === "bogenschreck" ? 36
             : foe.type === "ritterfisch" ? 48
             : foe.type === "oktopus" ? 34
+            : foe.type === "shadowfish" ? 26
+            : foe.type === "stingray" ? 32
+            : foe.type === "seadrake" ? 38
+            : foe.type === "abyssal" ? 30
             : 24;
         const padX = opts.padX != null ? opts.padX : 0;
         const padY = opts.padY != null ? opts.padY : 0;
@@ -151,6 +183,11 @@ export function createFoeSpawnSystem(deps) {
         if (foe.type === "bogenschreck") return 4;
         if (foe.type === "ritterfisch") return 6;
         if (foe.type === "oktopus") return 7;
+        // Mission 2 Gegner geben mehr Coins (höherer Schwierigkeitsgrad)
+        if (foe.type === "shadowfish") return 5;
+        if (foe.type === "stingray") return 7;
+        if (foe.type === "seadrake") return 9;
+        if (foe.type === "abyssal") return 12;
         return 2;
     }
 

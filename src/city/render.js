@@ -11,6 +11,31 @@ import {
 	CITY_GRID_ROWS,
 	CITY_FLOOR_HEIGHT
 } from './constants.js';
+import { createAnimationPlayer } from '../Animation/animationLoader.js';
+
+// ============================================================
+// ANIMATION TEST - Nutzt globale window.ANIM_TEST Variable
+// ============================================================
+let testAnimationLoading = false;
+let lastAnimTime = 0;
+
+function loadTestAnimation() {
+	if (testAnimationLoading || window.ANIM_TEST?.player) return;
+	testAnimationLoading = true;
+	console.log('[AnimTest] Lade Animation...');
+	
+	createAnimationPlayer('./src/Animation/player_walk.anim.json')
+		.then(player => {
+			console.log('[AnimTest] Animation geladen!', player.data.totalFrames, 'Frames');
+			player.play();
+			window.ANIM_TEST.player = player;
+			lastAnimTime = performance.now();
+		})
+		.catch(e => {
+			console.error('[AnimTest] Fehler:', e);
+			testAnimationLoading = false;
+		});
+}
 
 // Spieler wird ca. 71px oberhalb von y gezeichnet
 const PLAYER_VISUAL_OFFSET = 71;
@@ -212,6 +237,53 @@ function renderNPCs(ctx, city, sprites) {
 function renderPlayer(ctx, player, playerSprite) {
 	const playerOffsetX = -3.5;
 	const playerOffsetY = 50.0;
+	
+	// ============================================================
+	// ANIMATION TEST - Nutzt globale window.ANIM_TEST
+	// ============================================================
+	const animTest = window.ANIM_TEST;
+	
+	if (animTest?.enabled) {
+		// Lade Animation falls noch nicht geladen
+		if (!animTest.player) {
+			loadTestAnimation();
+			return;
+		}
+		
+		// Update Animation
+		const now = performance.now();
+		const dt = now - lastAnimTime;
+		lastAnimTime = now;
+		animTest.player.update(dt);
+		
+		// Animation zeichnen - gleiche Größe wie Original-Spieler
+		// Bild ist 922x1383, wir wollen ~166x249 (wie Original mit scale 0.18)
+		const imgW = animTest.player.data.image.width;
+		const imgH = animTest.player.data.image.height;
+		const scale = 0.18; // Gleich wie normales Spielersprite
+		const drawW = imgW * scale;
+		const drawH = imgH * scale;
+		
+		ctx.save();
+		ctx.translate(player.x + playerOffsetX, player.y + playerOffsetY);
+		if (player.dir < 0) {
+			ctx.scale(-1, 1);
+		}
+		const bob = Math.sin(performance.now() * 0.003) * 2;
+		// Render mit offset nach oben (wie beim normalen Spieler)
+		// Scale für render = 0.18 * (imgW / canvasW) damit die Bildgröße stimmt
+		const renderScale = scale * (imgW / animTest.player.data.canvasWidth);
+		animTest.player.render(
+			ctx,
+			-drawW / 2,
+			-drawH + bob,
+			renderScale,
+			false
+		);
+		ctx.restore();
+		return;
+	}
+	// ============================================================
 	
 	if (spriteReady(playerSprite)) {
 		const scale = 0.18;

@@ -123,7 +123,13 @@ export function createPlayerUpdateSystem(ctx) {
 			const len = Math.hypot(moveX, moveY) || 1;
 			const dx = (moveX / len) * effectiveSpeed * dt;
 			const dy = (moveY / len) * effectiveSpeed * dt;
-			player.x = clamp(player.x + dx, 60, canvas.width - 60);
+			
+			// World Mode: Extended boundaries based on world width
+			const worldMode = state.worldMode === true;
+			const worldWidth = state.worldWidth || canvas.width;
+			const maxX = worldMode ? worldWidth - 60 : canvas.width - 60;
+			
+			player.x = clamp(player.x + dx, 60, maxX);
 			player.y = clamp(player.y + dy, 60, canvas.height - 60);
 			if (Math.abs(moveX) > 0.1) player.dir = moveX > 0 ? 1 : -1;
 		}

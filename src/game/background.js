@@ -1,9 +1,59 @@
 /**
  * Background Rendering System
  * Handles rendering of backgrounds, bubbles, floor overlays, cover rocks, and tsunami wave
+ * Supports Chunk-Loading for unlimited world sizes
  */
 
 const TAU = Math.PI * 2;
+
+// Color palettes for different biomes (must match chunkLoader.js)
+const BIOME_PALETTES = {
+	ocean: {
+		top: "#03294a",
+		mid: "#02203b",
+		bottom: "#02111f",
+		haze: "rgba(40,80,120,0.28)",
+		hazeStrong: "rgba(110,170,220,0.22)",
+		ridges: "#031728",
+		foreground: "#05233b"
+	},
+	deep: {
+		top: "#1d0f35",
+		mid: "#0f1633",
+		bottom: "#07091b",
+		haze: "rgba(90,50,120,0.32)",
+		hazeStrong: "rgba(180,110,220,0.22)",
+		ridges: "#12031f",
+		foreground: "#1a0633"
+	},
+	coral: {
+		top: "#0a3a3a",
+		mid: "#082828",
+		bottom: "#041818",
+		haze: "rgba(60,120,100,0.30)",
+		hazeStrong: "rgba(140,200,180,0.24)",
+		ridges: "#052020",
+		foreground: "#083030"
+	},
+	volcano: {
+		top: "#3a1a0a",
+		mid: "#281008",
+		bottom: "#180804",
+		haze: "rgba(120,60,40,0.32)",
+		hazeStrong: "rgba(220,140,80,0.26)",
+		ridges: "#200f05",
+		foreground: "#301508"
+	},
+	ice: {
+		top: "#1a3a4a",
+		mid: "#0f2838",
+		bottom: "#051820",
+		haze: "rgba(80,140,180,0.30)",
+		hazeStrong: "rgba(160,200,240,0.24)",
+		ridges: "#0a2030",
+		foreground: "#102838"
+	}
+};
 
 /**
  * Creates the background rendering system
@@ -24,6 +74,239 @@ export function createBackgroundRenderSystem(ctx) {
 		LEVEL2_FLOOR_OFFSET
 	} = ctx;
 
+	/**
+	 * Get biome name for a chunk index (creates variety across the world)
+	 */
+	function getBiomeForChunk(chunkIndex) {
+		const state = getState();
+		
+		// If chunk system provides biome info, use it
+		if (state.chunkLoader) {
+			const chunk = state.chunkLoader.getChunk(chunkIndex);
+			if (chunk && chunk.biome) return chunk.biome;
+		}
+		
+		// Default: cycle through biomes every 5 chunks
+		const biomeKeys = Object.keys(BIOME_PALETTES);
+		const biomeIndex = Math.floor(chunkIndex / 5) % biomeKeys.length;
+		return biomeKeys[biomeIndex];
+	}
+
+	/**
+	 * Get palette for a specific chunk
+	 */
+	function getPaletteForChunk(chunkIndex) {
+		const biome = getBiomeForChunk(chunkIndex);
+		return BIOME_PALETTES[biome] || BIOME_PALETTES.ocean;
+	}
+
+	/**
+	 * Get visible scene indices for world mode
+	 */
+	function getVisibleScenes() {
+		const state = getState();
+		const canvas = getCanvas();
+		
+		if (!state.worldMode || !state.camera || !state.camera.enabled) {
+			return [0];
+		}
+		
+		const camera = state.camera;
+		const sceneWidth = canvas.width;
+		const firstScene = Math.max(0, Math.floor(camera.x / sceneWidth));
+		const lastScene = Math.min(
+			state.sceneCount - 1, 
+			Math.floor((camera.x + camera.viewWidth) / sceneWidth)
+		);
+		
+		const scenes = [];
+		for (let i = firstScene; i <= lastScene; i++) {
+			scenes.push(i);
+		}
+		return scenes;
+	}
+
+	/**
+	 * Get background sprite for a specific scene (cycles through available sprites)
+	 */
+	function getSceneBackgroundSprite(sceneIndex) {
+		// Cycle through available background sprites
+		const bgSprites = [
+			SPRITES.backgroundLevelOne,
+			SPRITES.backgroundLevelTwo || SPRITES.backgroundLevelOne,
+			SPRITES.backgroundLevelThree || SPRITES.backgroundLevelOne
+		];
+		
+		return bgSprites[sceneIndex % bgSprites.length];
+	}
+
+	/**
+	 * Render a single scene background at the given offset
+	 */
+	function renderSceneBackground(sceneIndex, offsetX) {
+		const canvasEl = getCanvas();
+		const state = getState();
+		const context = getCtx();
+		const width = canvasEl.width;
+		const height = canvasEl.height;
+		const time = state.elapsed || 0;
+
+		// Get palette for this chunk (creates biome variety)
+		const palette = getPaletteForChunk(sceneIndex);
+
+		context.save();
+		context.translate(offsetX, 0);
+
+		// Base gradient
+		const baseGrad = context.createLinearGradient(0, 0, 0, height);
+		baseGrad.addColorStop(0, palette.top);
+		baseGrad.addColorStop(0.55, palette.mid);
+		baseGrad.addColorStop(1, palette.bottom);
+		context.fillStyle = baseGrad;
+		context.fillRect(0, 0, width, height);
+
+		// Ridges (vary slightly per chunk for visual variety)
+		const ridgeOffset = (sceneIndex * 0.1) % 0.3;
+		context.save();
+		context.fillStyle = palette.ridges;
+		context.globalAlpha = 0.7;
+		context.beginPath();
+		context.moveTo(0, height * (0.76 + ridgeOffset * 0.1));
+		context.bezierCurveTo(
+			width * 0.18, height * (0.7 - ridgeOffset * 0.05), 
+			width * 0.34, height * (0.82 + ridgeOffset * 0.08), 
+			width * 0.52, height * (0.78 - ridgeOffset * 0.03)
+		);
+		context.bezierCurveTo(
+			width * 0.7, height * (0.74 + ridgeOffset * 0.06), 
+			width * 0.82, height * (0.86 - ridgeOffset * 0.04), 
+			width, height * (0.8 + ridgeOffset * 0.05)
+		);
+		context.lineTo(width, height);
+		context.lineTo(0, height);
+		context.closePath();
+		context.fill();
+		context.restore();
+
+		// Foreground
+		context.save();
+		context.fillStyle = palette.foreground;
+		context.globalAlpha = 0.85;
+		context.beginPath();
+		context.moveTo(0, height * (0.88 - ridgeOffset * 0.05));
+		context.bezierCurveTo(
+			width * 0.16, height * (0.82 + ridgeOffset * 0.03), 
+			width * 0.3, height * (0.92 - ridgeOffset * 0.04), 
+			width * 0.46, height * (0.9 + ridgeOffset * 0.02)
+		);
+		context.bezierCurveTo(
+			width * 0.68, height * (0.86 - ridgeOffset * 0.03), 
+			width * 0.82, height * (0.96 + ridgeOffset * 0.02), 
+			width, height * (0.94 - ridgeOffset * 0.04)
+		);
+		context.lineTo(width, height);
+		context.lineTo(0, height);
+		context.closePath();
+		context.fill();
+		context.restore();
+
+		// Background sprite for this scene
+		const bgSprite = getSceneBackgroundSprite(sceneIndex);
+		if (spriteReady(bgSprite)) {
+			const scale = Math.max(width / bgSprite.naturalWidth, height / bgSprite.naturalHeight);
+			const drawW = bgSprite.naturalWidth * scale;
+			const drawH = bgSprite.naturalHeight * scale;
+			const overflowX = drawW - width;
+			const overflowY = drawH - height;
+			const drawX = overflowX > 0 ? -overflowX * 0.15 : 0;
+			const drawY = overflowY > 0 ? -overflowY * 0.45 : 0;
+			context.drawImage(bgSprite, drawX, drawY, drawW, drawH);
+		}
+
+		// Light rays
+		context.save();
+		const glowGrad = context.createRadialGradient(width * 0.5, height * 0.08, 0, width * 0.5, height * 0.08, height * 0.9);
+		glowGrad.addColorStop(0, palette.hazeStrong);
+		glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+		context.globalCompositeOperation = "lighter";
+		context.globalAlpha = 0.85;
+		context.fillStyle = glowGrad;
+		context.fillRect(0, 0, width, height);
+		context.restore();
+
+		// Light beams (offset by chunk index for variety)
+		context.save();
+		context.globalCompositeOperation = "lighter";
+		context.globalAlpha = 0.22;
+		const beamCount = 4;
+		for (let i = 0; i < beamCount; i += 1) {
+			const phase = time * 0.00025 + i * 1.37 + sceneIndex * 0.5;
+			const beamCenter = (width / (beamCount + 1)) * (i + 1) + Math.sin(phase) * width * 0.08;
+			const beamWidth = width * 0.18;
+			context.beginPath();
+			context.moveTo(beamCenter - beamWidth * 0.3, -height * 0.1);
+			context.lineTo(beamCenter + beamWidth * 0.3, -height * 0.1);
+			context.lineTo(beamCenter + beamWidth * 0.55, height * 0.72);
+			context.lineTo(beamCenter - beamWidth * 0.55, height * 0.72);
+			context.closePath();
+			const beamGrad = context.createLinearGradient(beamCenter, 0, beamCenter, height * 0.75);
+			beamGrad.addColorStop(0, "rgba(255,255,255,0.28)");
+			beamGrad.addColorStop(0.6, palette.haze);
+			beamGrad.addColorStop(1, "rgba(0,0,0,0)");
+			context.fillStyle = beamGrad;
+			context.fill();
+		}
+		context.restore();
+
+		// Chunk indicator (debug - shows which chunk you're in)
+		if (state.showChunkDebug) {
+			context.save();
+			context.fillStyle = "rgba(255,255,255,0.3)";
+			context.font = "24px monospace";
+			context.fillText(`Chunk ${sceneIndex} (${getBiomeForChunk(sceneIndex)})`, 20, 40);
+			context.restore();
+		}
+
+		context.restore(); // Restore from translate
+	}
+
+	/**
+	 * Render background for World Mode (multiple scenes with chunk loading)
+	 */
+	function renderWorldBackground() {
+		const canvasEl = getCanvas();
+		const state = getState();
+		const context = getCtx();
+		const width = canvasEl.width;
+
+		const visibleScenes = getVisibleScenes();
+		const cameraX = state.camera ? state.camera.x : 0;
+
+		context.save();
+		context.translate(-cameraX, 0);
+
+		for (const sceneIndex of visibleScenes) {
+			const offsetX = sceneIndex * width;
+			renderSceneBackground(sceneIndex, offsetX);
+		}
+
+		context.restore();
+		
+		// Render chunk stats HUD (debug)
+		if (state.showChunkDebug && state.chunkLoader) {
+			const stats = state.chunkLoader.getStats();
+			context.save();
+			context.fillStyle = "rgba(0,0,0,0.7)";
+			context.fillRect(10, canvasEl.height - 80, 200, 70);
+			context.fillStyle = "#fff";
+			context.font = "14px monospace";
+			context.fillText(`Chunks: ${stats.loaded}/${stats.total} loaded`, 20, canvasEl.height - 60);
+			context.fillText(`Active: ${state.activeChunk || 0}`, 20, canvasEl.height - 40);
+			context.fillText(`Camera X: ${Math.round(cameraX)}`, 20, canvasEl.height - 20);
+			context.restore();
+		}
+	}
+
 	function renderBackground() {
 		const canvasEl = getCanvas();
 		const state = getState();
@@ -32,6 +315,13 @@ export function createBackgroundRenderSystem(ctx) {
 		const height = canvasEl.height;
 		const level = state.level || 1;
 
+		// World Mode: Render multiple scenes
+		if (state.worldMode && state.sceneCount > 1) {
+			renderWorldBackground();
+			return;
+		}
+
+		// Standard single-scene rendering
 		const palette = level === 2
 			? {
 				top: "#1d0f35",

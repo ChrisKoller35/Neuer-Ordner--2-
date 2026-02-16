@@ -27,12 +27,49 @@ export function createFoeRenderSystem(deps) {
             const isBogenschreck = foe.type === "bogenschreck";
             const isRitterfisch = foe.type === "ritterfisch";
             const isOktopus = foe.type === "oktopus";
+            
+            // Mission 2 Gegner
+            const isShadowfish = foe.type === "shadowfish";
+            const isStingray = foe.type === "stingray";
+            const isSeadrake = foe.type === "seadrake";
+            const isAbyssal = foe.type === "abyssal";
+            const isMission2Foe = isShadowfish || isStingray || isSeadrake || isAbyssal;
 
             // Shadow
-            const shadowRadius = (isBogenschreck ? 22 : isRitterfisch ? 24 : isOktopus ? 20 : 18) * foe.scale;
+            const shadowRadius = (isBogenschreck ? 22 : isRitterfisch ? 24 : isOktopus ? 20 
+                : isShadowfish ? 16 : isStingray ? 20 : isSeadrake ? 22 : isAbyssal ? 18 : 18) * foe.scale;
             MODELS.simpleShadow(ctx, foe.x + 8, foe.y + 24, shadowRadius);
 
-            // Foe model
+            // Mission 2 Gegner - eigene Sprites
+            if (isMission2Foe) {
+                const spriteKey = isShadowfish ? 'shadowfish' 
+                    : isStingray ? 'stingray' 
+                    : isSeadrake ? 'seadrake' 
+                    : 'abyssal';
+                const sprite = SPRITES[spriteKey];
+                
+                if (sprite && spriteReady(sprite)) {
+                    const baseScale = 0.18;
+                    const overallScale = baseScale * foe.scale;
+                    const drawW = sprite.naturalWidth * overallScale;
+                    const drawH = sprite.naturalHeight * overallScale;
+                    ctx.save();
+                    ctx.translate(foe.x, foe.y);
+                    // Gegner schwimmen nach links, Sprite schaut bereits nach links
+                    ctx.rotate(Math.sin(foe.sway) * 0.08);
+                    ctx.drawImage(sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+                    ctx.restore();
+                } else {
+                    // Fallback: Standard foe Model
+                    MODELS.foe(ctx, foe.x, foe.y, {
+                        scale: foe.scale,
+                        sway: foe.sway
+                    });
+                }
+                continue;
+            }
+
+            // Mission 1 Gegner - Original Renderer
             const renderer = isBogenschreck ? MODELS.bogenschreck
                 : isRitterfisch ? MODELS.ritterfisch
                 : isOktopus ? MODELS.oktopus

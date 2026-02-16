@@ -80,10 +80,95 @@ export function createBuildingSystem(ctx) {
 	// Drücke [P] um Debug-Drag-Modus zu aktivieren
 	// Dann: Klicke und ziehe NPC oder Teleporter
 	// Drücke [C] um Positionen in Zwischenablage zu kopieren
+	// Drücke [S] um ALLE Positionen als JSON zu exportieren (für alle Gebäude)
 	let debugDragMode = false;
 	let dragTarget = null; // 'npc' oder 'exit'
-	let debugNpcOffset = { x: 0.71, y: 0.74 }; // Standard-Position für alle Gebäude
-	let debugExitOffset = { x: 0.72, y: 0.95 }; // Standard-Position für alle Gebäude
+	let debugNpcOffset = { x: 0.71, y: 0.74 }; // Aktuelle Position (wird pro Gebäude geladen)
+	let debugExitOffset = { x: 0.72, y: 0.95 }; // Aktuelle Position (wird pro Gebäude geladen)
+	
+	// ===== FEST EINGEBAUTE PORTAL-POSITIONEN =====
+	// Diese wurden vom Benutzer mit dem Portal-Editor erstellt (2026-02-13)
+	const DEFAULT_BUILDING_POSITIONS = {
+		"market": {
+			"npc": { "x": 0.74, "y": 0.83 },
+			"exit": { "x": 0.24, "y": 0.24 }
+		},
+		"workshop": {
+			"npc": { "x": 0.79, "y": 0.71 },
+			"exit": { "x": 0.21, "y": 0.41 }
+		},
+		"academy": {
+			"npc": { "x": 0.75, "y": 0.70 },
+			"exit": { "x": 0.78, "y": 0.90 }
+		},
+		"harbor": {
+			"npc": { "x": 0.16, "y": 0.40 },
+			"exit": { "x": 0.61, "y": 0.32 }
+		},
+		"garden": {
+			"npc": { "x": 0.29, "y": 0.48 },
+			"exit": { "x": 0.72, "y": 0.95 }
+		}
+	};
+	
+	// Gespeicherte Positionen pro Gebäude (aus localStorage, überschreibt Defaults)
+	let savedBuildingPositions = {};
+	const POSITIONS_STORAGE_KEY = 'BUILDING_PORTAL_POSITIONS';
+	
+	// Lädt gespeicherte Positionen aus localStorage
+	function loadSavedPositions() {
+		try {
+			const saved = localStorage.getItem(POSITIONS_STORAGE_KEY);
+			if (saved) {
+				savedBuildingPositions = JSON.parse(saved);
+				console.log('[Building] Portal-Positionen geladen:', Object.keys(savedBuildingPositions).length, 'Gebäude');
+			}
+		} catch (e) {
+			console.warn('[Building] Fehler beim Laden der Positionen:', e);
+		}
+	}
+	
+	// Speichert aktuelle Position für das aktuelle Gebäude
+	function saveCurrentBuildingPosition() {
+		if (!currentBuildingId) return;
+		savedBuildingPositions[currentBuildingId] = {
+			npc: { x: debugNpcOffset.x, y: debugNpcOffset.y },
+			exit: { x: debugExitOffset.x, y: debugExitOffset.y }
+		};
+		try {
+			localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(savedBuildingPositions));
+			console.log(`[Building] Position gespeichert für: ${currentBuildingId}`);
+		} catch (e) {
+			console.warn('[Building] Fehler beim Speichern:', e);
+		}
+	}
+	
+	// Lädt Position für ein bestimmtes Gebäude
+	function loadBuildingPosition(buildingId) {
+		// 1. Prüfe localStorage (vom Benutzer angepasst)
+		if (savedBuildingPositions[buildingId]) {
+			const pos = savedBuildingPositions[buildingId];
+			debugNpcOffset = { ...pos.npc };
+			debugExitOffset = { ...pos.exit };
+			console.log(`[Building] Position geladen für: ${buildingId} (localStorage)`);
+			return;
+		}
+		// 2. Prüfe fest eingebaute Positionen
+		if (DEFAULT_BUILDING_POSITIONS[buildingId]) {
+			const pos = DEFAULT_BUILDING_POSITIONS[buildingId];
+			debugNpcOffset = { ...pos.npc };
+			debugExitOffset = { ...pos.exit };
+			console.log(`[Building] Position geladen für: ${buildingId} (Default)`);
+			return;
+		}
+		// 3. Fallback Standard-Positionen
+		debugNpcOffset = { x: 0.71, y: 0.74 };
+		debugExitOffset = { x: 0.72, y: 0.95 };
+		console.log(`[Building] Keine Position für: ${buildingId}, nutze Fallback`);
+	}
+	
+	// Initialisiere gespeicherte Positionen beim Start
+	loadSavedPositions();
 	
 	// ===== GRID EDITOR MODE =====
 	// Drücke [M] um Grid-Editor zu aktivieren
@@ -157,6 +242,9 @@ export function createBuildingSystem(ctx) {
 		currentBuildingId = buildingId;
 		currentBuilding = buildings.buildings[buildingId];
 		
+		// Lade gespeicherte Portal-Position für dieses Gebäude
+		loadBuildingPosition(buildingId);
+		
 		const canvas = getCanvas();
 		if (!canvas) return false;
 		
@@ -185,9 +273,28 @@ export function createBuildingSystem(ctx) {
 		// Layout generieren
 		buildingLayout = generateBuildingLayout(canvas, buildingId);
 		
-		// NPC-Sprite erstellen
+		// NPC-Sprite laden (echtes Bild mit Platzhalter als Fallback)
 		if (currentBuilding.npc) {
-			npcSprite = createNPCPlaceholder(currentBuilding.npc.id, currentBuilding.npc.name);
+			const npcSpritePath = currentBuilding.npc.sprite;
+			if (npcSpritePath) {
+				// Echtes NPC-Sprite laden - direkt mit Image() für mehr Kontrolle
+				npcSprite = new Image();
+				// Korrekter Pfad für Vite: ./Npc/xxx.png -> /src/Npc/xxx.png
+				const correctedPath = npcSpritePath.replace(/^\.\//, '/src/');
+				npcSprite.src = correctedPath;
+				console.log(`[Building] Lade NPC-Sprite: ${correctedPath}`);
+				
+				npcSprite.onload = () => {
+					console.log(`[Building] NPC-Sprite geladen: ${correctedPath}, Größe: ${npcSprite.naturalWidth}x${npcSprite.naturalHeight}`);
+				};
+				npcSprite.onerror = () => {
+					console.warn(`[Building] NPC-Sprite nicht gefunden: ${correctedPath}, verwende Platzhalter`);
+					npcSprite = createNPCPlaceholder(currentBuilding.npc.id, currentBuilding.npc.name);
+				};
+			} else {
+				// Kein Sprite definiert, Platzhalter verwenden
+				npcSprite = createNPCPlaceholder(currentBuilding.npc.id, currentBuilding.npc.name);
+			}
 		}
 		
 		// Spieler-Startposition
@@ -237,6 +344,12 @@ export function createBuildingSystem(ctx) {
 	 */
 	function exitBuilding() {
 		if (!currentBuildingId) return;
+		
+		// Automatisch speichern falls im Debug-Modus geändert
+		if (debugDragMode) {
+			saveCurrentBuildingPosition();
+			console.log('[Building] Position automatisch gespeichert beim Verlassen');
+		}
 		
 		console.log(`[Building] Verlassen: ${currentBuilding?.name}`);
 		
@@ -632,41 +745,62 @@ export function createBuildingSystem(ctx) {
 		const y = npcPos.y;
 		const bob = Math.sin(animTime * BUILDING_CONFIG.npcBobSpeed) * BUILDING_CONFIG.npcBobAmount;
 		
-		// NPC als einfacher Kreis
-		const radius = isNearNPC ? 35 : 30;
+		// Prüfe ob NPC-Sprite geladen ist
+		const spriteLoaded = npcSprite && npcSprite.complete && npcSprite.naturalWidth > 0;
 		
 		if (isNearNPC) {
 			ctx2d.shadowColor = '#ffcc00';
 			ctx2d.shadowBlur = 15;
 		}
 		
-		// Kreis zeichnen
-		ctx2d.fillStyle = '#ff6600';
-		ctx2d.beginPath();
-		ctx2d.arc(x, y - radius + bob, radius, 0, Math.PI * 2);
-		ctx2d.fill();
-		
-		// Augen
-		ctx2d.fillStyle = '#ffffff';
-		ctx2d.beginPath();
-		ctx2d.arc(x - 10, y - radius - 5 + bob, 6, 0, Math.PI * 2);
-		ctx2d.arc(x + 10, y - radius - 5 + bob, 6, 0, Math.PI * 2);
-		ctx2d.fill();
-		ctx2d.fillStyle = '#000000';
-		ctx2d.beginPath();
-		ctx2d.arc(x - 8, y - radius - 5 + bob, 3, 0, Math.PI * 2);
-		ctx2d.arc(x + 12, y - radius - 5 + bob, 3, 0, Math.PI * 2);
-		ctx2d.fill();
+		if (spriteLoaded) {
+			// Echtes NPC-Sprite zeichnen
+			const spriteWidth = npcSprite.naturalWidth;
+			const spriteHeight = npcSprite.naturalHeight;
+			// Skalierung anpassen - NPC sollte etwa 180px hoch sein
+			const scale = Math.min(180 / spriteHeight, 2.2);
+			const drawWidth = spriteWidth * scale;
+			const drawHeight = spriteHeight * scale;
+			
+			ctx2d.drawImage(
+				npcSprite,
+				x - drawWidth / 2,
+				y - drawHeight,
+				drawWidth,
+				drawHeight
+			);
+		} else {
+			// Fallback: NPC als einfacher Kreis
+			const radius = isNearNPC ? 35 : 30;
+			
+			// Kreis zeichnen
+			ctx2d.fillStyle = '#ff6600';
+			ctx2d.beginPath();
+			ctx2d.arc(x, y - radius + bob, radius, 0, Math.PI * 2);
+			ctx2d.fill();
+			
+			// Augen
+			ctx2d.fillStyle = '#ffffff';
+			ctx2d.beginPath();
+			ctx2d.arc(x - 10, y - radius - 5 + bob, 6, 0, Math.PI * 2);
+			ctx2d.arc(x + 10, y - radius - 5 + bob, 6, 0, Math.PI * 2);
+			ctx2d.fill();
+			ctx2d.fillStyle = '#000000';
+			ctx2d.beginPath();
+			ctx2d.arc(x - 8, y - radius - 5 + bob, 3, 0, Math.PI * 2);
+			ctx2d.arc(x + 12, y - radius - 5 + bob, 3, 0, Math.PI * 2);
+			ctx2d.fill();
+		}
 		
 		ctx2d.shadowBlur = 0;
 		
 		// NPC-Name
 		ctx2d.fillStyle = '#ffffff';
-		ctx2d.font = 'bold 14px Arial';
+		ctx2d.font = 'bold 16px Arial';
 		ctx2d.textAlign = 'center';
 		ctx2d.shadowColor = 'rgba(0, 0, 0, 0.8)';
 		ctx2d.shadowBlur = 3;
-		ctx2d.fillText(currentBuilding.npc.name, x, y - 75 + bob);
+		ctx2d.fillText(currentBuilding.npc.name, x, y - (spriteLoaded ? 190 : 75));
 		ctx2d.shadowBlur = 0;
 		
 		// Interaktions-Hinweis
@@ -1045,19 +1179,26 @@ export function createBuildingSystem(ctx) {
 		
 		// DEBUG DRAG MODE Anzeige
 		if (debugDragMode) {
-			ctx2d.fillStyle = 'rgba(255, 0, 255, 0.9)';
-			ctx2d.fillRect(canvas.width - 320, 10, 310, 110);
+			const posCount = Object.keys(savedBuildingPositions).length;
+			ctx2d.fillStyle = 'rgba(255, 0, 255, 0.95)';
+			ctx2d.fillRect(canvas.width - 340, 10, 330, 170);
 			ctx2d.fillStyle = '#ffffff';
 			ctx2d.font = 'bold 16px Arial';
 			ctx2d.textAlign = 'left';
 			ctx2d.textBaseline = 'top';
-			ctx2d.fillText('🔧 DEBUG DRAG MODE', canvas.width - 310, 15);
+			ctx2d.fillText('🔧 PORTAL & NPC EDITOR', canvas.width - 330, 15);
 			ctx2d.font = '12px Arial';
-			ctx2d.fillText('Klicke & ziehe NPC oder Teleporter', canvas.width - 310, 35);
-			ctx2d.fillText(`NPC: x=${debugNpcOffset.x.toFixed(2)}, y=${debugNpcOffset.y.toFixed(2)}`, canvas.width - 310, 55);
-			ctx2d.fillText(`EXIT: x=${debugExitOffset.x.toFixed(2)}, y=${debugExitOffset.y.toFixed(2)}`, canvas.width - 310, 75);
+			ctx2d.fillText(`Gebäude: ${currentBuilding?.name || currentBuildingId}`, canvas.width - 330, 35);
+			ctx2d.fillText('Klicke & ziehe NPC oder EXIT', canvas.width - 330, 55);
+			ctx2d.fillStyle = '#ff9900';
+			ctx2d.fillText(`NPC: x=${debugNpcOffset.x.toFixed(2)}, y=${debugNpcOffset.y.toFixed(2)}`, canvas.width - 330, 75);
+			ctx2d.fillStyle = '#00ffff';
+			ctx2d.fillText(`EXIT: x=${debugExitOffset.x.toFixed(2)}, y=${debugExitOffset.y.toFixed(2)}`, canvas.width - 330, 92);
 			ctx2d.fillStyle = '#ffff00';
-			ctx2d.fillText('[C] Position kopieren | [P] Beenden', canvas.width - 310, 95);
+			ctx2d.fillText('[C] Speichern & Kopieren', canvas.width - 330, 112);
+			ctx2d.fillText(`[S] ALLE ${posCount} Positionen exportieren`, canvas.width - 330, 129);
+			ctx2d.fillStyle = '#ff6666';
+			ctx2d.fillText('[P] Editor beenden', canvas.width - 330, 149);
 		}
 		
 		// GRID EDITOR Overlay (wenn aktiv)
@@ -1112,7 +1253,10 @@ export function createBuildingSystem(ctx) {
 		// P für Debug-Drag-Modus toggle
 		if (key.toLowerCase() === 'p' || code === 'KeyP') {
 			debugDragMode = !debugDragMode;
-			console.log(`[Building] Debug-Drag-Modus: ${debugDragMode ? 'AN' : 'AUS'}`);
+			console.log(`%c[Building] PORTAL EDITOR: ${debugDragMode ? 'AKTIVIERT' : 'DEAKTIVIERT'}`, 'color: magenta; font-weight: bold; font-size: 14px;');
+			if (debugDragMode) {
+				alert('🔧 PORTAL EDITOR aktiviert!\n\nZiehe das Portal mit der Maus.\n[C] = Speichern\n[S] = Alle exportieren\n[P] = Beenden');
+			}
 			return true;
 		}
 		
@@ -1125,6 +1269,12 @@ export function createBuildingSystem(ctx) {
 				clearErrors();
 				return true;
 			}
+		}
+		
+		// S zum ALLE Positionen exportieren (nur im Debug-Modus)
+		if ((key.toLowerCase() === 's' || code === 'KeyS') && debugDragMode) {
+			exportAllPositionsToClipboard();
+			return true;
 		}
 		
 		// IJKL für Player-Sprite-Offset Anpassung (Debug)
@@ -1423,18 +1573,51 @@ ${lastError.stack || 'N/A'}
 	}
 	
 	/**
-	 * Kopiert NPC/Exit Positionen in die Zwischenablage
+	 * Kopiert NPC/Exit Positionen für aktuelles Gebäude + speichert sie
 	 */
 	function copyPositionsToClipboard() {
-		const positionCode = `// Position für Gebäude: ${currentBuilding?.name || 'unbekannt'}
-NPC: { x: ${debugNpcOffset.x.toFixed(2)}, y: ${debugNpcOffset.y.toFixed(2)} }
-EXIT: { x: ${debugExitOffset.x.toFixed(2)}, y: ${debugExitOffset.y.toFixed(2)} }`;
+		// Speichere die aktuelle Position automatisch
+		saveCurrentBuildingPosition();
+		
+		const positionCode = `// Position für Gebäude: ${currentBuilding?.name || currentBuildingId || 'unbekannt'}
+"${currentBuildingId}": {
+  "npc": { "x": ${debugNpcOffset.x.toFixed(2)}, "y": ${debugNpcOffset.y.toFixed(2)} },
+  "exit": { "x": ${debugExitOffset.x.toFixed(2)}, "y": ${debugExitOffset.y.toFixed(2)} }
+}`;
 		
 		navigator.clipboard.writeText(positionCode).then(() => {
-			console.log('[Building] Positionen kopiert!');
-			alert('Positionen kopiert!\n\n' + positionCode);
+			console.log('[Building] Position kopiert & gespeichert!');
+			alert('✅ Position gespeichert & kopiert!\n\n' + positionCode);
 		}).catch(err => {
 			console.error('[Building] Kopieren fehlgeschlagen:', err);
+		});
+	}
+	
+	/**
+	 * Exportiert ALLE gespeicherten Portal-Positionen als JSON
+	 * Zum Kopieren und Senden an den Entwickler
+	 */
+	function exportAllPositionsToClipboard() {
+		// Aktuelle Position auch speichern falls geändert
+		if (currentBuildingId) {
+			saveCurrentBuildingPosition();
+		}
+		
+		const exportData = {
+			_info: "Portal-Positionen für alle Gebäude - Schick diese Daten an den Entwickler!",
+			_generiert: new Date().toISOString(),
+			positionen: savedBuildingPositions
+		};
+		
+		const jsonString = JSON.stringify(exportData, null, 2);
+		
+		navigator.clipboard.writeText(jsonString).then(() => {
+			console.log('[Building] Alle Positionen exportiert!');
+			alert('📋 ALLE Portal-Positionen exportiert!\n\nAnzahl Gebäude: ' + Object.keys(savedBuildingPositions).length + '\n\nDie JSON-Daten wurden in die Zwischenablage kopiert.\nSchicke sie an den Entwickler!');
+		}).catch(err => {
+			console.error('[Building] Export fehlgeschlagen:', err);
+			// Fallback: Zeige die Daten im Alert zum manuellen Kopieren
+			alert('⚠️ Zwischenablage nicht verfügbar!\n\nKopiere diese Daten manuell:\n\n' + jsonString);
 		});
 	}
 	
@@ -1474,12 +1657,12 @@ EXIT: { x: ${debugExitOffset.x.toFixed(2)}, y: ${debugExitOffset.y.toFixed(2)} }
 		if (npcPos) console.log(`[Debug] NPC at x=${npcPos.x.toFixed(0)}, y=${npcPos.y.toFixed(0)}`);
 		if (exitPos) console.log(`[Debug] Exit at x=${exitPos.x.toFixed(0)}, y=${exitPos.y.toFixed(0)}`);
 		
-		// Prüfe ob Klick auf NPC - größerer Radius und Y korrigieren (Kreis wird oberhalb von walkableY gezeichnet)
+		// Prüfe ob Klick auf NPC - Sprite ist etwa 120px hoch, gezeichnet von (y-120) bis y
 		if (npcPos) {
-			const npcCenterY = npcPos.y - 30; // Kreis-Mitte ist 30px über walkableY
+			const npcCenterY = npcPos.y - 60; // Mitte des NPC-Sprites (ca. 120px hoch)
 			const distNpc = Math.sqrt((x - npcPos.x) ** 2 + (y - npcCenterY) ** 2);
 			console.log(`[Debug] NPC dist: ${distNpc.toFixed(0)}`);
-			if (distNpc < 150) { // Viel größerer Radius
+			if (distNpc < 200) { // Sehr großer Radius für einfaches Greifen
 				dragTarget = 'npc';
 				console.log('[Building] Ziehe NPC...');
 				return true;

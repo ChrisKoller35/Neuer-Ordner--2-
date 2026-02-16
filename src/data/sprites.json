@@ -1,5 +1,11 @@
 {
   "_comment": "Sprite-Pfade für Lazy Loading - werden NICHT sofort geladen",
+  "playerVariants": {
+    "player": "./Player.png",
+    "pinkqualle": "./Playerpinkqualle.png",
+    "kleinerdrache": "./playerkleinerdrache.png",
+    "engelfisch": "./Playerengelfisch.png"
+  },
   "sprites": {
     "player": "./Player.png",
     "cityPlayer": "./Playertopdown.png",
@@ -26,7 +32,15 @@
     "standwaffen": "./Standwaffen.png",
     "ruestungMeer": "./Ruestungmeer.png",
     "queststand": "./Queststand.png",
-    "cityBackground": "./Stadthaus.webp"
+    "cityBackground": "./Stadthaus.webp",
+    "shadowfish": "./foes/shadowfish.png",
+    "stingray": "./foes/stingray.png",
+    "seadrake": "./foes/seadrake.png",
+    "abyssal": "./foes/abyssal.png",
+    "leviathan": "./foes/leviathan.png",
+    "hydra": "./foes/hydra.png",
+    "deepseaKraken": "./foes/deepsea-kraken.png",
+    "titan": "./foes/titan.png"
   },
   "cityTiles": [
     "./Bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
