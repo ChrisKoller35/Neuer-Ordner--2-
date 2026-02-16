@@ -279,7 +279,7 @@ export function createBuildingSystem(ctx) {
 			if (npcSpritePath) {
 				// Echtes NPC-Sprite laden - direkt mit Image() für mehr Kontrolle
 				npcSprite = new Image();
-				// Korrekter Pfad für Vite: ./Npc/xxx.png -> /src/Npc/xxx.png
+				// Korrekter Pfad für Vite: ./npc/xxx.png -> /src/npc/xxx.png
 				const correctedPath = npcSpritePath.replace(/^\.\//, '/src/');
 				npcSprite.src = correctedPath;
 				console.log(`[Building] Lade NPC-Sprite: ${correctedPath}`);

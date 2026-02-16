@@ -115,8 +115,8 @@
 			"assets": {
 				"cityPlayer": "./Playertopdown.png",
 				"cityBackground": "./Stadthaus.webp",
-				"npcHaendler": "./Npc/Haendler.png",
-				"npcMission": "./Npc/Mission.png",
+				"npcHaendler": "./npc/Haendler.png",
+				"npcMission": "./npc/Mission.png",
 				"standwaffen": "./Standwaffen.png",
 				"ruestungMeer": "./Ruestungmeer.png",
 				"queststand": "./Queststand.png"
@@ -127,12 +127,12 @@
 			"description": "Stadt Boden-Tiles",
 			"preload": false,
 			"assets": {
-				"tile1": "./Bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
-				"tile2": "./Bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg",
-				"tile3": "./Bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg",
-				"tile4": "./Bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg",
-				"tile5": "./Bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg",
-				"tile6": "./Bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg"
+				"tile1": "./bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
+				"tile2": "./bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg",
+				"tile3": "./bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg",
+				"tile4": "./bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg",
+				"tile5": "./bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg",
+				"tile6": "./bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg"
 			}
 		},
 		

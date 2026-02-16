@@ -11,7 +11,7 @@ import {
 	CITY_GRID_ROWS,
 	CITY_FLOOR_HEIGHT
 } from './constants.js';
-import { createAnimationPlayer } from '../Animation/animationLoader.js';
+import { createAnimationPlayer } from '../animation/animationLoader.js';
 
 // ============================================================
 // ANIMATION TEST - Nutzt globale window.ANIM_TEST Variable
@@ -24,7 +24,7 @@ function loadTestAnimation() {
 	testAnimationLoading = true;
 	console.log('[AnimTest] Lade Animation...');
 	
-	createAnimationPlayer('./src/Animation/player_walk.anim.json')
+	createAnimationPlayer('./src/animation/player_walk.anim.json')
 		.then(player => {
 			console.log('[AnimTest] Animation geladen!', player.data.totalFrames, 'Frames');
 			player.play();

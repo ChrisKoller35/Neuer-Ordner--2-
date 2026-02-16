@@ -6,14 +6,14 @@
       "name": "Hafen",
       "description": "Handelsrouten, Import/Export, seltene Ressourcen",
       "sprite": "./buildings/harbor.png",
-      "background": "./BuildingBackgrounds/Hafen.webp",
+      "background": "./building-backgrounds/Hafen.webp",
       "mapPosition": { "x": 0.15, "y": 0.7 },
       "mapIcon": "./buildings/harbor-icon.png",
       "unlocked": true,
       "npc": {
         "id": "harbormaster",
         "name": "Hafenmeister",
-        "sprite": "./Npc/harbormaster.png",
+        "sprite": "./npc/harbormaster.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Willkommen im Hafen! Hier kommen die Schiffe mit seltenen Waren an.",
@@ -27,14 +27,14 @@
       "name": "Werkstatt",
       "description": "Crafting, Upgrades, Reparaturen, Spezialausrüstung",
       "sprite": "./buildings/workshop.png",
-      "background": "./BuildingBackgrounds/Werkstatt.webp",
+      "background": "./building-backgrounds/Werkstatt.webp",
       "mapPosition": { "x": 0.35, "y": 0.4 },
       "mapIcon": "./buildings/workshop-icon.png",
       "unlocked": true,
       "npc": {
         "id": "blacksmith",
         "name": "Schmied",
-        "sprite": "./Npc/blacksmith.png",
+        "sprite": "./npc/blacksmith.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Ah, ein Kunde! Was soll ich für dich schmieden?",
@@ -48,14 +48,14 @@
       "name": "Akademie",
       "description": "Talente freischalten, Forschung, neue Baupläne",
       "sprite": "./buildings/academy.png",
-      "background": "./BuildingBackgrounds/Akademie.webp",
+      "background": "./building-backgrounds/Akademie.webp",
       "mapPosition": { "x": 0.5, "y": 0.25 },
       "mapIcon": "./buildings/academy-icon.png",
       "unlocked": true,
       "npc": {
         "id": "teacher",
         "name": "Lehrer",
-        "sprite": "./Npc/teacher.png",
+        "sprite": "./npc/teacher.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Wissen ist Macht! Was möchtest du lernen?",
@@ -69,7 +69,7 @@
       "name": "Kaserne",
       "description": "Armee verwalten, Training, Einheiten-Upgrades",
       "sprite": "./buildings/barracks.png",
-      "background": "./BuildingBackgrounds/Kaserne.webp",
+      "background": "./building-backgrounds/Kaserne.webp",
       "mapPosition": { "x": 0.8, "y": 0.35 },
       "mapIcon": "./buildings/barracks-icon.png",
       "unlocked": false,
@@ -77,7 +77,7 @@
       "npc": {
         "id": "captain",
         "name": "Hauptmann",
-        "sprite": "./Npc/captain.png",
+        "sprite": "./npc/captain.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Soldat! Bereit für das Training?",
@@ -91,14 +91,14 @@
       "name": "Marktplatz",
       "description": "Preis-System, NPC-Händler, tägliche Angebote, Quest-Aufträge",
       "sprite": "./buildings/market.png",
-      "background": "./BuildingBackgrounds/Marktplatz.webp",
+      "background": "./building-backgrounds/Marktplatz.webp",
       "mapPosition": { "x": 0.65, "y": 0.6 },
       "mapIcon": "./buildings/market-icon.png",
       "unlocked": true,
       "npc": {
         "id": "merchant",
         "name": "Markthändler",
-        "sprite": "./Npc/market-merchant.png",
+        "sprite": "./npc/market-merchant.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Schau dir meine Waren an! Heute gibt es Sonderangebote!",
@@ -120,7 +120,7 @@
       "npc": {
         "id": "alchemist",
         "name": "Alchemist",
-        "sprite": "./Npc/alchemist.png",
+        "sprite": "./npc/alchemist.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Ah, ein Versuchskaninchen... äh, ich meine Besucher!",
@@ -134,14 +134,14 @@
       "name": "Gärtnerei",
       "description": "Anbau, Heilkräuter, Buff-Zutaten, Handelsware",
       "sprite": "./buildings/garden.png",
-      "background": "./BuildingBackgrounds/Gärtnerei.webp",
+      "background": "./building-backgrounds/Gärtnerei.webp",
       "mapPosition": { "x": 0.85, "y": 0.75 },
       "mapIcon": "./buildings/garden-icon.png",
       "unlocked": true,
       "npc": {
         "id": "gardener",
         "name": "Gärtner",
-        "sprite": "./Npc/gardener.png",
+        "sprite": "./npc/gardener.png",
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Die Pflanzen brauchen Pflege! Willst du mir helfen?",
