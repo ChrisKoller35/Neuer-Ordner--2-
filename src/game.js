@@ -249,14 +249,14 @@ let processedHealSprite = null;
 let pickupHideTimer = null;
 const coverRockMaskCache = new Map(); // Cache scaled alpha masks for cover rock collisions
 
-// Stadt Grid-System (f�r Debug-Editor via window exportiert)
-window.CITY_WALKABLE_GRID = window.CITY_WALKABLE_GRID || {};
+// Stadt Grid-System (für Debug-Editor via window exportiert)
+window.CITY_WALKABLE_GRID = walkableGridsData.city || {};
 window.CITY_GRID_EDIT_MODE = false;
 window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
 window.CITY_GRID_COLS = CITY_GRID_COLS;
 window.CITY_GRID_ROWS = CITY_GRID_ROWS;
 
-// Geb�ude Walkable Grids (aus JSON)
+// Gebäude Walkable Grids (aus JSON)
 window.BUILDING_WALKABLE_GRID_market = walkableGridsData.market;
 window.BUILDING_WALKABLE_GRID_workshop = walkableGridsData.workshop;
 window.BUILDING_WALKABLE_GRID_harbor = walkableGridsData.harbor;

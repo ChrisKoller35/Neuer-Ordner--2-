@@ -1,0 +1,75 @@
+// ============================================================
+// CHARACTER SELECT - Charakterauswahl-UI
+// ============================================================
+// Verwaltet den Startbildschirm und die Charakterauswahl.
+// Setzt window.selectedCharacter basierend auf Benutzerauswahl.
+// ============================================================
+"use strict";
+
+(function() {
+  // Ausgewählter Charakter (Standard: player)
+  window.selectedCharacter = 'player';
+  
+  // Charakter-Pfade
+  window.characterSprites = {
+    'player': './src/Player.png',
+    'pinkqualle': './src/Playerpinkqualle.png',
+    'kleinerdrache': './src/playerkleinerdrache.png',
+    'engelfisch': './src/Playerengelfisch.png'
+  };
+  
+  // Flag ob Charakterauswahl bestätigt wurde
+  window.characterConfirmed = false;
+  
+  // Warte auf DOM
+  document.addEventListener('DOMContentLoaded', function() {
+    const startScreen = document.getElementById('startScreen');
+    const characterSelectScreen = document.getElementById('characterSelectScreen');
+    const startButton = document.getElementById('btnStartGame');
+    const confirmButton = document.getElementById('btnConfirmCharacter');
+    const cards = document.querySelectorAll('.character-card');
+    
+    // Start-Button: Zeigt Charakterauswahl
+    if (startButton) {
+      startButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (startScreen) startScreen.style.display = 'none';
+        if (characterSelectScreen) characterSelectScreen.style.display = 'flex';
+      });
+    }
+    
+    // Charakter-Karten klickbar machen
+    cards.forEach(card => {
+      card.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Entferne 'selected' von allen Karten
+        cards.forEach(c => c.classList.remove('selected'));
+        // Füge 'selected' zur geklickten Karte hinzu
+        this.classList.add('selected');
+        // Speichere den ausgewählten Charakter
+        window.selectedCharacter = this.dataset.character;
+        console.log('[Cashfisch] Charakter gewählt:', window.selectedCharacter);
+      });
+    });
+    
+    // Confirm-Button: Startet das Spiel
+    if (confirmButton) {
+      confirmButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        window.characterConfirmed = true;
+        console.log('[Cashfisch] Spiel startet mit Charakter:', window.selectedCharacter);
+        
+        // Cache zurücksetzen damit der neue Charakter geladen wird
+        if (typeof window.resetPlayerSpriteCache === 'function') {
+          window.resetPlayerSpriteCache();
+        }
+        
+        if (characterSelectScreen) characterSelectScreen.style.display = 'none';
+        // Trigger die Cutscene
+        if (typeof window.startCutscene === 'function') {
+          window.startCutscene();
+        }
+      });
+    }
+  });
+})();
