@@ -1,30 +1,36 @@
 /**
- * Spawning System
- * Handles spawning of foes, pickups, and other game entities
+ * Spawning System – Erstellt und verwaltet Spielobjekte
+ * Extrahiert aus bootGame() in game.js
  */
-
-const TAU = Math.PI * 2;
+import { TAU } from '../core/constants.js';
+import { clamp } from '../core/utils.js';
 
 /**
- * Creates the spawning system
- * @param {Object} ctx - Context with dependencies
+ * Erstellt das Spawning-System
+ * @param {Object} ctx - Context mit Dependencies
  */
 export function createSpawningSystem(ctx) {
 	const {
 		getState,
 		getCanvas,
-		clamp,
-		SYMBOL_DATA
+		SYMBOL_DATA,
+		SYMBOL_AUTOCOLLECT_MS,
+		getSPRITES,
+		spriteReady,
+		getCoverRockCollisionMask,
+		getLevel3GroundLine
 	} = ctx;
 
-	function scheduleNextFoeSpawn(initial = false) {
+	function seedBubbles() {
 		const state = getState();
-		const interval = state.foeSpawnInterval || { min: 1400, max: 2100 };
-		const minDelay = interval.min == null ? 1400 : interval.min;
-		const maxDelay = interval.max == null ? minDelay + 600 : interval.max;
-		const span = Math.max(0, maxDelay - minDelay);
-		const delay = minDelay + Math.random() * span;
-		state.foeSpawnTimer = initial ? Math.min(delay, 520) : delay;
+		const canvas = getCanvas();
+		const count = 24;
+		state.bubbles = Array.from({ length: count }, () => ({
+			x: Math.random() * canvas.width,
+			y: Math.random() * canvas.height,
+			r: Math.random() * 3 + 1.4,
+			spd: Math.random() * 0.08 + 0.04
+		}));
 	}
 
 	function spawnFoe(opts = {}) {
@@ -34,7 +40,6 @@ export function createSpawningSystem(ctx) {
 		const baseY = opts.baseY == null ? canvas.height * 0.28 + Math.random() * canvas.height * 0.36 : opts.baseY;
 		const entry = opts.entryX == null ? canvas.width + 320 : opts.entryX;
 		const scale = opts.scale == null ? 0.7 + Math.random() * 0.3 : opts.scale;
-
 		const foe = {
 			type,
 			x: entry,
@@ -45,7 +50,6 @@ export function createSpawningSystem(ctx) {
 			scale,
 			dead: false
 		};
-
 		if (type === "bogenschreck") {
 			foe.anchorX = opts.anchorX == null ? canvas.width * (0.64 + Math.random() * 0.06) : opts.anchorX;
 			foe.shootTimer = opts.shootTimer == null ? 1200 + Math.random() * 600 : opts.shootTimer;
@@ -93,9 +97,18 @@ export function createSpawningSystem(ctx) {
 			foe.chargeSpeed = opts.chargeSpeed == null ? 0.46 + Math.random() * 0.04 : opts.chargeSpeed;
 			foe.speed = foe.cruiseSpeed;
 		}
-
 		state.foes.push(foe);
 		return foe;
+	}
+
+	function scheduleNextFoeSpawn(initial = false) {
+		const state = getState();
+		const interval = state.foeSpawnInterval || { min: 1400, max: 2100 };
+		const minDelay = interval.min == null ? 1400 : interval.min;
+		const maxDelay = interval.max == null ? minDelay + 600 : interval.max;
+		const span = Math.max(0, maxDelay - minDelay);
+		const delay = minDelay + Math.random() * span;
+		state.foeSpawnTimer = initial ? Math.min(delay, 520) : delay;
 	}
 
 	function primeFoes() {
@@ -181,14 +194,13 @@ export function createSpawningSystem(ctx) {
 			vy: opts.vy == null ? 0.015 : opts.vy,
 			sway: Math.random() * TAU,
 			swaySpeed: opts.swaySpeed == null ? 0.0024 : opts.swaySpeed,
-			swayAmp: opts.swayAmp == null ? 18 : opts.swayAmp,
-			life: opts.life == null ? 11000 : opts.life,
-			born: now,
-			scale: opts.scale == null ? 1 : opts.scale,
-			spriteKey: config.spriteKey || null,
-			spriteScale: config.spriteScale == null ? 0.18 : config.spriteScale,
-			spriteOffsetX: config.spriteOffsetX == null ? 0 : config.spriteOffsetX,
-			spriteOffsetY: config.spriteOffsetY == null ? 0 : config.spriteOffsetY
+			amplitude: opts.amplitude == null ? 10 : opts.amplitude,
+			scale: opts.scale == null ? 0.26 : opts.scale,
+			life: SYMBOL_AUTOCOLLECT_MS,
+			spawnTime: now,
+			collected: false,
+			autoCollected: false,
+			cleanupTimer: null
 		};
 		state.symbolDrops.push(drop);
 		return drop;
@@ -197,64 +209,129 @@ export function createSpawningSystem(ctx) {
 	function spawnCoinDrop(opts = {}) {
 		const state = getState();
 		const canvas = getCanvas();
-		const now = performance.now();
+		const initialY = opts.y == null ? canvas.height * 0.5 : opts.y;
+		const hoverBandTop = canvas.height * 0.34;
+		const hoverBandBottom = canvas.height * 0.68;
+		const targetHoverY = clamp(opts.hoverY == null ? initialY : opts.hoverY, hoverBandTop, hoverBandBottom);
+		const baseScroll = opts.scrollSpeed == null ? 0.24 + Math.random() * 0.14 : Math.abs(opts.scrollSpeed);
 		const drop = {
-			kind: "coin",
-			x: opts.x == null ? canvas.width * 0.5 : opts.x,
-			y: opts.y == null ? canvas.height * 0.5 : opts.y,
-			vx: opts.vx == null ? -0.06 + Math.random() * 0.04 : opts.vx,
-			vy: opts.vy == null ? -0.12 + Math.random() * 0.08 : opts.vy,
-			gravity: opts.gravity == null ? 0.00018 : opts.gravity,
-			sway: Math.random() * TAU,
-			swaySpeed: opts.swaySpeed == null ? 0.003 : opts.swaySpeed,
-			swayAmp: opts.swayAmp == null ? 6 : opts.swayAmp,
-			life: opts.life == null ? 5200 : opts.life,
-			born: now,
-			scale: opts.scale == null ? 0.85 + Math.random() * 0.2 : opts.scale,
-			value: opts.value == null ? 1 : opts.value,
-			spriteKey: "coin",
-			spriteScale: opts.spriteScale == null ? 0.09 : opts.spriteScale,
-			spriteOffsetX: opts.spriteOffsetX == null ? 0 : opts.spriteOffsetX,
-			spriteOffsetY: opts.spriteOffsetY == null ? 0 : opts.spriteOffsetY
+			x: opts.x == null ? canvas.width * 0.6 : opts.x,
+			y: initialY,
+			vx: opts.vx == null ? -baseScroll : -Math.abs(opts.vx),
+			vy: opts.vy == null ? 0 : opts.vy,
+			gravity: opts.gravity == null ? 0.0007 : opts.gravity,
+			spin: Math.random() * TAU,
+			spinSpeed: opts.spinSpeed == null ? 0.005 + Math.random() * 0.003 : opts.spinSpeed,
+			value: Math.max(1, opts.value == null ? 1 : opts.value),
+			life: opts.life == null ? 12000 : opts.life,
+			collectDuration: opts.collectDuration == null ? 420 : opts.collectDuration,
+			collectTimer: 0,
+			collected: false,
+			dead: false,
+			scale: opts.scale == null ? 0.95 + Math.random() * 0.15 : opts.scale,
+			hoverY: targetHoverY,
+			hoverAmplitude: opts.hoverAmplitude == null ? 24 + Math.random() * 10 : opts.hoverAmplitude,
+			hoverPhase: Math.random() * TAU,
+			hoverSpeed: opts.hoverSpeed == null ? 0.002 + Math.random() * 0.0012 : opts.hoverSpeed,
+			hoverFollow: opts.hoverFollow == null ? 0.0042 : opts.hoverFollow,
+			scrollSpeed: baseScroll
 		};
 		state.coinDrops.push(drop);
 		return drop;
 	}
 
+	function getCoinValueForFoe(foe) {
+		if (!foe) return 1;
+		if (foe.type === "oktopus") return 3;
+		if (foe.type === "bogenschreck" || foe.type === "ritterfisch") return 2;
+		return 1;
+	}
+
 	function spawnCoverRock(opts = {}) {
 		const state = getState();
 		const canvas = getCanvas();
-		const x = opts.x == null ? canvas.width + 180 : opts.x;
-		const y = opts.y == null ? canvas.height * (0.38 + Math.random() * 0.26) : opts.y;
+		const SPRITES = getSPRITES();
+		const sprite = SPRITES.coverRock;
+		const scale = opts.scale == null ? 0.52 : opts.scale;
+		const spriteWidth = spriteReady(sprite) ? sprite.naturalWidth : 540;
+		const spriteHeight = spriteReady(sprite) ? sprite.naturalHeight : 420;
+		const width = (opts.width == null ? spriteWidth : opts.width) * scale;
+		const height = (opts.height == null ? spriteHeight : opts.height) * scale;
+		const radiusX = (opts.radiusX == null ? width * 0.45 : opts.radiusX);
+		const radiusY = (opts.radiusY == null ? height * 0.4 : opts.radiusY);
+		const padX = opts.padX == null ? 0 : opts.padX;
+		const padY = opts.padY == null ? 0 : opts.padY;
+		const padLeft = opts.padLeft == null ? null : opts.padLeft;
+		const padRight = opts.padRight == null ? null : opts.padRight;
+		const padTop = opts.padTop == null ? null : opts.padTop;
+		const padBottom = opts.padBottom == null ? null : opts.padBottom;
+		let groundLine = opts.groundLine == null ? canvas.height - 12 : opts.groundLine;
+		if (opts.groundLine == null && state.levelIndex === 2) {
+			const levelGround = getLevel3GroundLine();
+			if (levelGround != null) groundLine = levelGround;
+		}
+		const minY = canvas.height * 0.22;
+		const maxY = Math.max(minY, groundLine - radiusY);
+		const targetY = clamp(groundLine - radiusY, minY, maxY);
 		const rock = {
-			x,
-			y,
-			baseY: y,
-			vx: opts.vx == null ? 0.07 + Math.random() * 0.03 : opts.vx,
-			sway: Math.random() * TAU,
-			swaySpeed: opts.swaySpeed == null ? 0.0018 : opts.swaySpeed,
-			swayAmp: opts.swayAmp == null ? 8 : opts.swayAmp,
-			scale: opts.scale == null ? 0.9 + Math.random() * 0.24 : opts.scale,
-			spriteKey: opts.spriteKey == null ? "coverRock" : opts.spriteKey,
-			spriteScale: opts.spriteScale == null ? 0.26 : opts.spriteScale,
-			spriteOffsetX: opts.spriteOffsetX == null ? 0 : opts.spriteOffsetX,
-			spriteOffsetY: opts.spriteOffsetY == null ? 0 : opts.spriteOffsetY,
-			hitboxWidth: opts.hitboxWidth == null ? 86 : opts.hitboxWidth,
-			hitboxHeight: opts.hitboxHeight == null ? 62 : opts.hitboxHeight
+			x: clamp(opts.x == null ? canvas.width * 0.5 : opts.x, canvas.width * 0.24, canvas.width * 0.76),
+			y: opts.startY == null ? -height : opts.startY,
+			radiusX,
+			radiusY,
+			width,
+			height,
+			scale,
+			padX,
+			padY,
+			padLeft,
+			padRight,
+			padTop,
+			padBottom,
+			collisionOffsetX: opts.collisionOffsetX == null ? 0 : opts.collisionOffsetX,
+			collisionOffsetY: opts.collisionOffsetY == null ? 0 : opts.collisionOffsetY,
+			vy: 0,
+			gravity: opts.gravity == null ? 0.0011 : opts.gravity,
+			maxFallSpeed: opts.maxFallSpeed == null ? 0.68 : opts.maxFallSpeed,
+			delay: opts.delay == null ? 620 : Math.max(0, opts.delay),
+			groundLine,
+			targetY,
+			landed: false,
+			impactTimer: 0,
+			damageCooldown: 0,
+			hitPulse: 0
 		};
+		if (spriteReady(sprite)) {
+			rock.collisionMask = getCoverRockCollisionMask(sprite, width, height);
+		}
 		state.coverRocks.push(rock);
 		return rock;
 	}
 
+	function triggerEventFlash(kind, opts = {}) {
+		const state = getState();
+		const now = performance.now();
+		const duration = opts.duration == null ? 1600 : opts.duration;
+		state.eventFlash = {
+			kind,
+			started: now,
+			duration,
+			opacity: opts.opacity == null ? 0.9 : opts.opacity,
+			text: opts.text || null
+		};
+	}
+
 	return {
-		scheduleNextFoeSpawn,
+		seedBubbles,
 		spawnFoe,
+		scheduleNextFoeSpawn,
 		primeFoes,
 		spawnLevelFoe,
 		getFoeHitbox,
 		spawnHealPickup,
 		spawnSymbolDrop,
 		spawnCoinDrop,
-		spawnCoverRock
+		getCoinValueForFoe,
+		spawnCoverRock,
+		triggerEventFlash
 	};
 }

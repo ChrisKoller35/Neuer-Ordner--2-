@@ -8,9 +8,6 @@ import {
 	TAU, 
 	DEFAULT_BOSS_STATS,
 	KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
-	KEY_SHIELD, CODE_SHIELD,
-	KEY_CORAL, CODE_CORAL,
-	KEY_TSUNAMI, CODE_TSUNAMI,
 	KEY_SHOOT, CODE_SHOOT,
 	CITY_SCALE, CITY_VIEW_ZOOM, CITY_SPEED, CITY_PLAYER_RADIUS,
 	FOE_BASE_SCORE,
@@ -116,6 +113,9 @@ import { createPickupsSystem } from './game/pickups.js';
 import { createModels } from './game/models.js';
 import { createFloorHelpers, getLevelFloorSprite } from './game/floor.js';
 import { getHUDElements, getCitySpriteDebugElements } from './core/hudElements.js';
+import { createInputHelpers, isShieldActivationKey, isCoralActivationKey, isTsunamiActivationKey, isCityShortcut, isCityShortcutCandidate } from './game/inputHelpers.js';
+import { createHUDSystem } from './game/hudUpdate.js';
+import { createSpawningSystem } from './game/spawning.js';
 
 // === Boss Module Imports ===
 import { createBossRenderSystem } from './boss/render.js';
@@ -411,6 +411,9 @@ function bootGame() {
 	let controlsArmed = false;
 	const DEBUG_SHORTCUTS = true;
 
+	// Input-Helpers (aus game/inputHelpers.js)
+	const { hasKey } = createInputHelpers(keys);
+
 	const cityInventory = {
 		equipment: { weapon: null, armor: null, armor2: null },
 		items: Array.from({ length: 9 }, () => null)
@@ -646,250 +649,88 @@ function bootGame() {
 		});
 	}
 
-	function seedBubbles() {
-		const count = 24;
-		state.bubbles = Array.from({ length: count }, () => ({
-			x: Math.random() * canvas.width,
-			y: Math.random() * canvas.height,
-			r: Math.random() * 3 + 1.4,
-			spd: Math.random() * 0.08 + 0.04
-		}));
-	}
+	// Spawning-System (aus game/spawning.js)
+	const spawning = createSpawningSystem({
+		getState: () => state,
+		getCanvas: () => canvas,
+		SYMBOL_DATA,
+		SYMBOL_AUTOCOLLECT_MS,
+		getSPRITES: () => SPRITES,
+		spriteReady,
+		getCoverRockCollisionMask,
+		getLevel3GroundLine
+	});
+	const { seedBubbles, spawnFoe, scheduleNextFoeSpawn, primeFoes, spawnLevelFoe,
+		getFoeHitbox, spawnHealPickup, spawnSymbolDrop, spawnCoinDrop,
+		getCoinValueForFoe, spawnCoverRock, triggerEventFlash } = spawning;
 
-	function spawnFoe(opts = {}) {
-		const type = opts.type || "jelly";
-		const baseY = opts.baseY == null ? canvas.height * 0.28 + Math.random() * canvas.height * 0.36 : opts.baseY;
-		const entry = opts.entryX == null ? canvas.width + 320 : opts.entryX;
-		const scale = opts.scale == null ? 0.7 + Math.random() * 0.3 : opts.scale;
-		const foe = {
-			type,
-			x: entry,
-			y: baseY,
-			baseY,
-			speed: opts.speed == null ? (type === "bogenschreck" ? 0.16 + Math.random() * 0.04 : 0.12 + Math.random() * 0.08) : opts.speed,
-			sway: Math.random() * TAU,
-			scale,
-			dead: false
-		};
-		if (type === "bogenschreck") {
-			foe.anchorX = opts.anchorX == null ? canvas.width * (0.64 + Math.random() * 0.06) : opts.anchorX;
-			foe.shootTimer = opts.shootTimer == null ? 1200 + Math.random() * 600 : opts.shootTimer;
-			foe.shootCooldown = opts.shootCooldown == null ? 2400 + Math.random() * 900 : opts.shootCooldown;
-			foe.hoverAmplitude = opts.hoverAmplitude == null ? 12 + Math.random() * 6 : opts.hoverAmplitude;
-			foe.hoverPhase = Math.random() * TAU;
-		} else if (type === "oktopus") {
-			const minAnchorX = canvas.width * 0.5;
-			const maxAnchorX = canvas.width * 0.8;
-			const minAnchorY = canvas.height * 0.26;
-			const maxAnchorY = canvas.height * 0.76;
-			const initialAnchorX = opts.anchorX == null ? canvas.width * (0.66 + Math.random() * 0.05) : opts.anchorX;
-			const initialAnchorY = opts.anchorY == null ? foe.baseY : opts.anchorY;
-			foe.anchorX = clamp(initialAnchorX, minAnchorX, maxAnchorX);
-			foe.anchorY = clamp(initialAnchorY, minAnchorY, maxAnchorY);
-			foe.shootTimer = opts.shootTimer == null ? 1600 + Math.random() * 380 : opts.shootTimer;
-			foe.shootCooldown = opts.shootCooldown == null ? 3200 + Math.random() * 620 : opts.shootCooldown;
-			foe.volleySpacing = opts.volleySpacing == null ? 260 : opts.volleySpacing;
-			foe.burstCount = opts.burstCount == null ? (Math.random() < 0.6 ? 2 : 1) : opts.burstCount;
-			foe.burstQueue = 0;
-			foe.projectileSpeed = opts.projectileSpeed == null ? 0.38 + Math.random() * 0.04 : opts.projectileSpeed;
-			foe.orbitAngle = opts.orbitAngle == null ? Math.random() * TAU : opts.orbitAngle;
-			foe.orbitRadius = opts.orbitRadius == null ? 28 + Math.random() * 12 : opts.orbitRadius;
-			foe.orbitVertical = opts.orbitVertical == null ? 32 + Math.random() * 14 : opts.orbitVertical;
-			foe.orbitSpeed = opts.orbitSpeed == null ? 0.0014 + Math.random() * 0.0006 : opts.orbitSpeed;
-			foe.dashDuration = opts.dashDuration == null ? 420 : opts.dashDuration;
-			foe.dashDistance = opts.dashDistance == null ? 48 + Math.random() * 12 : opts.dashDistance;
-			foe.dashDir = Math.random() < 0.5 ? -1 : 1;
-			foe.dashTimer = 0;
-			foe.laneShiftTimer = opts.laneShiftTimer == null ? 2400 + Math.random() * 600 : opts.laneShiftTimer;
-			foe.laneShiftCooldown = opts.laneShiftCooldown == null ? 2400 + Math.random() * 600 : opts.laneShiftCooldown;
-		} else if (type === "ritterfisch") {
-			const minAnchorY = canvas.height * 0.26;
-			const maxAnchorY = canvas.height * 0.76;
-			foe.anchorX = opts.anchorX == null ? canvas.width * (0.66 + Math.random() * 0.05) : opts.anchorX;
-			const rawAnchorY = opts.anchorY == null ? baseY + (Math.random() - 0.5) * canvas.height * 0.12 : opts.anchorY;
-			foe.anchorY = clamp(rawAnchorY, minAnchorY, maxAnchorY);
-			foe.patrolRange = opts.patrolRange == null ? 18 + Math.random() * 10 : opts.patrolRange;
-			foe.chargeCooldown = opts.chargeCooldown == null ? 3200 + Math.random() * 600 : opts.chargeCooldown;
-			foe.chargeTimer = opts.chargeTimer == null ? 1400 + Math.random() * 600 : opts.chargeTimer;
-			foe.charging = false;
-			foe.chargeDuration = 0;
-			foe.recoverTimer = 0;
-			foe.cruiseSpeed = opts.cruiseSpeed == null ? 0.18 + Math.random() * 0.04 : opts.cruiseSpeed;
-			foe.chargeSpeed = opts.chargeSpeed == null ? 0.46 + Math.random() * 0.04 : opts.chargeSpeed;
-			foe.speed = foe.cruiseSpeed;
-		}
-		state.foes.push(foe);
-		return foe;
-	}
-
-	function primeFoes() {
-		if (state.levelConfig && typeof state.levelConfig.initialSpawnDelay === "number") state.foeSpawnTimer = state.levelConfig.initialSpawnDelay;
-		else scheduleNextFoeSpawn(true);
-	}
-
-	function getFoeHitbox(foe, opts = {}) {
-		const forPlayer = !!opts.forPlayer;
-		if (foe.type === "bogenschreck") {
-			const width = forPlayer ? 52 : 44;
-			const height = forPlayer ? 36 : 32;
-			return { width: width * foe.scale, height: height * foe.scale };
-		}
-		if (foe.type === "oktopus") {
-			const width = forPlayer ? 54 : 46;
-			const height = forPlayer ? 40 : 32;
-			return { width: width * foe.scale, height: height * foe.scale };
-		}
-		if (foe.type === "ritterfisch") {
-			const width = forPlayer ? 48 : 40;
-			const height = forPlayer ? 34 : 26;
-			return { width: width * foe.scale, height: height * foe.scale };
-		}
-		const width = forPlayer ? 42 : 36;
-		const height = forPlayer ? 36 : 28;
-		return { width: width * foe.scale, height: height * foe.scale };
-	}
-
-	function spawnHealPickup() {
-		const baseY = canvas.height * 0.28 + Math.random() * canvas.height * 0.42;
-		state.healPickups.push({
-			x: canvas.width + 120,
-			y: baseY,
-			vx: 0.08 + Math.random() * 0.05,
-			sway: Math.random() * TAU,
-			scale: 0.9 + Math.random() * 0.2,
-			life: 16000
-		});
-	}
-
-		function spawnSymbolDrop(kind, opts = {}) {
-			const config = SYMBOL_DATA[kind];
-			if (!config) return null;
-			const now = performance.now();
-			const drop = {
-				kind,
-				x: opts.x == null ? canvas.width * 0.6 : opts.x,
-				y: opts.y == null ? canvas.height * 0.5 : opts.y,
-				vy: opts.vy == null ? 0.015 : opts.vy,
-				sway: Math.random() * TAU,
-				swaySpeed: opts.swaySpeed == null ? 0.0024 : opts.swaySpeed,
-				amplitude: opts.amplitude == null ? 10 : opts.amplitude,
-				scale: opts.scale == null ? 0.26 : opts.scale,
-				life: SYMBOL_AUTOCOLLECT_MS,
-				spawnTime: now,
-				collected: false,
-				autoCollected: false,
-				cleanupTimer: null
-			};
-			state.symbolDrops.push(drop);
-			return drop;
-		}
-
-		function spawnCoinDrop(opts = {}) {
-			const initialY = opts.y == null ? canvas.height * 0.5 : opts.y;
-			const hoverBandTop = canvas.height * 0.34;
-			const hoverBandBottom = canvas.height * 0.68;
-			const targetHoverY = clamp(opts.hoverY == null ? initialY : opts.hoverY, hoverBandTop, hoverBandBottom);
-			const baseScroll = opts.scrollSpeed == null ? 0.24 + Math.random() * 0.14 : Math.abs(opts.scrollSpeed);
-			const drop = {
-				x: opts.x == null ? canvas.width * 0.6 : opts.x,
-				y: initialY,
-				vx: opts.vx == null ? -baseScroll : -Math.abs(opts.vx),
-				vy: opts.vy == null ? 0 : opts.vy,
-				gravity: opts.gravity == null ? 0.0007 : opts.gravity,
-				spin: Math.random() * TAU,
-				spinSpeed: opts.spinSpeed == null ? 0.005 + Math.random() * 0.003 : opts.spinSpeed,
-				value: Math.max(1, opts.value == null ? 1 : opts.value),
-				life: opts.life == null ? 12000 : opts.life,
-				collectDuration: opts.collectDuration == null ? 420 : opts.collectDuration,
-				collectTimer: 0,
-				collected: false,
-				dead: false,
-				scale: opts.scale == null ? 0.95 + Math.random() * 0.15 : opts.scale,
-				hoverY: targetHoverY,
-				hoverAmplitude: opts.hoverAmplitude == null ? 24 + Math.random() * 10 : opts.hoverAmplitude,
-				hoverPhase: Math.random() * TAU,
-				hoverSpeed: opts.hoverSpeed == null ? 0.002 + Math.random() * 0.0012 : opts.hoverSpeed,
-				hoverFollow: opts.hoverFollow == null ? 0.0042 : opts.hoverFollow,
-				scrollSpeed: baseScroll
-			};
-			state.coinDrops.push(drop);
-			return drop;
-		}
-
-		function showPickupMessage(text, duration = 2000) {
-			if (!pickupMsg) return;
-			pickupMsg.textContent = text;
-			pickupMsg.style.display = "block";
-			if (pickupHideTimer != null) clearTimeout(pickupHideTimer);
-			pickupHideTimer = window.setTimeout(() => {
-				if (pickupMsg) pickupMsg.style.display = "none";
-				pickupHideTimer = null;
-			}, duration);
-		}
-
-		function hidePickupMessage() {
-			if (pickupHideTimer != null) {
-				clearTimeout(pickupHideTimer);
-				pickupHideTimer = null;
-			}
+	function showPickupMessage(text, duration = 2000) {
+		if (!pickupMsg) return;
+		pickupMsg.textContent = text;
+		pickupMsg.style.display = "block";
+		if (pickupHideTimer != null) clearTimeout(pickupHideTimer);
+		pickupHideTimer = window.setTimeout(() => {
 			if (pickupMsg) pickupMsg.style.display = "none";
-		}
+			pickupHideTimer = null;
+		}, duration);
+	}
 
-		function unlockShieldIfNeeded() {
-			if (state.player.shieldUnlocked || state.levelIndex !== 0) return;
-			state.player.shieldUnlocked = true;
-			state.player.shieldCooldown = 0;
-			state.player.shieldActive = false;
-			state.player.shieldTimer = 0;
-			state.player.shieldLastActivation = 0;
-			state.player.shieldLastBlock = 0;
-			triggerEventFlash("unlock", { text: "Neue Fähigkeit: Schutzschild", duration: 1500, opacity: 0.86 });
-			updateHUD();
+	function hidePickupMessage() {
+		if (pickupHideTimer != null) {
+			clearTimeout(pickupHideTimer);
+			pickupHideTimer = null;
 		}
+		if (pickupMsg) pickupMsg.style.display = "none";
+	}
 
-		function concludeBossVictory(nextLevelIndex) {
-			if (nextLevelIndex < levels.getLevelConfigsLength()) {
-				advanceLevel(nextLevelIndex, { skipFlash: false, invulnDuration: 1800 });
-				return;
-			}
-			enterCity();
+	function unlockShieldIfNeeded() {
+		if (state.player.shieldUnlocked || state.levelIndex !== 0) return;
+		state.player.shieldUnlocked = true;
+		state.player.shieldCooldown = 0;
+		state.player.shieldActive = false;
+		state.player.shieldTimer = 0;
+		state.player.shieldLastActivation = 0;
+		state.player.shieldLastBlock = 0;
+		triggerEventFlash("unlock", { text: "Neue Fähigkeit: Schutzschild", duration: 1500, opacity: 0.86 });
+		updateHUD();
+	}
+
+	function concludeBossVictory(nextLevelIndex) {
+		if (nextLevelIndex < levels.getLevelConfigsLength()) {
+			advanceLevel(nextLevelIndex, { skipFlash: false, invulnDuration: 1800 });
+			return;
 		}
+		enterCity();
+	}
 
-		function finishPendingSymbolAdvance() {
-			const pending = state.pendingSymbolAdvance;
-			if (!pending) return;
-			const nextLevelIndex = pending.nextLevelIndex;
-			state.pendingSymbolAdvance = null;
-			concludeBossVictory(nextLevelIndex);
+	function finishPendingSymbolAdvance() {
+		const pending = state.pendingSymbolAdvance;
+		if (!pending) return;
+		const nextLevelIndex = pending.nextLevelIndex;
+		state.pendingSymbolAdvance = null;
+		concludeBossVictory(nextLevelIndex);
+	}
+
+	function collectSymbolDrop(drop, opts = {}) {
+		if (!drop || drop.collected) return;
+		drop.collected = true;
+		drop.autoCollected = !!opts.auto;
+		drop.cleanupTimer = 420;
+		drop.life = 0;
+		const { kind } = drop;
+		const config = SYMBOL_DATA[kind];
+		if (!state.symbolInventory[kind]) {
+			state.symbolInventory[kind] = true;
 		}
-
-		function collectSymbolDrop(drop, opts = {}) {
-			if (!drop || drop.collected) return;
-			drop.collected = true;
-			drop.autoCollected = !!opts.auto;
-			drop.cleanupTimer = 420;
-			drop.life = 0;
-			const { kind } = drop;
-			const config = SYMBOL_DATA[kind];
-			if (!state.symbolInventory[kind]) {
-				state.symbolInventory[kind] = true;
-			}
-			const label = config ? config.label : "Symbol";
-			if (!opts.silent) {
-				const autoSuffix = drop.autoCollected ? " (automatisch)" : "";
-				showPickupMessage(`${label} gesichert${autoSuffix}!`, drop.autoCollected ? 1600 : 2200);
-			}
-			updateHUD();
-			if (state.pendingSymbolAdvance && state.pendingSymbolAdvance.symbol === kind) {
-				finishPendingSymbolAdvance();
-			}
+		const label = config ? config.label : "Symbol";
+		if (!opts.silent) {
+			const autoSuffix = drop.autoCollected ? " (automatisch)" : "";
+			showPickupMessage(`${label} gesichert${autoSuffix}!`, drop.autoCollected ? 1600 : 2200);
 		}
-
-	function getCoinValueForFoe(foe) {
-		if (!foe) return 1;
-		if (foe.type === "oktopus") return 3;
-		if (foe.type === "bogenschreck" || foe.type === "ritterfisch") return 2;
-		return 1;
+		updateHUD();
+		if (state.pendingSymbolAdvance && state.pendingSymbolAdvance.symbol === kind) {
+			finishPendingSymbolAdvance();
+		}
 	}
 
 	function collectCoinDrop(drop) {
@@ -904,63 +745,6 @@ function bootGame() {
 		updateHUD();
 	}
 
-	function spawnCoverRock(opts = {}) {
-		const sprite = SPRITES.coverRock;
-		const scale = opts.scale == null ? 0.52 : opts.scale;
-		const spriteWidth = spriteReady(sprite) ? sprite.naturalWidth : 540;
-		const spriteHeight = spriteReady(sprite) ? sprite.naturalHeight : 420;
-		const width = (opts.width == null ? spriteWidth : opts.width) * scale;
-		const height = (opts.height == null ? spriteHeight : opts.height) * scale;
-		const radiusX = (opts.radiusX == null ? width * 0.45 : opts.radiusX);
-		const radiusY = (opts.radiusY == null ? height * 0.4 : opts.radiusY);
-		const padX = opts.padX == null ? 0 : opts.padX;
-		const padY = opts.padY == null ? 0 : opts.padY;
-		const padLeft = opts.padLeft == null ? null : opts.padLeft;
-		const padRight = opts.padRight == null ? null : opts.padRight;
-		const padTop = opts.padTop == null ? null : opts.padTop;
-		const padBottom = opts.padBottom == null ? null : opts.padBottom;
-		let groundLine = opts.groundLine == null ? canvas.height - 12 : opts.groundLine;
-		if (opts.groundLine == null && state.levelIndex === 2) {
-			const levelGround = getLevel3GroundLine();
-			if (levelGround != null) groundLine = levelGround;
-		}
-		const minY = canvas.height * 0.22;
-		const maxY = Math.max(minY, groundLine - radiusY);
-		const targetY = clamp(groundLine - radiusY, minY, maxY);
-		const rock = {
-			x: clamp(opts.x == null ? canvas.width * 0.5 : opts.x, canvas.width * 0.24, canvas.width * 0.76),
-			y: opts.startY == null ? -height : opts.startY,
-			radiusX,
-			radiusY,
-			width,
-			height,
-			scale,
-			padX,
-			padY,
-			padLeft,
-			padRight,
-			padTop,
-			padBottom,
-			collisionOffsetX: opts.collisionOffsetX == null ? 0 : opts.collisionOffsetX,
-			collisionOffsetY: opts.collisionOffsetY == null ? 0 : opts.collisionOffsetY,
-			vy: 0,
-			gravity: opts.gravity == null ? 0.0011 : opts.gravity,
-			maxFallSpeed: opts.maxFallSpeed == null ? 0.68 : opts.maxFallSpeed,
-			delay: opts.delay == null ? 620 : Math.max(0, opts.delay),
-			groundLine,
-			targetY,
-			landed: false,
-			impactTimer: 0,
-			damageCooldown: 0,
-			hitPulse: 0
-		};
-		if (spriteReady(sprite)) {
-			rock.collisionMask = getCoverRockCollisionMask(sprite, width, height);
-		}
-		state.coverRocks.push(rock);
-		return rock;
-	}
-
 	function maybeSpawnLevelThreeCoverRock() {
 		if (state.coverRockSpawned) return;
 		if ((state.level || 1) !== 3) return;
@@ -972,53 +756,6 @@ function bootGame() {
 		if (rock) {
 			triggerEventFlash("cover", { text: "Felsbrocken fällt!", duration: 1100, opacity: 0.75 });
 		}
-	}
-
-	function triggerEventFlash(kind, opts = {}) {
-		const now = performance.now();
-		const duration = opts.duration == null ? 1600 : opts.duration;
-		state.eventFlash = {
-			kind,
-			started: now,
-			duration,
-			opacity: opts.opacity == null ? 0.9 : opts.opacity,
-			text: opts.text || null
-		};
-	}
-
-	// LEVEL_CONFIGS: src/game/levels.js (importiert als 'levels')
-
-	function scheduleNextFoeSpawn(initial = false) {
-		const interval = state.foeSpawnInterval || { min: 1400, max: 2100 };
-		const minDelay = interval.min == null ? 1400 : interval.min;
-		const maxDelay = interval.max == null ? minDelay + 600 : interval.max;
-		const span = Math.max(0, maxDelay - minDelay);
-		const delay = minDelay + Math.random() * span;
-		state.foeSpawnTimer = initial ? Math.min(delay, 520) : delay;
-	}
-
-	function spawnLevelFoe() {
-		const config = state.levelConfig;
-		if (!config || !Array.isArray(config.spawnTable) || config.spawnTable.length === 0) {
-			return spawnFoe();
-		}
-		const totalWeight = config.spawnTable.reduce((sum, entry) => sum + (entry.weight == null ? 1 : entry.weight), 0);
-		let roll = Math.random() * (totalWeight || 1);
-		for (const entry of config.spawnTable) {
-			const weight = entry.weight == null ? 1 : entry.weight;
-			roll -= weight;
-			if (roll <= 0) {
-				if (typeof entry.spawn === "function") return entry.spawn();
-				const opts = typeof entry.options === "function" ? entry.options() : entry.options || {};
-				return spawnFoe({ type: entry.type, ...(opts || {}) });
-			}
-		}
-		const fallback = config.spawnTable[config.spawnTable.length - 1];
-		if (fallback) {
-			const opts = typeof fallback.options === "function" ? fallback.options() : fallback.options || {};
-			return spawnFoe({ type: fallback.type, ...(opts || {}) });
-		}
-		return spawnFoe();
 	}
 
 	function applyLevelConfig(index, opts = {}) {
@@ -1066,45 +803,7 @@ function bootGame() {
 	}
 
 	// Ausgelagerte Module: boss/*, foes/*, player/*, game/*, city/*
-
-	function hasKey(keySet) {
-		for (const key of keySet) {
-			if (keys.has(key)) return true;
-		}
-		return false;
-	}
-
-	function isShieldActivationKey(event) {
-		if (!event) return false;
-		if (KEY_SHIELD.has(event.key)) return true;
-		return CODE_SHIELD.has(event.code || "");
-	}
-
-	function isCoralActivationKey(event) {
-		if (!event) return false;
-		if (KEY_CORAL.has(event.key)) return true;
-		return CODE_CORAL.has(event.code || "");
-	}
-
-	function isTsunamiActivationKey(event) {
-		if (!event) return false;
-		if (KEY_TSUNAMI.has(event.key)) return true;
-		return CODE_TSUNAMI.has(event.code || "");
-	}
-
-	function isCityShortcut(event) {
-		if (!event) return false;
-		const isFive = event.code === "Digit5" || event.code === "Numpad5" || event.key === "5" || event.key === "%";
-		if (!isFive) return false;
-		if (event.altKey && event.shiftKey) return true;
-		if (event.ctrlKey || event.metaKey) return false;
-		return state.mode !== "city";
-	}
-
-	function isCityShortcutCandidate(event) {
-		if (!event) return false;
-		return event.code === "Digit5" || event.code === "Numpad5" || event.key === "5" || event.key === "%";
-	}
+	// Input-Hilfsfunktionen: siehe game/inputHelpers.js (hasKey, isShieldActivationKey, etc.)
 
 	function enterCity() {
 		// City-Assets vorladen (non-blocking)
@@ -1303,71 +1002,17 @@ function bootGame() {
 		if (bannerEl) bannerEl.textContent = "Bosskampf! Besiege die Bedrohung";
 	}
 
-	function updateHUD() {
-		if (hudScore) hudScore.textContent = state.score.toString();
-		if (hudCoins) hudCoins.textContent = state.coins.toString();
-		if (hudLevel) hudLevel.textContent = state.level.toString();
-		if (hudHearts) hudHearts.textContent = "❤".repeat(state.hearts);
-		if (hudTime) hudTime.textContent = (state.elapsed / 1000).toFixed(1);
-		if (bannerEl && state.boss.active) bannerEl.textContent = `Bosskampf – HP ${state.boss.hp}/${state.boss.maxHp}`;
-		if (hudShield) {
-			const player = state.player;
-			const unlocked = !!player.shieldUnlocked;
-			hudShield.classList.toggle("locked", !unlocked);
-			hudShield.classList.toggle("active", unlocked && player.shieldActive);
-			hudShield.classList.toggle("ready", unlocked && !player.shieldActive && player.shieldCooldown <= 0);
-			hudShield.classList.toggle("cooldown", unlocked && !player.shieldActive && player.shieldCooldown > 0);
-			if (unlocked && !player.shieldActive && player.shieldCooldown > 0) {
-				const seconds = Math.ceil(player.shieldCooldown / 1000);
-				hudShield.textContent = seconds.toString();
-			} else {
-				hudShield.textContent = "🛡";
-			}
-			if (!unlocked) hudShield.title = "Schild (Shift/E) – besiege Boss 1";
-			else if (player.shieldActive) hudShield.title = "Schild aktiv";
-			else if (player.shieldCooldown > 0) hudShield.title = `Schild lädt (${Math.ceil(player.shieldCooldown / 1000)}s)`;
-			else hudShield.title = "Schild bereit (Shift/E)";
-		}
-		if (hudArmor) {
-			const armorEquipped = cityInventory.equipment.armor === ARMOR_ITEM_NAME;
-			const armorReady = armorEquipped && state.armorShieldCharges > 0 && state.mode === "game";
-			hudArmor.classList.toggle("active", armorReady);
-			hudArmor.classList.toggle("inactive", !armorReady);
-			hudArmor.style.display = armorEquipped ? "inline-flex" : "none";
-			hudArmor.title = armorEquipped ? (armorReady ? "Rüstung aktiv – nächster Treffer wird neutralisiert" : "Rüstung verbraucht (lädt in der Stadt)") : "";
-		}
-		if (hudSymbols) {
-			for (const [kind, el] of Object.entries(hudSymbols)) {
-				if (!el) continue;
-				const owned = !!(state.symbolInventory && state.symbolInventory[kind]);
-				el.classList.toggle("owned", owned);
-				const config = SYMBOL_DATA[kind];
-				if (owned && config && config.asset) {
-					el.style.backgroundImage = `url("${config.asset}")`;
-				} else {
-					el.style.backgroundImage = "none";
-				}
-			}
-		}
-		
-		// Progression HUD aktualisieren
-		if (hudPlayerLevel) {
-			hudPlayerLevel.textContent = state.progression.level.toString();
-		}
-		if (hudXpBarFill) {
-			const progress = progressionSystem.getLevelProgress() * 100;
-			hudXpBarFill.style.width = `${progress}%`;
-		}
-		if (hudSkillPoints && hudSkillPointsNum) {
-			const sp = state.progression.skillPoints;
-			if (sp > 0) {
-				hudSkillPoints.style.display = 'inline';
-				hudSkillPointsNum.textContent = sp.toString();
-			} else {
-				hudSkillPoints.style.display = 'none';
-			}
-		}
-	}
+	// HUD-Update-System (aus game/hudUpdate.js)
+	const hudSystem = createHUDSystem({
+		getState: () => state,
+		getHUD: () => hud,
+		getBannerEl: () => bannerEl,
+		getInventory: () => cityInventory,
+		armorItemName: ARMOR_ITEM_NAME,
+		SYMBOL_DATA,
+		progressionSystem
+	});
+	const updateHUD = () => hudSystem.updateHUD();
 
 	const cityUpdateCtx = {
 		getState: () => state,
@@ -1980,7 +1625,7 @@ function bootGame() {
 			if (bootToast) bootToast.textContent = `Taste erkannt: ${keyInfo} – Modus: ${modeLabel}`;
 			console.log("City shortcut keydown", { key: event.key, code: event.code, alt: event.altKey, shift: event.shiftKey, mode: modeLabel });
 		}
-		if (isCityShortcut(event)) {
+		if (isCityShortcut(event, state.mode)) {
 			event.preventDefault();
 			enterCity();
 			return;
