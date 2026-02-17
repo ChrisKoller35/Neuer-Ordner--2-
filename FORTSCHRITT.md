@@ -34,10 +34,16 @@
 
 ### 🔲 Nächste Schritte
 
-7. **Bilder umziehen** – ~63 Bilder aus `src/` Root in Unterordner:
-   - Spieler-Sprites → `src/player/`
-   - Gegner-Sprites → `src/foes/`
-   - ~155 Pfad-Änderungen nötig
+7. **Bilder umgezogen** ✔ – 34 PNGs aus `src/` Root in Unterordner:
+   - 6 Player-Sprites → `src/player/`
+   - 9 Gegner/Boss-Sprites → `src/foes/`
+   - 8 Game-Assets (Böden, Hintergrund, Items) → `src/game/`
+   - 4 City-Assets → `src/city/`
+   - 3 UI/Menu-Assets → `src/ui/`
+   - 4 Symbol-Sprites → `src/symbols/`
+   - `Bodenplatte.png` entfernt (unused)
+   - LEVEL_ASSETS Bug behoben (Bodengold/Bodenlava waren vertauscht)
+   - 46 Dateien aktualisiert
 
 8. **window.* Globals entfernen** – ~12 globale Zuweisungen durch Module ersetzen
 
