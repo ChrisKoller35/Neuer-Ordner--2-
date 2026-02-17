@@ -115,33 +115,16 @@
 </div>
 
 <!-- CHARACTER SELECTION LOGIC -->
-<script src="./src/ui/characterSelect.js"></script>
+<script type="module" src="./src/ui/characterSelect.js"></script>
 
 <script src="./src/error-display.js"></script>
-
-<!-- DEBUG: Animation Test Key Listener -->
-<script>
-// Globale Variable für Animation-Test
-window.ANIM_TEST = {
-	enabled: false,
-	animation: null,
-	player: null
-};
-
-window.addEventListener('keydown', function(e) {
-	if (e.key === 't' || e.key === 'T') {
-		window.ANIM_TEST.enabled = !window.ANIM_TEST.enabled;
-		console.log('[AnimTest] Animation:', window.ANIM_TEST.enabled ? 'AN' : 'AUS');
-	}
-});
-</script>
 
 <script type="module" src="./src/game.js"></script>
 
 <!-- DEBUG: Grid Editor für begehbare Bereiche -->
-<script src="./src/tools/gridEditor.js"></script>
+<script type="module" src="./src/tools/gridEditor.js"></script>
 
 <!-- CUTSCENE -->
-<script src="./src/cutscene.js"></script>
+<script type="module" src="./src/cutscene.js"></script>
 </body>
 </html>

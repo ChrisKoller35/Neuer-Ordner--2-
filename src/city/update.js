@@ -5,6 +5,7 @@
 
 import { clamp } from '../core/utils.js';
 import { CITY_SPEED } from '../core/constants.js';
+import S from '../core/sharedState.js';
 import {
 	CITY_GRID_CELL_SIZE,
 	CITY_GRID_COLS,
@@ -34,7 +35,7 @@ function isPositionWalkable(city, x, y) {
 	
 	// Prüfe Grid
 	const key = `${col},${row}`;
-	const grid = window.CITY_WALKABLE_GRID || {};
+	const grid = S.CITY_WALKABLE_GRID || {};
 	
 	// Wenn Grid leer ist, erlaube alles (noch nicht konfiguriert)
 	if (Object.keys(grid).length === 0) {
@@ -98,12 +99,12 @@ function updateCityPlayer(city, player, moveX, moveY, dt) {
  */
 function updateCityCamera(city, player) {
 	// Im Grid-Editor-Modus: Kamera wird extern gesteuert
-	if (window.CITY_GRID_EDIT_MODE) {
-		if (typeof window.CITY_CAMERA_X_DEBUG === 'number') {
-			city.camera.x = window.CITY_CAMERA_X_DEBUG;
+	if (S.CITY_GRID_EDIT_MODE) {
+		if (typeof S.CITY_CAMERA_X_DEBUG === 'number') {
+			city.camera.x = S.CITY_CAMERA_X_DEBUG;
 		}
-		if (typeof window.CITY_CAMERA_Y_DEBUG === 'number') {
-			city.camera.y = window.CITY_CAMERA_Y_DEBUG;
+		if (typeof S.CITY_CAMERA_Y_DEBUG === 'number') {
+			city.camera.y = S.CITY_CAMERA_Y_DEBUG;
 		}
 		return;
 	}

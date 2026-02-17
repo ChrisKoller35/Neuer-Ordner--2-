@@ -10,6 +10,7 @@ import {
 	PLACEHOLDER_COLORS
 } from '../core/placeholders.js';
 import { loadSprite } from '../core/assets.js';
+import S from '../core/sharedState.js';
 
 /**
  * Building-Scene-Konstanten
@@ -950,11 +951,10 @@ export function createBuildingSystem(ctx) {
 	 */
 	function getWalkableGrid() {
 		if (!currentBuildingId) return {};
-		const key = `BUILDING_WALKABLE_GRID_${currentBuildingId}`;
-		if (!window[key]) {
-			window[key] = {};
+		if (!S.buildingWalkableGrids[currentBuildingId]) {
+			S.buildingWalkableGrids[currentBuildingId] = {};
 		}
-		return window[key];
+		return S.buildingWalkableGrids[currentBuildingId];
 	}
 	
 	/**
@@ -1052,7 +1052,8 @@ export function createBuildingSystem(ctx) {
 		
 		const varName = `BUILDING_WALKABLE_GRID_${currentBuildingId}`;
 		let result = `// Begehbare Grid-Zellen für ${currentBuilding?.name || currentBuildingId} (${keys.length} Zellen)\n`;
-		result += `window.${varName} = {\n`;
+		result += `// S.buildingWalkableGrids.${currentBuildingId}\n`;
+		result += `{\n`;
 		for (const k of keys) {
 			result += `  "${k}": true,\n`;
 		}
@@ -1242,8 +1243,7 @@ export function createBuildingSystem(ctx) {
 			// R = Reset
 			if (key.toLowerCase() === 'r') {
 				if (confirm('Grid wirklich komplett löschen?')) {
-					const gridKey = `BUILDING_WALKABLE_GRID_${currentBuildingId}`;
-					window[gridKey] = {};
+					S.buildingWalkableGrids[currentBuildingId] = {};
 					console.log('%c[Grid] Alle Zellen gelöscht!', 'color: orange; font-weight: bold;');
 				}
 				return true;
@@ -1405,8 +1405,8 @@ export function createBuildingSystem(ctx) {
 		console.error(`[Building Error] ${context}:`, error);
 		
 		// Error auch in window für einfaches Kopieren
-		window.BUILDING_LAST_ERROR = errorInfo;
-		window.BUILDING_ERROR_STACK = errorStack;
+		S.BUILDING_LAST_ERROR = errorInfo;
+		S.BUILDING_ERROR_STACK = errorStack;
 	}
 	
 	/**
@@ -1497,8 +1497,8 @@ export function createBuildingSystem(ctx) {
 	function clearErrors() {
 		lastError = null;
 		errorStack = [];
-		window.BUILDING_LAST_ERROR = null;
-		window.BUILDING_ERROR_STACK = [];
+		S.BUILDING_LAST_ERROR = null;
+		S.BUILDING_ERROR_STACK = [];
 	}
 	
 	/**

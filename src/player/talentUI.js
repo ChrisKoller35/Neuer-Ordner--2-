@@ -3,6 +3,7 @@
 // ============================================================
 
 import { TALENTS } from './progression.js';
+import S from '../core/sharedState.js';
 
 /**
  * Erstellt die Talentbaum-UI
@@ -290,17 +291,20 @@ export function createTalentTreeUI(deps) {
         container.style.display = 'block';
         isVisible = true;
         
-        // Globale Funktionen für Click-Handler
+        // Globale Funktionen für Click-Handler (window.* nötig wegen HTML onclick)
         window.closeTalentTree = hide;
+        S.closeTalentTree = hide;
         window.investTalent = (talentId) => {
             if (progressionSystem.investTalent(talentId)) {
                 renderContent();
             }
         };
+        S.investTalent = window.investTalent;
         window.resetTalents = () => {
             progressionSystem.resetTalents();
             renderContent();
         };
+        S.resetTalents = window.resetTalents;
     }
     
     /**

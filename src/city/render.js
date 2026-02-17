@@ -5,6 +5,7 @@
 
 import { TAU } from '../core/constants.js';
 import { spriteReady } from '../core/assets.js';
+import S from '../core/sharedState.js';
 import {
 	CITY_GRID_CELL_SIZE,
 	CITY_GRID_COLS,
@@ -14,13 +15,13 @@ import {
 import { createAnimationPlayer } from '../animation/animationLoader.js';
 
 // ============================================================
-// ANIMATION TEST - Nutzt globale window.ANIM_TEST Variable
+// ANIMATION TEST - Nutzt globale S.ANIM_TEST Variable
 // ============================================================
 let testAnimationLoading = false;
 let lastAnimTime = 0;
 
 function loadTestAnimation() {
-	if (testAnimationLoading || window.ANIM_TEST?.player) return;
+	if (testAnimationLoading || S.ANIM_TEST?.player) return;
 	testAnimationLoading = true;
 	console.log('[AnimTest] Lade Animation...');
 	
@@ -28,7 +29,7 @@ function loadTestAnimation() {
 		.then(player => {
 			console.log('[AnimTest] Animation geladen!', player.data.totalFrames, 'Frames');
 			player.play();
-			window.ANIM_TEST.player = player;
+			S.ANIM_TEST.player = player;
 			lastAnimTime = performance.now();
 		})
 		.catch(e => {
@@ -239,9 +240,9 @@ function renderPlayer(ctx, player, playerSprite) {
 	const playerOffsetY = 50.0;
 	
 	// ============================================================
-	// ANIMATION TEST - Nutzt globale window.ANIM_TEST
+	// ANIMATION TEST - Nutzt globale S.ANIM_TEST
 	// ============================================================
-	const animTest = window.ANIM_TEST;
+	const animTest = S.ANIM_TEST;
 	
 	if (animTest?.enabled) {
 		// Lade Animation falls noch nicht geladen
@@ -344,12 +345,12 @@ function renderUI(ctx, width, height, player) {
  * Zeichnet den Grid-Editor (Debug-Modus)
  */
 function renderGridEditor(ctx, city, player) {
-	if (!window.CITY_GRID_EDIT_MODE) return;
+	if (!S.CITY_GRID_EDIT_MODE) return;
 	
 	ctx.save();
 	ctx.translate(-city.camera.x, -city.camera.y);
 	
-	const grid = window.CITY_WALKABLE_GRID || {};
+	const grid = S.CITY_WALKABLE_GRID || {};
 	const cellSize = CITY_GRID_CELL_SIZE;
 	
 	// Grid zeichnen
@@ -386,8 +387,8 @@ function renderGridEditor(ctx, city, player) {
 	// Spieler-Zentrum
 	ctx.fillStyle = "#ff0";
 	ctx.beginPath();
-	if (window.CITY_PLAYER_DRAG_MODE && window.DRAG_REFERENCE_POINT) {
-		ctx.arc(window.DRAG_REFERENCE_POINT.x, window.DRAG_REFERENCE_POINT.y, 8, 0, Math.PI * 2);
+	if (S.CITY_PLAYER_DRAG_MODE && S.DRAG_REFERENCE_POINT) {
+		ctx.arc(S.DRAG_REFERENCE_POINT.x, S.DRAG_REFERENCE_POINT.y, 8, 0, Math.PI * 2);
 		ctx.fill();
 		ctx.fillStyle = "#f00";
 		ctx.beginPath();
@@ -419,7 +420,7 @@ function renderGridEditor(ctx, city, player) {
 	
 	// Debug: Spieler-Position
 	const gridKey = `${playerCol},${playerRow}`;
-	const isInGrid = window.CITY_WALKABLE_GRID && window.CITY_WALKABLE_GRID[gridKey];
+	const isInGrid = S.CITY_WALKABLE_GRID && S.CITY_WALKABLE_GRID[gridKey];
 	ctx.fillStyle = isInGrid ? "#0f0" : "#f00";
 	ctx.fillText(`Spieler: Col=${playerCol}, Row=${playerRow} | Im Grid: ${isInGrid ? "JA" : "NEIN"}`, 215, 124);
 }
@@ -432,7 +433,7 @@ function renderGridDebug(ctx, city, player) {
 	const pCol = Math.floor((player.x - city.buildingX) / cellSize);
 	const pRow = Math.floor(((player.y - PLAYER_VISUAL_OFFSET) - city.buildingY) / cellSize);
 	const gKey = `${pCol},${pRow}`;
-	const inGrid = window.CITY_WALKABLE_GRID && window.CITY_WALKABLE_GRID[gKey];
+	const inGrid = S.CITY_WALKABLE_GRID && S.CITY_WALKABLE_GRID[gKey];
 	
 	ctx.save();
 	ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
@@ -441,7 +442,7 @@ function renderGridDebug(ctx, city, player) {
 	ctx.font = "bold 14px monospace";
 	ctx.textAlign = "left";
 	ctx.fillText(`Grid: Col=${pCol}, Row=${pRow}`, 20, city.height - 40);
-	ctx.fillText(`Im Grid: ${inGrid ? "JA ✓" : "NEIN ✗"} | Zellen: ${Object.keys(window.CITY_WALKABLE_GRID || {}).length}`, 20, city.height - 20);
+	ctx.fillText(`Im Grid: ${inGrid ? "JA ✓" : "NEIN ✗"} | Zellen: ${Object.keys(S.CITY_WALKABLE_GRID || {}).length}`, 20, city.height - 20);
 	ctx.restore();
 }
 
@@ -449,23 +450,23 @@ function renderGridDebug(ctx, city, player) {
  * Exportiert Debug-Variablen für den Grid-Editor
  */
 function exportDebugVariables(city, player) {
-	if (!window.CITY_GRID_EDIT_MODE) {
-		window.CITY_CAMERA_X_DEBUG = city.camera.x;
-		window.CITY_CAMERA_Y_DEBUG = city.camera.y;
+	if (!S.CITY_GRID_EDIT_MODE) {
+		S.CITY_CAMERA_X_DEBUG = city.camera.x;
+		S.CITY_CAMERA_Y_DEBUG = city.camera.y;
 	}
-	window.CITY_BUILDING_X_DEBUG = city.buildingX;
-	window.CITY_BUILDING_Y_DEBUG = city.buildingY;
-	window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
-	window.CITY_GRID_COLS = CITY_GRID_COLS;
-	window.CITY_GRID_ROWS = CITY_GRID_ROWS;
-	window.CITY_PLAYER_DEBUG = player;
+	S.CITY_BUILDING_X_DEBUG = city.buildingX;
+	S.CITY_BUILDING_Y_DEBUG = city.buildingY;
+	S.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
+	S.CITY_GRID_COLS = CITY_GRID_COLS;
+	S.CITY_GRID_ROWS = CITY_GRID_ROWS;
+	S.CITY_PLAYER_DEBUG = player;
 }
 
 /**
  * Zeichnet die Boden-Debug-Linien für Stockwerke
  */
 function renderFloorDebugLines(ctx, city, floors) {
-	if (!window.SHOW_FLOOR_DEBUG_LINES) return;
+	if (!S.SHOW_FLOOR_DEBUG_LINES) return;
 	
 	const player = city.player;
 	
@@ -473,19 +474,19 @@ function renderFloorDebugLines(ctx, city, floors) {
 	ctx.translate(-city.camera.x, -city.camera.y);
 	
 	const FLOOR_OFFSET = city.floorThickness + 0;
-	const userOffset = window.FLOOR_LINE_OFFSET || 0;
-	const individualOffsets = window.FLOOR_LINE_INDIVIDUAL_OFFSETS || {};
+	const userOffset = S.FLOOR_LINE_OFFSET || 0;
+	const individualOffsets = S.FLOOR_LINE_INDIVIDUAL_OFFSETS || {};
 	const innerLeft = city.buildingX + city.wallThickness;
 	const innerRight = city.buildingX + city.buildingWidth - city.wallThickness;
 	
-	window.CITY_FLOORS_DEBUG = [];
+	S.CITY_FLOORS_DEBUG = [];
 	
 	for (let i = 0; i < floors.length; i++) {
 		const floor = floors[i];
 		const indivOffset = individualOffsets[i] || 0;
 		const groundY = floor.y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET + userOffset + indivOffset;
 		
-		window.CITY_FLOORS_DEBUG.push({ index: i, groundY: groundY });
+		S.CITY_FLOORS_DEBUG.push({ index: i, groundY: groundY });
 		
 		ctx.strokeStyle = indivOffset !== 0 ? "#00ff00" : "#ffff00";
 		ctx.lineWidth = indivOffset !== 0 ? 6 : 4;

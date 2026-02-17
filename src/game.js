@@ -134,6 +134,9 @@ import { createUpgradeUI } from './player/upgradeUI.js';
 // === Buildings System ===
 import { createBuildingsManager } from './buildings/buildingsManager.js';
 
+// === Shared State (ersetzt window.* Globals) ===
+import S from './core/sharedState.js';
+
 let canvas = null;
 let ctx = null;
 
@@ -158,10 +161,7 @@ const getLevel3FloorTop = () => floorHelpers?.getLevel3FloorTop() ?? null;
 const getLevel4FloorTop = () => floorHelpers?.getLevel4FloorTop() ?? null;
 const getLevel3GroundLine = () => floorHelpers?.getLevel3GroundLine() ?? null;
 
-// Lazy-Getter f�r Kompatibilit�t mit altem Code
-Object.defineProperty(window, 'LEVEL2_FLOOR_SPRITE', { get: () => getLevelFloorSprite(2) });
-Object.defineProperty(window, 'LEVEL3_FLOOR_SPRITE', { get: () => getLevelFloorSprite(3) });
-Object.defineProperty(window, 'LEVEL4_FLOOR_SPRITE', { get: () => getLevelFloorSprite(4) });
+// Floor-Sprites werden über getLevelFloorSprite(n) geladen (kein window.* mehr nötig)
 
 // Sprite-Pfade aus JSON (Lazy Loading)
 const SPRITE_PATHS = spritesData.sprites;
@@ -179,7 +179,7 @@ let _lastSelectedCharacter = null;
 
 function getSelectedPlayerSprite() {
 	// Hole den aktuell ausgewählten Charakter
-	const selectedChar = (typeof window !== 'undefined' && window.selectedCharacter) || 'player';
+	const selectedChar = S.selectedCharacter || 'player';
 	
 	// Wenn sich die Auswahl geändert hat, Cache invalidieren und Sprite-Pfad aktualisieren
 	if (_lastSelectedCharacter !== selectedChar) {
@@ -203,7 +203,7 @@ function getSelectedPlayerSprite() {
 
 // Funktion zum Zurücksetzen des Player-Sprite-Caches (bei Charakterwechsel)
 function resetPlayerSpriteCache() {
-	const selectedChar = (typeof window !== 'undefined' && window.selectedCharacter) || 'player';
+	const selectedChar = S.selectedCharacter || 'player';
 	const spritePath = PLAYER_VARIANTS[selectedChar] || PLAYER_VARIANTS.player;
 	
 	// Lokalen Cache zurücksetzen
@@ -216,10 +216,8 @@ function resetPlayerSpriteCache() {
 	console.log('[Cashfisch] Player-Sprite-Cache zurückgesetzt für:', selectedChar);
 }
 
-// Exportiere für externe Nutzung
-if (typeof window !== 'undefined') {
-	window.resetPlayerSpriteCache = resetPlayerSpriteCache;
-}
+// Exportiere für externe Nutzung (über sharedState statt window)
+S.resetPlayerSpriteCache = resetPlayerSpriteCache;
 
 // Lazy-geladene City Tiles
 let _cityTilesLoaded = false;
@@ -247,19 +245,20 @@ Object.defineProperty(SPRITES, 'cityTiles', {
 let processedHealSprite = null;
 const coverRockMaskCache = new Map(); // Cache scaled alpha masks for cover rock collisions
 
-// Stadt Grid-System (für Debug-Editor via window exportiert)
-window.CITY_WALKABLE_GRID = walkableGridsData.city || {};
-window.CITY_GRID_EDIT_MODE = false;
-window.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
-window.CITY_GRID_COLS = CITY_GRID_COLS;
-window.CITY_GRID_ROWS = CITY_GRID_ROWS;
+// Stadt Grid-System (über sharedState statt window)
+S.CITY_WALKABLE_GRID = walkableGridsData.city || {};
+S.CITY_GRID_CELL_SIZE = CITY_GRID_CELL_SIZE;
+S.CITY_GRID_COLS = CITY_GRID_COLS;
+S.CITY_GRID_ROWS = CITY_GRID_ROWS;
 
 // Gebäude Walkable Grids (aus JSON)
-window.BUILDING_WALKABLE_GRID_market = walkableGridsData.market;
-window.BUILDING_WALKABLE_GRID_workshop = walkableGridsData.workshop;
-window.BUILDING_WALKABLE_GRID_harbor = walkableGridsData.harbor;
-window.BUILDING_WALKABLE_GRID_academy = walkableGridsData.academy;
-window.BUILDING_WALKABLE_GRID_garden = walkableGridsData.garden;
+S.buildingWalkableGrids = {
+	market: walkableGridsData.market,
+	workshop: walkableGridsData.workshop,
+	harbor: walkableGridsData.harbor,
+	academy: walkableGridsData.academy,
+	garden: walkableGridsData.garden,
+};
 
 // Symbol-Daten aus JSON laden
 const SYMBOL_DATA = symbolsData.symbols;
@@ -542,6 +541,14 @@ function bootGame() {
 		}
 	}
 	window.addEventListener('keydown', handleDebugCheat);
+
+	// ANIM_TEST: T-Taste togglet Animations-Test in der Stadt
+	window.addEventListener('keydown', (e) => {
+		if (e.key === 't' || e.key === 'T') {
+			S.ANIM_TEST.enabled = !S.ANIM_TEST.enabled;
+			console.log('[AnimTest]', S.ANIM_TEST.enabled ? 'AN' : 'AUS');
+		}
+	});
 
 	// Click-Handler für XP-Anzeige
 	const xpDisplayEl = document.querySelector('.xp-display');
@@ -1477,61 +1484,70 @@ function bootGame() {
 			abilities.tryActivateShield();
 		});
 
+	// Spiel-Funktionen über sharedState bereitstellen
+	S.cashBeginGame = () => {
+		if (!bootGame.initialized) bootGame();
+		resetGame();
+		state.over = false;
+		state.paused = false;
+		state.started = true;
+		state.levelIndex = 0;
+		applyLevelConfig(0, { skipFlash: false });
+		primeFoes();
+		scheduleNextFoeSpawn(true);
+		state.lastTick = performance.now();
+		state.boss.active = false;
+		state.boss.entering = false;
+		controlsArmed = true;
+		if (bannerEl) bannerEl.style.display = "block";
+	};
+	S.cashResetGame = resetGame;
+	S.cashSpawnBogenschreck = () => spawnFoe({ type: "bogenschreck" });
+	S.cashDebugJumpLevel = debugJumpToLevel;
+	S.cashEnterCity = () => {
+		if (!bootGame.initialized) bootGame();
+		enterCity();
+	};
+	S.cashGetCityData = () => {
+		if (!state.city) return null;
+		const city = state.city;
+		const FLOOR_OFFSET = city.floorThickness + 0;
+		const floors = city.floors.map((floor, i) => ({
+			stock: i,
+			floorY: floor.y,
+			groundY: Math.round(floor.y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET),
+			hatchX: floor.hatchX,
+			hasHatch: floor.hasHatch
+		}));
+		return {
+			canvasSize: { width: canvas.width, height: canvas.height },
+			building: {
+				x: city.buildingX,
+				y: city.buildingY,
+				width: city.buildingWidth,
+				height: city.buildingHeight
+			},
+			floorHeight: CITY_FLOOR_HEIGHT,
+			floorThickness: city.floorThickness,
+			floors: floors,
+			player: {
+				x: city.player.x,
+				y: city.player.y,
+				floor: city.player.floor
+			},
+			camera: city.camera
+		};
+	};
+	// Debug-Zugang über Browser-Konsole
 	if (typeof window !== "undefined") {
-		window.cashBeginGame = () => {
-			if (!bootGame.initialized) bootGame();
-			resetGame();
-			state.over = false;
-			state.paused = false;
-			state.started = true;
-			state.levelIndex = 0;
-			applyLevelConfig(0, { skipFlash: false });
-			primeFoes();
-			scheduleNextFoeSpawn(true);
-			state.lastTick = performance.now();
-			state.boss.active = false;
-			state.boss.entering = false;
-			controlsArmed = true;
-			if (bannerEl) bannerEl.style.display = "block";
-		};
-		window.cashResetGame = resetGame;
-		window.cashSpawnBogenschreck = () => spawnFoe({ type: "bogenschreck" });
-		window.cashDebugJumpLevel = debugJumpToLevel;
-		window.cashEnterCity = () => {
-			if (!bootGame.initialized) bootGame();
-			enterCity();
-		};
-		// Debug-Funktion: Hole Stadt-Daten für Floor-Editor
-		window.cashGetCityData = () => {
-			if (!state.city) return null;
-			const city = state.city;
-			const FLOOR_OFFSET = city.floorThickness + 0;
-			const floors = city.floors.map((floor, i) => ({
-				stock: i,
-				floorY: floor.y,
-				groundY: Math.round(floor.y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET),
-				hatchX: floor.hatchX,
-				hasHatch: floor.hasHatch
-			}));
-			return {
-				canvasSize: { width: canvas.width, height: canvas.height },
-				building: {
-					x: city.buildingX,
-					y: city.buildingY,
-					width: city.buildingWidth,
-					height: city.buildingHeight
-				},
-				floorHeight: CITY_FLOOR_HEIGHT,
-				floorThickness: city.floorThickness,
-				floors: floors,
-				player: {
-					x: city.player.x,
-					y: city.player.y,
-					floor: city.player.floor
-				},
-				camera: city.camera
-			};
-		};
+		Object.assign(window, {
+			cashBeginGame: S.cashBeginGame,
+			cashResetGame: S.cashResetGame,
+			cashSpawnBogenschreck: S.cashSpawnBogenschreck,
+			cashDebugJumpLevel: S.cashDebugJumpLevel,
+			cashEnterCity: S.cashEnterCity,
+			cashGetCityData: S.cashGetCityData,
+		});
 	}
 	resetGame();
 	state.started = true;
@@ -1547,8 +1563,9 @@ function bootGame() {
 	requestAnimationFrame(tick);
 }
 
+S.bootGame = S.bootGame || bootGame;
 if (typeof window !== "undefined") {
-	window.bootGame = window.bootGame || bootGame;
+	window.bootGame = S.bootGame; // Debug-Zugang
 	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootGame, { once: true });
 	else bootGame();
 }

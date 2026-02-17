@@ -2,11 +2,13 @@
 // CUTSCENE - Intro-Cutscene mit Dialog und Animationen
 // ============================================================
 // Zeigt die Einführungsgeschichte mit Erzähler und Spieler.
-// Exportiert window.startCutscene() für den Spielstart.
+// Exportiert S.startCutscene für den Spielstart.
 // ============================================================
 "use strict";
 
-(function(){
+import S from './core/sharedState.js';
+
+{
   let cutsceneEnabled = false;
   const cvs = document.getElementById('cutCanvas');
   const ctx = cvs.getContext('2d');
@@ -20,8 +22,8 @@
     if (cutsceneEnabled) return;
     cutsceneEnabled = true;
     // Aktualisiere den Spieler-Sprite basierend auf der Auswahl
-    if (window.characterSprites && window.selectedCharacter) {
-      playerSprite.src = window.characterSprites[window.selectedCharacter] || "./src/player/Player.png";
+    if (S.characterSprites && S.selectedCharacter) {
+      playerSprite.src = S.characterSprites[S.selectedCharacter] || "./src/player/Player.png";
     }
     if (cutWrap && cutWrap.style.display === 'none') cutWrap.style.display = 'block';
     if (startOverlay) startOverlay.style.display = 'none';
@@ -29,7 +31,7 @@
   }
   
   // Exportiere als globale Funktion für Charakterauswahl
-  window.startCutscene = enableCutscene;
+  S.startCutscene = enableCutscene;
 
   const bubbles = [];
   for (let i=0;i<26;i++) bubbles.push({x:Math.random()*cvs.width,y:Math.random()*cvs.height,r:2+Math.random()*5,spd:.3+Math.random()*1.0});
@@ -322,9 +324,9 @@
         document.removeEventListener('pointerdown', pointerAdvance);
         document.removeEventListener('keydown', keyAdvance);
         nextBtn.removeEventListener('click', onAdvance);
-        if (typeof window.bootGame === 'function') window.bootGame();
-        if (typeof window.cashBeginGame === 'function') window.cashBeginGame();
-        else if (typeof window.cashResetGame === 'function') window.cashResetGame();
+        if (typeof S.bootGame === 'function') S.bootGame();
+        if (typeof S.cashBeginGame === 'function') S.cashBeginGame();
+        else if (typeof S.cashResetGame === 'function') S.cashResetGame();
       }catch(err){
         const g=document.getElementById('globalErr'); if(g){ g.textContent='Boot-Fehler: '+err.message; g.style.display='block'; }
       }
@@ -424,4 +426,4 @@
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-})();
+}
