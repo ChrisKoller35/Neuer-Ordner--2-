@@ -45,14 +45,23 @@
    - LEVEL_ASSETS Bug behoben (Bodengold/Bodenlava waren vertauscht)
    - 46 Dateien aktualisiert
 
-8. **window.* Globals entfernen** – ~12 globale Zuweisungen durch Module ersetzen
+8. **window.* Globals entfernt** ✔ – sharedState.js Modul ersetzt ~30 window.* Globals:
+   - `src/core/sharedState.js` – NEU, zentrales State-Objekt für Cross-Modul-Kommunikation
+   - `characterSelect.js`, `cutscene.js`, `gridEditor.js` zu ES Modules konvertiert
+   - `index.html`: Script-Tags auf `type="module"`, ANIM_TEST inline entfernt
+   - `game.js`: Alle window.* Zuweisungen durch `S.*` ersetzt
+   - `city/render.js`, `city/update.js`: ~30 window.* durch `S.*` ersetzt
+   - `buildingScene.js`: Dynamische `window[key]` durch `S.buildingWalkableGrids` ersetzt
+   - `talentUI.js`: Duale Zuweisung (window.* für HTML onclick + S.*)
+   - Debug-Konsolen-Zugang bleibt über `window.*` (Object.assign)
 
-### Git Backup-Tags
+### 🔲 Nächste Schritte
 - `backup/vor-struktur-refactoring-2026-02-16` – Vor allen Änderungen
 - `backup/nach-struktur-refactoring-2026-02-16` – Nach Punkt 1-3
 
 ### Wichtige Dateien
 - `src/game.js` – Hauptmodul (~1449 Zeilen, bootGame() noch ~1050 Zeilen)
+- `src/core/sharedState.js` – NEU (zentraler Cross-Modul State)
 - `src/game/inputHelpers.js` – NEU
 - `src/game/hudUpdate.js` – NEU  
 - `src/game/spawning.js` – NEU
