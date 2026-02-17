@@ -3,10 +3,10 @@
 	"description": "Asset-Manifest für Lazy Loading - gruppiert nach Szenen/Leveln",
 	
 	"playerVariants": {
-		"player": "./Player.png",
-		"pinkqualle": "./Playerpinkqualle.png",
-		"kleinerdrache": "./playerkleinerdrache.png",
-		"engelfisch": "./Playerengelfisch.png"
+		"player": "./player/Player.png",
+		"pinkqualle": "./player/Playerpinkqualle.png",
+		"kleinerdrache": "./player/playerkleinerdrache.png",
+		"engelfisch": "./player/Playerengelfisch.png"
 	},
 	
 	"groups": {
@@ -14,10 +14,10 @@
 			"description": "Immer geladene Basis-Assets",
 			"preload": true,
 			"assets": {
-				"player": "./Player.png",
-				"shot": "./player-shot.png",
-				"heal": "./heal-potion.png",
-				"symbolGeldschein": "./Geldscheinsymbol.png"
+				"player": "./player/Player.png",
+				"shot": "./player/player-shot.png",
+				"heal": "./game/heal-potion.png",
+				"symbolGeldschein": "./symbols/Geldscheinsymbol.png"
 			}
 		},
 		
@@ -25,9 +25,9 @@
 			"description": "Titelbildschirm und Menü",
 			"preload": true,
 			"assets": {
-				"titelbild": "./Titelbild.png",
-				"titelbildZwei": "./Titelbildzwei.png",
-				"startbutton": "./Startbutton.png"
+				"titelbild": "./ui/Titelbild.png",
+				"titelbildZwei": "./ui/Titelbildzwei.png",
+				"startbutton": "./ui/Startbutton.png"
 			}
 		},
 		
@@ -35,10 +35,10 @@
 			"description": "Level 1 - Ozean (Jelly + Shark Boss)",
 			"preload": false,
 			"assets": {
-				"backgroundLevelOne": "./Backgroundlvlone.png",
-				"foe": "./foe-jelly.png",
-				"boss": "./boss-shark.png",
-				"coverRock": "./Fels.png"
+				"backgroundLevelOne": "./game/Backgroundlvlone.png",
+				"foe": "./foes/foe-jelly.png",
+				"boss": "./foes/boss-shark.png",
+				"coverRock": "./game/Fels.png"
 			}
 		},
 		
@@ -46,9 +46,9 @@
 			"description": "Level 2 - Lava Zone (Bogenschreck + Parfüm-Kraken)",
 			"preload": false,
 			"assets": {
-				"floorSprite": "./Bodenlava.png",
-				"bogenschreck": "./Aquischwer-Bogenschreck.png",
-				"parfumKraken": "./Parfüm-Kraken.png"
+				"floorSprite": "./game/Bodenlava.png",
+				"bogenschreck": "./foes/Aquischwer-Bogenschreck.png",
+				"parfumKraken": "./foes/Parfüm-Kraken.png"
 			}
 		},
 		
@@ -56,10 +56,10 @@
 			"description": "Level 3 - Tiefsee (Oktopus + Ritterfisch)",
 			"preload": false,
 			"assets": {
-				"floorSprite": "./Boden.png",
-				"oktopus": "./Oktopus.png",
-				"oktopusProjectile": "./Oktopuspfeil.png",
-				"ritterfisch": "./Ritterfisch.png"
+				"floorSprite": "./game/Boden.png",
+				"oktopus": "./foes/Oktopus.png",
+				"oktopusProjectile": "./foes/Oktopuspfeil.png",
+				"ritterfisch": "./foes/Ritterfisch.png"
 			}
 		},
 		
@@ -67,9 +67,9 @@
 			"description": "Level 4 - Gold Zone (Yachtwal + Cashfish Boss)",
 			"preload": false,
 			"assets": {
-				"floorSprite": "./Bodengold.png",
-				"yachtwal": "./Yachtwal.png",
-				"cashfish": "./Cashfish.png"
+				"floorSprite": "./game/Bodengold.png",
+				"yachtwal": "./foes/Yachtwal.png",
+				"cashfish": "./foes/Cashfish.png"
 			}
 		},
 		
@@ -113,13 +113,13 @@
 			"description": "Stadt-Modus",
 			"preload": false,
 			"assets": {
-				"cityPlayer": "./Playertopdown.png",
+				"cityPlayer": "./player/Playertopdown.png",
 				"cityBackground": "./Stadthaus.webp",
 				"npcHaendler": "./npc/Haendler.png",
 				"npcMission": "./npc/Mission.png",
-				"standwaffen": "./Standwaffen.png",
-				"ruestungMeer": "./Ruestungmeer.png",
-				"queststand": "./Queststand.png"
+				"standwaffen": "./city/Standwaffen.png",
+				"ruestungMeer": "./city/Ruestungmeer.png",
+				"queststand": "./city/Queststand.png"
 			}
 		},
 		
@@ -140,8 +140,8 @@
 			"description": "Spieler-Fähigkeiten (Coral Allies etc.)",
 			"preload": false,
 			"assets": {
-				"coralAllyOne": "./Korallenbegleitereins.png",
-				"coralAllyTwo": "./Korallenbegleiterzwei.png"
+				"coralAllyOne": "./game/Korallenbegleitereins.png",
+				"coralAllyTwo": "./game/Korallenbegleiterzwei.png"
 			}
 		},
 		
@@ -149,9 +149,9 @@
 			"description": "UI Symbole",
 			"preload": false,
 			"assets": {
-				"symbolSchluessel": "./Schlüsselsymbol.png",
-				"symbolYacht": "./Yachtsymbol.png",
-				"allesymbole": "./Allesymbole.png"
+				"symbolSchluessel": "./symbols/Schlüsselsymbol.png",
+				"symbolYacht": "./symbols/Yachtsymbol.png",
+				"allesymbole": "./symbols/Allesymbole.png"
 			}
 		},
 		
@@ -159,7 +159,7 @@
 			"description": "Cutscene/Dialog Assets",
 			"preload": false,
 			"assets": {
-				"narrator": "./narrator.png"
+				"narrator": "./city/narrator.png"
 			}
 		}
 	},

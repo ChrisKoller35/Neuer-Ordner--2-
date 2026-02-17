@@ -167,10 +167,10 @@ Object.defineProperty(window, 'LEVEL4_FLOOR_SPRITE', { get: () => getLevelFloorS
 const SPRITE_PATHS = spritesData.sprites;
 const CITY_TILE_PATHS = spritesData.cityTiles;
 const PLAYER_VARIANTS = spritesData.playerVariants || {
-	player: './Player.png',
-	pinkqualle: './Playerpinkqualle.png',
-	kleinerdrache: './playerkleinerdrache.png',
-	engelfisch: './Playerengelfisch.png'
+	player: './player/Player.png',
+	pinkqualle: './player/Playerpinkqualle.png',
+	kleinerdrache: './player/playerkleinerdrache.png',
+	engelfisch: './player/Playerengelfisch.png'
 };
 
 // Aktiver Spieler-Sprite (wird von Charakterauswahl gesetzt)

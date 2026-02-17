@@ -60,7 +60,7 @@
       "id": "ruestung-meeresbewohner",
       "label": "Rüstung der Meeresbewohner",
       "type": "armor",
-      "icon": "./src/Ruestungmeer.png",
+      "icon": "./src/city/Ruestungmeer.png",
       "effect": "Ein Treffer wird neutralisiert (pro Level 1x). In der Stadt wird der Effekt wieder aufgeladen.",
       "price": 150,
       "stats": {

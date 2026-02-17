@@ -3,17 +3,17 @@
     "pferd": {
       "spriteKey": "symbolSchluessel",
       "label": "Schlüssel-Symbol",
-      "asset": "./src/Schlüsselsymbol.png"
+      "asset": "./src/symbols/Schlüsselsymbol.png"
     },
     "sprinter": {
       "spriteKey": "symbolGeldschein",
       "label": "Geldschein-Symbol",
-      "asset": "./src/Geldscheinsymbol.png"
+      "asset": "./src/symbols/Geldscheinsymbol.png"
     },
     "yacht": {
       "spriteKey": "symbolYacht",
       "label": "Yacht-Symbol",
-      "asset": "./src/Yachtsymbol.png"
+      "asset": "./src/symbols/Yachtsymbol.png"
     }
   },
   "levelSequence": ["pferd", "sprinter", "yacht"],

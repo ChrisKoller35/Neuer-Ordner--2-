@@ -27,13 +27,13 @@ let _level4FloorSprite = null;
 export function getLevelFloorSprite(level) {
 	switch(level) {
 		case 2:
-			if (!_level2FloorSprite) _level2FloorSprite = AssetManager.load("./Bodenlava.png", "level2");
+			if (!_level2FloorSprite) _level2FloorSprite = AssetManager.load("./game/Bodenlava.png", "level2");
 			return _level2FloorSprite;
 		case 3:
-			if (!_level3FloorSprite) _level3FloorSprite = AssetManager.load("./Boden.png", "level3");
+			if (!_level3FloorSprite) _level3FloorSprite = AssetManager.load("./game/Boden.png", "level3");
 			return _level3FloorSprite;
 		case 4:
-			if (!_level4FloorSprite) _level4FloorSprite = AssetManager.load("./Bodengold.png", "level4");
+			if (!_level4FloorSprite) _level4FloorSprite = AssetManager.load("./game/Bodengold.png", "level4");
 			return _level4FloorSprite;
 		default:
 			return null;

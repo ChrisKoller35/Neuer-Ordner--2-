@@ -21,7 +21,7 @@
     cutsceneEnabled = true;
     // Aktualisiere den Spieler-Sprite basierend auf der Auswahl
     if (window.characterSprites && window.selectedCharacter) {
-      playerSprite.src = window.characterSprites[window.selectedCharacter] || "./src/Player.png";
+      playerSprite.src = window.characterSprites[window.selectedCharacter] || "./src/player/Player.png";
     }
     if (cutWrap && cutWrap.style.display === 'none') cutWrap.style.display = 'block';
     if (startOverlay) startOverlay.style.display = 'none';
@@ -36,11 +36,11 @@
 
   const playerSprite = new Image();
   // Wird später von enableCutscene gesetzt
-  playerSprite.src = "./src/Player.png";
+  playerSprite.src = "./src/player/Player.png";
   const narratorSprite = new Image();
-  narratorSprite.src = "./src/narrator.png";
+  narratorSprite.src = "./src/city/narrator.png";
   const backgroundLevelOneSprite = new Image();
-  backgroundLevelOneSprite.src = "./src/Backgroundlvlone.png";
+  backgroundLevelOneSprite.src = "./src/game/Backgroundlvlone.png";
 
   function spriteReady(img){
     return !!(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
@@ -158,7 +158,7 @@
 
   let showIcons=0;
   const symbolsSprite = new Image();
-  symbolsSprite.src = "./src/Allesymbole.png";
+  symbolsSprite.src = "./src/symbols/Allesymbole.png";
 
   function drawSymbolSheet(x,y,a){
     a=(a==null?1:a);

@@ -12,10 +12,10 @@
   
   // Charakter-Pfade
   window.characterSprites = {
-    'player': './src/Player.png',
-    'pinkqualle': './src/Playerpinkqualle.png',
-    'kleinerdrache': './src/playerkleinerdrache.png',
-    'engelfisch': './src/Playerengelfisch.png'
+    'player': './src/player/Player.png',
+    'pinkqualle': './src/player/Playerpinkqualle.png',
+    'kleinerdrache': './src/player/playerkleinerdrache.png',
+    'engelfisch': './src/player/Playerengelfisch.png'
   };
   
   // Flag ob Charakterauswahl bestätigt wurde

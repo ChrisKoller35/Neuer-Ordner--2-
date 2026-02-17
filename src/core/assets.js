@@ -261,32 +261,33 @@ export const AssetManager = {
  */
 export const LEVEL_ASSETS = {
 	level1: [
-		'./Backgroundlvlone.webp',
-		'./Player.webp',
-		'./foe-jelly.webp',
-		'./boss-shark.webp',
-		'./player-shot.webp'
+		'./game/Backgroundlvlone.webp',
+		'./player/Player.webp',
+		'./foes/foe-jelly.webp',
+		'./foes/boss-shark.webp',
+		'./player/player-shot.webp'
 	],
 	level2: [
-		'./Aquischwer-Bogenschreck.webp',
-		'./Bodengold.webp',
-		'./Parfüm-Kraken.webp'
+		'./foes/Aquischwer-Bogenschreck.webp',
+		'./game/Bodenlava.webp',
+		'./foes/Parfüm-Kraken.webp'
 	],
 	level3: [
-		'./Oktopus.webp',
-		'./Oktopuspfeil.webp',
-		'./Ritterfisch.webp',
-		'./Bodenlava.webp'
+		'./foes/Oktopus.webp',
+		'./foes/Oktopuspfeil.webp',
+		'./foes/Ritterfisch.webp',
+		'./game/Boden.webp'
 	],
 	level4: [
-		'./Yachtwal.webp',
-		'./Cashfish.webp'
+		'./foes/Yachtwal.webp',
+		'./foes/Cashfish.webp',
+		'./game/Bodengold.webp'
 	],
 	common: [
-		'./heal-potion.webp',
-		'./Geldscheinsymbol.webp',
-		'./Korallenbegleitereins.webp',
-		'./Korallenbegleiterzwei.webp'
+		'./game/heal-potion.webp',
+		'./symbols/Geldscheinsymbol.webp',
+		'./game/Korallenbegleitereins.webp',
+		'./game/Korallenbegleiterzwei.webp'
 	]
 };
 
