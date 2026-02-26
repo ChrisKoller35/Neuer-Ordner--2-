@@ -284,195 +284,6 @@ export function createLevelSystem(ctx) {
 					crownFade: 520,
 					crownKnockback: 0.23
 				}
-			},
-			// ================================================
-			// MISSION 2 - Level 5-8
-			// ================================================
-			{
-				id: 5,
-				banner: "Level 5: Schattendämmerung",
-				unlockBossScore: 60,
-				spawnInterval: { min: 1300, max: 2000 },
-				initialSpawnDelay: 500,
-				spawnTable: [{ type: "shadowfish", weight: 1 }],
-				introFlash: { text: "Mission 2 – Schattendämmerung", duration: 1600, opacity: 0.82 },
-				heal: { initialTimer: 6000 },
-				boss: {
-					type: "default",
-					maxHp: 28,
-					speed: 0.20,
-					firstAttackDelay: 2600,
-					spriteKey: "leviathan",
-					spriteScale: 0.28,
-					spriteOffsetX: -16,
-					spriteOffsetY: -10,
-					spriteFlip: false,
-					shadowRadius: 56,
-					shadowOffsetX: 10,
-					shadowOffsetY: 56,
-					horizontalTracking: 0.0018,
-					horizontalMin: canvas.width * 0.40,
-					horizontalMax: canvas.width * 0.90,
-					horizontalOscAmp: canvas.width * 0.10,
-					horizontalOscSpeed: 0.0020,
-					horizontalForwardBoost: 2,
-					horizontalBackBoost: 2.2,
-					horizontalForwardBias: canvas.width * 0.02,
-					horizontalEdgePad: 0
-				}
-			},
-			{
-				id: 6,
-				banner: "Level 6: Stachelgewitter",
-				unlockBossScore: 130,
-				spawnInterval: { min: 1100, max: 1750 },
-				initialSpawnDelay: 450,
-				spawnTable: [
-					{ type: "stingray", weight: 0.55 },
-					{ type: "shadowfish", weight: 0.45 }
-				],
-				introFlash: { text: "Level 6 – Stachelgewitter", duration: 1600, opacity: 0.82 },
-				heal: { initialTimer: 5600 },
-				boss: {
-					type: "default",
-					maxHp: 34,
-					speed: 0.24,
-					firstAttackDelay: 2400,
-					spriteKey: "hydra",
-					spriteScale: 0.30,
-					spriteOffsetX: -14,
-					spriteOffsetY: -12,
-					shadowRadius: 58,
-					shadowOffsetX: 12,
-					shadowOffsetY: 58,
-					horizontalTracking: 0.0020,
-					horizontalMin: canvas.width * 0.38,
-					horizontalMax: canvas.width * 0.88,
-					horizontalOscAmp: canvas.width * 0.12,
-					horizontalOscSpeed: 0.0022,
-					horizontalForwardBoost: 2.2,
-					horizontalBackBoost: 2.4,
-					horizontalForwardBias: canvas.width * 0.025,
-					horizontalEdgePad: 0
-				}
-			},
-			{
-				id: 7,
-				banner: "Level 7: Drachentiefen",
-				unlockBossScore: 220,
-				spawnInterval: { min: 900, max: 1550 },
-				initialSpawnDelay: 400,
-				spawnTable: [
-					{ type: "seadrake", weight: 0.50 },
-					{ type: "stingray", weight: 0.30 },
-					{ type: "shadowfish", weight: 0.20 }
-				],
-				introFlash: { text: "Level 7 – Drachentiefen", duration: 1700, opacity: 0.84 },
-				heal: { initialTimer: 5200 },
-				boss: {
-					type: "default",
-					maxHp: 42,
-					speed: 0.26,
-					firstAttackDelay: 2200,
-					spriteKey: "deepseaKraken",
-					spriteScale: 0.32,
-					spriteOffsetX: -16,
-					spriteOffsetY: -14,
-					spriteFlip: false,
-					shadowRadius: 62,
-					shadowOffsetX: 14,
-					shadowOffsetY: 60,
-					horizontalTracking: 0.0022,
-					horizontalMin: canvas.width * 0.36,
-					horizontalMax: canvas.width * 0.86,
-					horizontalOscAmp: canvas.width * 0.14,
-					horizontalOscSpeed: 0.0024,
-					horizontalForwardBoost: 2.4,
-					horizontalBackBoost: 2.6,
-					horizontalForwardBias: canvas.width * 0.03,
-					horizontalEdgePad: 0
-				}
-			},
-			{
-				id: 8,
-				banner: "Level 8: Abgrund des Titans",
-				unlockBossScore: 340,
-				spawnInterval: { min: 750, max: 1350 },
-				initialSpawnDelay: 350,
-				spawnTable: [
-					{ type: "abyssal", weight: 0.45 },
-					{ type: "seadrake", weight: 0.30 },
-					{ type: "stingray", weight: 0.15 },
-					{ type: "shadowfish", weight: 0.10 }
-				],
-				introFlash: { text: "Level 8 – Abgrund des Titans", duration: 1800, opacity: 0.86 },
-				heal: { initialTimer: 5000 },
-				boss: {
-					type: "default",
-					maxHp: 55,
-					speed: 0.28,
-					firstAttackDelay: 2000,
-					spriteKey: "titan",
-					spriteScale: 0.36,
-					spriteOffsetX: -18,
-					spriteOffsetY: -16,
-					spriteFlip: false,
-					shadowRadius: 70,
-					shadowOffsetX: 16,
-					shadowOffsetY: 64,
-					horizontalTracking: 0.0025,
-					horizontalMin: canvas.width * 0.34,
-					horizontalMax: canvas.width * 0.84,
-					horizontalOscAmp: canvas.width * 0.16,
-					horizontalOscSpeed: 0.0026,
-					horizontalForwardBoost: 2.6,
-					horizontalBackBoost: 2.8,
-					horizontalForwardBias: canvas.width * 0.035,
-					horizontalEdgePad: 0
-				}
-			},
-			// ================================================
-			// MISSION 3 - Level 9-12 (WORLD MODE - Multi-Scene Scrolling with Chunk Loading)
-			// ================================================
-			{
-				id: 9,
-				banner: "Level 9: Große Expedition",
-				unlockBossScore: 80,
-				spawnInterval: { min: 99999, max: 99999 },  // Keine Gegner spawnen (zum Testen)
-				initialSpawnDelay: 99999,
-				// World Mode Configuration with Chunk Loading
-				worldMode: true,
-				sceneCount: 20,  // 20 Szenen = riesige Welt zum Durchschwimmen!
-				useChunkLoading: true,  // Aktiviert das Chunk-Loading-System
-				worldBackgrounds: ['levelOne', 'levelTwo', 'levelThree'],  // Rotieren durch
-				spawnTable: [],  // Leer = keine Gegner (zum Testen des Scrollings)
-				introFlash: { text: "Mission 3 – Große Expedition (20 Szenen!)", duration: 2000, opacity: 0.85 },
-				heal: { initialTimer: 5800 },
-				boss: {
-					type: "default",
-					maxHp: 35,
-					speed: 0.22,
-					firstAttackDelay: 2400,
-					spriteKey: "coralGuardian",
-					spriteScale: 0.30,
-					spriteOffsetX: -14,
-					spriteOffsetY: -12,
-					spriteFlip: false,
-					shadowRadius: 58,
-					shadowOffsetX: 12,
-					shadowOffsetY: 58,
-					// Boss spawnt in der letzten Szene (Szene 20)
-					worldSpawnScene: 19,  // 0-basiert
-					horizontalTracking: 0.0020,
-					horizontalMin: canvas.width * 19.4,  // In der letzten Szene
-					horizontalMax: canvas.width * 19.9,
-					horizontalOscAmp: canvas.width * 0.12,
-					horizontalOscSpeed: 0.0020,
-					horizontalForwardBoost: 2.2,
-					horizontalBackBoost: 2.4,
-					horizontalForwardBias: canvas.width * 0.02,
-					horizontalEdgePad: 0
-				}
 			}
 		];
 	}
@@ -515,6 +326,7 @@ export function createLevelSystem(ctx) {
 				state.tsunamiAbility.unlocked = false;
 				state.tsunamiAbility.used = false;
 				state.tsunamiAbility.active = false;
+				state.tsunamiAbility.cooldown = 0;
 			}
 		}
 
@@ -666,6 +478,7 @@ export function createLevelSystem(ctx) {
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
 		state.tsunamiAbility.used = false;
+		state.tsunamiAbility.cooldown = 0;
 		state.pendingSymbolAdvance = null;
 		state.eventFlash = null;
 		state.bossTorpedoes.length = 0;

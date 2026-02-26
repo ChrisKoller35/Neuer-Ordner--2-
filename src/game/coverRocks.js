@@ -81,8 +81,8 @@ export function createCoverRockSystem(ctx) {
 				if (ix < 0 || ix >= mask.width || iy < 0 || iy >= mask.height) return 0;
 				return mask.data[iy * mask.width + ix] ? 1 : 0;
 			};
-			let dx = sample(px + 1, py) - sample(px - 1, py);
-			let dy = sample(px, py + 1) - sample(px, py - 1);
+			const dx = sample(px + 1, py) - sample(px - 1, py);
+			const dy = sample(px, py + 1) - sample(px, py - 1);
 			let nx = -dx;
 			let ny = -dy;
 			let len = Math.hypot(nx, ny);
@@ -327,9 +327,9 @@ export function createCoverRockSystem(ctx) {
 			foe.x = collision.x;
 			foe.y = collision.y;
 			const normal = collision.normal || { x: 0, y: 0 };
-			let direction = null;
-			if (Math.abs(normal.x) > Math.abs(normal.y)) direction = normal.x > 0 ? "right" : "left";
-			else direction = normal.y > 0 ? "bottom" : "top";
+			const direction = Math.abs(normal.x) > Math.abs(normal.y)
+				? (normal.x > 0 ? "right" : "left")
+				: (normal.y > 0 ? "bottom" : "top");
 			foe.coverCollisionDirection = direction;
 			return true;
 		}
@@ -382,10 +382,11 @@ export function createCoverRockSystem(ctx) {
 				const levelGround = getLevel3GroundLine ? getLevel3GroundLine() : null;
 				if (levelGround != null) {
 					const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
+					const landHalfHeight = rock.landHalfHeight == null ? (rock.height == null ? radiusY : rock.height * 0.5) : rock.landHalfHeight;
 					const minY = canvas.height * 0.22;
 					rock.groundLine = levelGround;
-					const maxY = Math.max(minY, rock.groundLine - radiusY);
-					rock.targetY = clamp(rock.groundLine - radiusY, minY, maxY);
+					const maxY = Math.max(minY, rock.groundLine - landHalfHeight);
+					rock.targetY = clamp(rock.groundLine - landHalfHeight, minY, maxY);
 				}
 			}
 
@@ -410,10 +411,11 @@ export function createCoverRockSystem(ctx) {
 			rock.y += rock.vy * dt;
 
 			const radiusY = rock.radiusY == null ? 60 : rock.radiusY;
+			const landHalfHeight = rock.landHalfHeight == null ? (rock.height == null ? radiusY : rock.height * 0.5) : rock.landHalfHeight;
 
 			// Check if landed
-			if (rock.y + radiusY >= rock.groundLine) {
-				rock.y = rock.targetY == null ? rock.groundLine - radiusY : rock.targetY;
+			if (rock.y + landHalfHeight >= rock.groundLine) {
+				rock.y = rock.targetY == null ? rock.groundLine - landHalfHeight : rock.targetY;
 				rock.vy = 0;
 				rock.landed = true;
 				rock.impactTimer = rock.impactTimer == null || rock.impactTimer <= 0 ? 520 : rock.impactTimer;

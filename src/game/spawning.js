@@ -259,6 +259,7 @@ export function createSpawningSystem(ctx) {
 		const height = (opts.height == null ? spriteHeight : opts.height) * scale;
 		const radiusX = (opts.radiusX == null ? width * 0.45 : opts.radiusX);
 		const radiusY = (opts.radiusY == null ? height * 0.4 : opts.radiusY);
+		const landHalfHeight = opts.landHalfHeight == null ? height * 0.5 : opts.landHalfHeight;
 		const padX = opts.padX == null ? 0 : opts.padX;
 		const padY = opts.padY == null ? 0 : opts.padY;
 		const padLeft = opts.padLeft == null ? null : opts.padLeft;
@@ -271,13 +272,14 @@ export function createSpawningSystem(ctx) {
 			if (levelGround != null) groundLine = levelGround;
 		}
 		const minY = canvas.height * 0.22;
-		const maxY = Math.max(minY, groundLine - radiusY);
-		const targetY = clamp(groundLine - radiusY, minY, maxY);
+		const maxY = Math.max(minY, groundLine - landHalfHeight);
+		const targetY = clamp(groundLine - landHalfHeight, minY, maxY);
 		const rock = {
 			x: clamp(opts.x == null ? canvas.width * 0.5 : opts.x, canvas.width * 0.24, canvas.width * 0.76),
 			y: opts.startY == null ? -height : opts.startY,
 			radiusX,
 			radiusY,
+			landHalfHeight,
 			width,
 			height,
 			scale,

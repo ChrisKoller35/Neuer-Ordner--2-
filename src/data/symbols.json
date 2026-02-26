@@ -14,8 +14,13 @@
       "spriteKey": "symbolYacht",
       "label": "Yacht-Symbol",
       "asset": "./src/symbols/Yachtsymbol.png"
+    },
+    "cashfish": {
+      "spriteKey": "cashfish",
+      "label": "Cashfisch-Symbol",
+      "asset": "./src/foes/Cashfish.png"
     }
   },
-  "levelSequence": ["pferd", "sprinter", "yacht"],
+  "levelSequence": ["pferd", "sprinter", "yacht", "cashfish"],
   "autocollectMs": 10000
 }

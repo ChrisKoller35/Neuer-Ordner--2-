@@ -2,8 +2,25 @@
 // Spieler-Fähigkeiten: Shield, Coral Allies, Tsunami
 
 import { shotPool } from '../core/pool.js';
+import S from '../core/sharedState.js';
 
 const TAU = Math.PI * 2;
+const CORAL_MAX_ALLIES = 2;
+const CORAL_MAX_ALLIES_HARD_CAP = 4;
+const CORAL_ORBIT_RADIUS = 80;
+const CORAL_DURATION_MS = 10000;
+const CORAL_COOLDOWN_MS = 15000;
+const CORAL_SHOT_DAMAGE = 1.5;
+const TSUNAMI_COOLDOWN_MS = 60000;
+const DASH_CURRENT_COOLDOWN_MS = 8000;
+const DASH_CURRENT_INVULN_MS = 400;
+const DASH_CURRENT_DISTANCE = 140;
+const DEPTH_MINE_COOLDOWN_MS = 12000;
+const DEPTH_MINE_RADIUS = 100;
+const DEPTH_MINE_DAMAGE = 6;
+const TIME_BUBBLE_COOLDOWN_MS = 25000;
+const TIME_BUBBLE_DURATION_MS = 4000;
+const TIME_BUBBLE_RADIUS = 200;
 
 /**
  * Factory für das Abilities-System
@@ -115,19 +132,25 @@ export function createAbilitiesSystem(deps) {
 		const state = getState();
 		const player = state.player;
 		const allies = [];
-		const count = 2;
+		const spawnedAt = performance.now();
+		const maxCountBonus = Number.isFinite(player?.coralMaxCountBonus) ? Math.floor(player.coralMaxCountBonus) : 0;
+		const count = Math.max(1, Math.min(CORAL_MAX_ALLIES_HARD_CAP, CORAL_MAX_ALLIES + maxCountBonus));
+		const fireRateBonus = Math.max(0, Number.isFinite(player?.coralFireRateBonus) ? player.coralFireRateBonus : 0);
+		const fireRateMultiplier = 1 + fireRateBonus;
 		for (let i = 0; i < count; i += 1) {
-			const orbitDir = i === 0 ? 1 : -1;
-			const baseAngle = orbitDir === 1 ? Math.PI * 0.12 : Math.PI * 0.88;
-			const radius = 128 + i * 8;
+			const orbitDir = i % 2 === 0 ? 1 : -1;
+			const baseAngle = (TAU / count) * i;
+			const radius = CORAL_ORBIT_RADIUS;
 			const bobPhase = Math.random() * TAU;
 			const ally = {
 				angle: baseAngle,
 				radius,
+				spawnedAt,
+				spawnZoomDuration: 260,
 				turnSpeed: 0.0016 + i * 0.0003,
 				orbitDir,
-				shootTimer: 120 + i * 80,
-				shootInterval: 420 + i * 60,
+				shootTimer: (120 + i * 80) / fireRateMultiplier,
+				shootInterval: (420 + i * 60) / fireRateMultiplier,
 				bobPhase,
 				contactRadius: 42,
 				spriteKey: i === 0 ? "coralAllyOne" : "coralAllyTwo",
@@ -157,6 +180,7 @@ export function createAbilitiesSystem(deps) {
 		shot.spriteScale = 0.085;
 		shot.spriteOffsetX = 5;
 		shot.spriteOffsetY = 0;
+		shot.damage = CORAL_SHOT_DAMAGE;
 		shot.coralShot = true;
 		state.shots.push(shot);
 	}
@@ -170,7 +194,7 @@ export function createAbilitiesSystem(deps) {
 		if (state.over || state.paused || !state.started) return false;
 		spawnCoralAlliesFormation();
 		ability.active = true;
-		ability.timer = ability.duration == null ? 6000 : ability.duration;
+		ability.timer = ability.duration == null ? CORAL_DURATION_MS : ability.duration;
 		triggerEventFlash("ally", { text: "Korallenverbündete aktiv!", duration: 900, opacity: 0.65 });
 		return true;
 	}
@@ -228,7 +252,7 @@ export function createAbilitiesSystem(deps) {
 			}
 			ability.active = false;
 			ability.timer = 0;
-			ability.cooldown = ability.cooldownMax == null ? 14000 : ability.cooldownMax;
+			ability.cooldown = ability.cooldownMax == null ? CORAL_COOLDOWN_MS : ability.cooldownMax;
 			state.coralAllies.length = 0;
 		}
 	}
@@ -244,6 +268,7 @@ export function createAbilitiesSystem(deps) {
 		ability.unlocked = true;
 		ability.used = false;
 		ability.active = false;
+		ability.cooldown = 0;
 		state.tsunamiWave = null;
 		if (!opts.silent && firstUnlock) {
 			triggerEventFlash("tsunami", { text: "Neue Kraft: Tsunami (T)", duration: 1400, opacity: 0.78 });
@@ -255,11 +280,12 @@ export function createAbilitiesSystem(deps) {
 		const canvas = getCanvas();
 		const ability = state.tsunamiAbility;
 		if (!ability || !ability.unlocked) return false;
-		if (ability.used || ability.active) return false;
+		if (ability.active || (ability.cooldown || 0) > 0) return false;
 		if (state.level < 4) return false;
 		if (state.over || state.paused || !state.started) return false;
 		ability.active = true;
 		ability.used = true;
+		ability.cooldown = 0;
 		const waveWidth = Math.max(canvas.width * 0.24, 240);
 		const bubbleCount = 26;
 		const bubbles = [];
@@ -291,6 +317,9 @@ export function createAbilitiesSystem(deps) {
 	function updateTsunamiWave(dt) {
 		const state = getState();
 		const canvas = getCanvas();
+		if (state.tsunamiAbility && !state.tsunamiAbility.active && (state.tsunamiAbility.cooldown || 0) > 0) {
+			state.tsunamiAbility.cooldown = Math.max(0, state.tsunamiAbility.cooldown - dt);
+		}
 		const wave = state.tsunamiWave;
 		if (!wave) return;
 		wave.elapsed = (wave.elapsed || 0) + dt;
@@ -322,7 +351,168 @@ export function createAbilitiesSystem(deps) {
 		const left = wave.x;
 		if (left > canvas.width + width + 20) {
 			state.tsunamiWave = null;
-			if (state.tsunamiAbility) state.tsunamiAbility.active = false;
+			if (state.tsunamiAbility) {
+				state.tsunamiAbility.active = false;
+				state.tsunamiAbility.cooldown = state.tsunamiAbility.cooldownMax == null ? TSUNAMI_COOLDOWN_MS : state.tsunamiAbility.cooldownMax;
+			}
+		}
+	}
+
+	// =====================
+	// PHASE 6.1 SKILLS
+	// =====================
+	function tryActivateDashCurrent() {
+		const state = getState();
+		const canvas = getCanvas();
+		const ability = state.dashCurrentAbility;
+		if (!ability || !ability.unlocked) return false;
+		if ((ability.cooldown || 0) > 0) return false;
+		if (state.over || state.paused || !state.started) return false;
+
+		const player = state.player;
+		let dirX = Number.isFinite(player.lastMoveX) ? player.lastMoveX : 0;
+		let dirY = Number.isFinite(player.lastMoveY) ? player.lastMoveY : 0;
+		if (Math.hypot(dirX, dirY) < 0.01) {
+			dirX = player.dir >= 0 ? 1 : -1;
+			dirY = 0;
+		}
+		const len = Math.hypot(dirX, dirY) || 1;
+		dirX /= len;
+		dirY /= len;
+
+		const worldMode = state.worldMode === true;
+		const worldWidth = state.worldWidth || canvas.width;
+		const maxX = worldMode ? worldWidth - 60 : canvas.width - 60;
+		player.x = Math.max(60, Math.min(maxX, player.x + dirX * DASH_CURRENT_DISTANCE));
+		player.y = Math.max(60, Math.min(canvas.height - 60, player.y + dirY * DASH_CURRENT_DISTANCE));
+		player.invulnFor = Math.max(player.invulnFor || 0, ability.invulnDuration == null ? DASH_CURRENT_INVULN_MS : ability.invulnDuration);
+		ability.cooldown = ability.cooldownMax == null ? DASH_CURRENT_COOLDOWN_MS : ability.cooldownMax;
+		triggerEventFlash("dash", { text: "Strömungs-Dash!", duration: 700, opacity: 0.7 });
+		updateHUD();
+		return true;
+	}
+
+	function tryActivateDepthMine() {
+		const state = getState();
+		const ability = state.depthMineAbility;
+		if (!ability || !ability.unlocked) return false;
+		if ((ability.cooldown || 0) > 0) return false;
+		if (state.over || state.paused || !state.started) return false;
+
+		const player = state.player;
+		if (!Array.isArray(state.depthMines)) state.depthMines = [];
+		state.depthMines.push({
+			x: player.x,
+			y: player.y,
+			radius: ability.radius == null ? DEPTH_MINE_RADIUS : ability.radius,
+			damage: ability.damage == null ? DEPTH_MINE_DAMAGE : ability.damage,
+			armedDelay: 300,
+			life: 8000,
+			exploded: false
+		});
+		ability.cooldown = ability.cooldownMax == null ? DEPTH_MINE_COOLDOWN_MS : ability.cooldownMax;
+		triggerEventFlash("mine", { text: "Tiefsee-Mine platziert", duration: 900, opacity: 0.72 });
+		updateHUD();
+		return true;
+	}
+
+	function tryActivateTimeBubble() {
+		const state = getState();
+		const ability = state.timeBubbleAbility;
+		if (!ability || !ability.unlocked) return false;
+		if (ability.active || (ability.cooldown || 0) > 0) return false;
+		if (state.over || state.paused || !state.started) return false;
+
+		ability.active = true;
+		ability.timer = ability.duration == null ? TIME_BUBBLE_DURATION_MS : ability.duration;
+		ability.cooldown = 0;
+		triggerEventFlash("timeBubble", { text: "Zeit-Blase aktiv", duration: 1000, opacity: 0.75 });
+		updateHUD();
+		return true;
+	}
+
+	function updatePhaseSixSkills(dt) {
+		const state = getState();
+		const progressionLevel = state.progression?.level || 1;
+		if (state.dashCurrentAbility && !state.dashCurrentAbility.unlocked && progressionLevel >= 3) {
+			state.dashCurrentAbility.unlocked = true;
+			triggerEventFlash("dash", { text: "Neue Fähigkeit: Strömungs-Dash (Q)", duration: 1200, opacity: 0.72 });
+		}
+
+		const dungeonDepth = Number.isFinite(S.dungeonDepth) ? S.dungeonDepth : 0;
+		if (state.leechAura && !state.leechAura.unlocked && dungeonDepth >= 20) {
+			state.leechAura.unlocked = true;
+			state.leechAura.percent = 0.08;
+			triggerEventFlash("leech", { text: "Passiv freigeschaltet: Lebensraub-Aura", duration: 1300, opacity: 0.74 });
+		}
+
+		const dashAbility = state.dashCurrentAbility;
+		if (dashAbility && (dashAbility.cooldown || 0) > 0) {
+			dashAbility.cooldown = Math.max(0, dashAbility.cooldown - dt);
+		}
+
+		const mineAbility = state.depthMineAbility;
+		if (mineAbility && (mineAbility.cooldown || 0) > 0) {
+			mineAbility.cooldown = Math.max(0, mineAbility.cooldown - dt);
+		}
+
+		if (Array.isArray(state.depthMines) && state.depthMines.length > 0) {
+			for (const mine of state.depthMines) {
+				if (!mine || mine.exploded) continue;
+				mine.armedDelay = Math.max(0, (mine.armedDelay || 0) - dt);
+				mine.life = Math.max(0, (mine.life || 0) - dt);
+				if (mine.life <= 0) {
+					mine.exploded = true;
+					continue;
+				}
+
+				if (mine.armedDelay > 0) continue;
+				const radius = mine.radius == null ? DEPTH_MINE_RADIUS : mine.radius;
+				let detonated = false;
+				for (const foe of state.foes) {
+					if (!foe || foe.dead) continue;
+					const dx = foe.x - mine.x;
+					const dy = foe.y - mine.y;
+					if (Math.hypot(dx, dy) <= radius) {
+						detonated = true;
+						break;
+					}
+				}
+				if (!detonated) continue;
+
+				for (const foe of state.foes) {
+					if (!foe || foe.dead) continue;
+					const dx = foe.x - mine.x;
+					const dy = foe.y - mine.y;
+					if (Math.hypot(dx, dy) > radius) continue;
+					if (Number.isFinite(foe.hp)) {
+						foe.hp = Math.max(0, foe.hp - (mine.damage == null ? DEPTH_MINE_DAMAGE : mine.damage));
+						if (foe.hp <= 0) {
+							foe.dead = true;
+							awardFoeDefeat(foe);
+						}
+					} else {
+						foe.dead = true;
+						awardFoeDefeat(foe);
+					}
+				}
+				mine.exploded = true;
+				triggerEventFlash("mine", { text: "Mine detoniert", duration: 600, opacity: 0.62 });
+			}
+			state.depthMines = state.depthMines.filter(mine => mine && !mine.exploded && (mine.life || 0) > 0);
+		}
+
+		const timeBubble = state.timeBubbleAbility;
+		if (timeBubble?.active) {
+			timeBubble.timer = Math.max(0, (timeBubble.timer || 0) - dt);
+			if (timeBubble.timer <= 0) {
+				timeBubble.active = false;
+				timeBubble.timer = 0;
+				timeBubble.cooldown = timeBubble.cooldownMax == null ? TIME_BUBBLE_COOLDOWN_MS : timeBubble.cooldownMax;
+				triggerEventFlash("timeBubble", { text: "Zeit normalisiert", duration: 700, opacity: 0.5 });
+			}
+		} else if (timeBubble && (timeBubble.cooldown || 0) > 0) {
+			timeBubble.cooldown = Math.max(0, timeBubble.cooldown - dt);
 		}
 	}
 
@@ -336,6 +526,11 @@ export function createAbilitiesSystem(deps) {
 		// Tsunami
 		unlockTsunamiAbility,
 		tryActivateTsunamiAbility,
-		updateTsunamiWave
+		updateTsunamiWave,
+		// Phase 6.1
+		tryActivateDashCurrent,
+		tryActivateDepthMine,
+		tryActivateTimeBubble,
+		updatePhaseSixSkills
 	};
 }

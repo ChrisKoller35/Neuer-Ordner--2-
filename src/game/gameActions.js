@@ -7,6 +7,7 @@ import { clamp } from '../core/utils.js';
 import { clearAllStateArrays, clearBossArrays } from '../core/initialState.js';
 import { ManifestAssets } from '../core/assets.js';
 import { buildCityState as buildCityStateModule } from '../city/state.js';
+import S from '../core/sharedState.js';
 
 /**
  * Erstellt das Game-Actions-System
@@ -82,6 +83,11 @@ export function createGameActions(ctx) {
 		getUpdateHUD()();
 	}
 
+	function hasUnlockedAcademySkill(skillId) {
+		const state = getState();
+		return Array.isArray(state.academy?.unlockedSkillIds) && state.academy.unlockedSkillIds.includes(skillId);
+	}
+
 	function concludeBossVictory(nextLevelIndex) {
 		if (nextLevelIndex < getLevels().getLevelConfigsLength()) {
 			advanceLevel(nextLevelIndex, { skipFlash: false, invulnDuration: 1800 });
@@ -144,7 +150,7 @@ export function createGameActions(ctx) {
 		const threshold = (state.unlockBossScore || 0) * 0.5;
 		if (state.levelScore < threshold) return;
 		state.coverRockSpawned = true;
-		const rock = spawnCoverRock({ x: canvas.width * 0.5 });
+		const rock = spawnCoverRock({ x: canvas.width * 0.5, scale: 1.12 });
 		if (rock) {
 			triggerEventFlash("cover", { text: "Felsbrocken fällt!", duration: 1100, opacity: 0.75 });
 		}
@@ -196,6 +202,9 @@ export function createGameActions(ctx) {
 		ManifestAssets.preloadForScene("city").catch(err => {
 			console.warn("[Cashfisch] City-Preload Warnung:", err);
 		});
+		ManifestAssets.preloadGeneratedSprites().catch(err => {
+			console.warn("[Cashfisch] Generated-Sprites-Preload Warnung:", err);
+		});
 		const state = getState();
 		const canvas = getCanvas();
 		const bannerEl = getBannerEl();
@@ -235,9 +244,15 @@ export function createGameActions(ctx) {
 	}
 
 	function startMission(missionId) {
+		const state = getState();
+		// Dungeon-Schutz: startMission darf NIEMALS aus dem Dungeon heraus aufgerufen werden
+		if (state.mode === 'dungeon' || state.mode === 'dungeon_menu') {
+			console.warn(`[Game] startMission() GEBLOCKT – Spieler ist im Dungeon (mode=${  state.mode  })`);
+			console.trace('[Game] Aufrufer von startMission im Dungeon:');
+			return;
+		}
 		const mission = cityMissions.find(m => m.id === missionId);
 		const startLevel = mission ? mission.startLevel : 0;
-		const state = getState();
 		const canvas = getCanvas();
 		const cityInventory = getCityInventory();
 		const endOverlay = getEndOverlay();
@@ -298,9 +313,21 @@ export function createGameActions(ctx) {
 		state.coralAbility.active = false;
 		state.coralAbility.timer = 0;
 		state.coralAbility.cooldown = 0;
+		state.dashCurrentAbility.cooldown = 0;
+		state.dashCurrentAbility.unlocked = state.progression?.level >= 3;
+		state.depthMineAbility.cooldown = 0;
+		state.depthMineAbility.unlocked = hasUnlockedAcademySkill('depth_mine');
+		state.timeBubbleAbility.active = false;
+		state.timeBubbleAbility.timer = 0;
+		state.timeBubbleAbility.cooldown = 0;
+		state.timeBubbleAbility.unlocked = hasUnlockedAcademySkill('time_bubble');
+		state.depthMines.length = 0;
+		state.leechAura.unlocked = S.dungeonDepth >= 20;
+		state.leechAura.percent = 0.08;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.used = false;
 		state.tsunamiAbility.active = false;
+		state.tsunamiAbility.cooldown = 0;
 		state.pendingSymbolAdvance = null;
 		state.eventFlash = null;
 		state.coverRockSpawned = false;
@@ -324,6 +351,12 @@ export function createGameActions(ctx) {
 
 	function resetGame() {
 		const state = getState();
+		// Dungeon-Schutz: resetGame darf NIEMALS aus dem Dungeon heraus aufgerufen werden
+		if (state.mode === 'dungeon' || state.mode === 'dungeon_menu') {
+			console.warn(`[Game] resetGame() GEBLOCKT – Spieler ist im Dungeon (mode=${  state.mode  })`);
+			console.trace('[Game] Aufrufer von resetGame im Dungeon:');
+			return;
+		}
 		const canvas = getCanvas();
 		const cityInventory = getCityInventory();
 		const endOverlay = getEndOverlay();
@@ -372,10 +405,22 @@ export function createGameActions(ctx) {
 		state.coralAbility.active = false;
 		state.coralAbility.timer = 0;
 		state.coralAbility.cooldown = 0;
+		state.dashCurrentAbility.cooldown = 0;
+		state.dashCurrentAbility.unlocked = state.progression?.level >= 3;
+		state.depthMineAbility.cooldown = 0;
+		state.depthMineAbility.unlocked = hasUnlockedAcademySkill('depth_mine');
+		state.timeBubbleAbility.active = false;
+		state.timeBubbleAbility.timer = 0;
+		state.timeBubbleAbility.cooldown = 0;
+		state.timeBubbleAbility.unlocked = hasUnlockedAcademySkill('time_bubble');
+		state.depthMines.length = 0;
+		state.leechAura.unlocked = S.dungeonDepth >= 20;
+		state.leechAura.percent = 0.08;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.unlocked = false;
 		state.tsunamiAbility.used = false;
 		state.tsunamiAbility.active = false;
+		state.tsunamiAbility.cooldown = 0;
 		state.pendingSymbolAdvance = null;
 		state.eventFlash = null;
 		state.coverRockSpawned = false;
@@ -404,8 +449,19 @@ export function createGameActions(ctx) {
 		state.eventFlash = null;
 		state.coralAbility.active = false;
 		state.coralAbility.timer = 0;
+		state.dashCurrentAbility.cooldown = 0;
+		state.dashCurrentAbility.unlocked = state.progression?.level >= 3;
+		state.depthMineAbility.cooldown = 0;
+		state.depthMineAbility.unlocked = hasUnlockedAcademySkill('depth_mine');
+		state.timeBubbleAbility.active = false;
+		state.timeBubbleAbility.timer = 0;
+		state.timeBubbleAbility.cooldown = 0;
+		state.timeBubbleAbility.unlocked = hasUnlockedAcademySkill('time_bubble');
+		state.depthMines.length = 0;
+		state.leechAura.unlocked = S.dungeonDepth >= 20;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
+		state.tsunamiAbility.cooldown = 0;
 		state.coverRockSpawned = false;
 		state.player.shieldActive = false;
 		state.player.shieldTimer = 0;
@@ -433,6 +489,7 @@ export function createGameActions(ctx) {
 		state.coralAbility.timer = 0;
 		state.tsunamiWave = null;
 		state.tsunamiAbility.active = false;
+		state.tsunamiAbility.cooldown = 0;
 		state.coverRockSpawned = false;
 		state.foeSpawnTimer = Number.POSITIVE_INFINITY;
 		state.cashfishUltLock = 0;

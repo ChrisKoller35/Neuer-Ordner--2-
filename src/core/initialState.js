@@ -1,5 +1,5 @@
 // ============================================================
-// Initial State - Factory für den initialen Spielzustand
+// Initial State - Factory for the initial game state
 // ============================================================
 "use strict";
 
@@ -18,6 +18,8 @@ export function createPlayerState(canvas) {
 		speed: 0.32,
 		baseSpeed: 0.32,
 		dir: 1,
+		lastMoveX: 1,
+		lastMoveY: 0,
 		invulnFor: 0,
 		shotCooldown: 0,
 		energyMax: 100,
@@ -115,7 +117,7 @@ export function createBossProjectileArrays() {
 const STATE_ARRAYS = [
 	'foes', 'foeArrows', 'shots', 'healPickups', 'healBursts',
 	'symbolDrops', 'coinDrops', 'coralAllies', 'coralEffects',
-	'bubbles', 'coverRocks',
+	'bubbles', 'coverRocks', 'depthMines',
 	'bossTorpedoes', 'bossSweeps', 'bossWakeWaves', 'bossPerfumeOrbs',
 	'bossFragranceClouds', 'bossWhirlpools', 'bossKatapultShots',
 	'bossShockwaves', 'bossSpeedboats', 'bossCoinBursts', 'bossCoinExplosions',
@@ -164,7 +166,7 @@ export function createInitialState(canvas) {
 		over: false,
 		win: false,
 		score: 0,
-		coins: 0,
+		coins: 10000,
 		hearts: 3,
 		maxHearts: 5,
 		level: 1,
@@ -192,14 +194,44 @@ export function createInitialState(canvas) {
 			active: false,
 			timer: 0,
 			cooldown: 0,
-			cooldownMax: 14000,
-			duration: 6000
+			cooldownMax: 15000,
+			duration: 10000
 		},
+		leechAura: {
+			unlocked: false,
+			percent: 0.08
+		},
+		dashCurrentAbility: {
+			unlocked: false,
+			cooldown: 0,
+			cooldownMax: 8000,
+			invulnDuration: 400
+		},
+		depthMineAbility: {
+			unlocked: false,
+			cooldown: 0,
+			cooldownMax: 12000,
+			radius: 100,
+			damage: 6
+		},
+		timeBubbleAbility: {
+			unlocked: false,
+			active: false,
+			timer: 0,
+			cooldown: 0,
+			cooldownMax: 25000,
+			radius: 200,
+			duration: 4000,
+			slowFactor: 0.45
+		},
+		depthMines: [],
 		tsunamiWave: null,
 		tsunamiAbility: {
 			unlocked: false,
 			used: false,
-			active: false
+			active: false,
+			cooldown: 0,
+			cooldownMax: 60000
 		},
 		symbolInventory: { pferd: false, sprinter: false, yacht: false },
 		pendingSymbolAdvance: null,
