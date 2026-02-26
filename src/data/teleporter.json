@@ -7,7 +7,7 @@
       "location": "main_city",
       "sprite": "./teleporter/teleporter.png",
       "position": { "x": 0.5, "y": 0.4 },
-      "worldPosition": { "x": 960, "y": 400 },
+      "worldPosition": { "x": 1346.792, "y": 524.094 },
       "unlocked": true,
       "destinations": ["harbor", "workshop", "academy", "barracks", "market", "laboratory", "garden"]
     }
