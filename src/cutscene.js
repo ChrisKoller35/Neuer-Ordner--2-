@@ -8,6 +8,11 @@
 
 import S from './core/sharedState.js';
 
+const CUTSCENE_PLAYER_FALLBACK_URL = new URL('./player/Player.png', import.meta.url).href;
+const CUTSCENE_NARRATOR_URL = new URL('./city/narrator.png', import.meta.url).href;
+const CUTSCENE_BACKGROUND_LEVEL_ONE_URL = new URL('./game/Backgroundlvlone.png', import.meta.url).href;
+const CUTSCENE_SYMBOLS_URL = new URL('./symbols/Allesymbole.png', import.meta.url).href;
+
 {
   let cutsceneEnabled = false;
   const cvs = document.getElementById('cutCanvas');
@@ -23,7 +28,7 @@ import S from './core/sharedState.js';
     cutsceneEnabled = true;
     // Aktualisiere den Spieler-Sprite basierend auf der Auswahl
     if (S.characterSprites && S.selectedCharacter) {
-      playerSprite.src = S.characterSprites[S.selectedCharacter] || "./src/player/Player.png";
+      playerSprite.src = S.characterSprites[S.selectedCharacter] || CUTSCENE_PLAYER_FALLBACK_URL;
     }
     if (cutWrap && cutWrap.style.display === 'none') cutWrap.style.display = 'block';
     if (startOverlay) startOverlay.style.display = 'none';
@@ -38,11 +43,11 @@ import S from './core/sharedState.js';
 
   const playerSprite = new Image();
   // Wird später von enableCutscene gesetzt
-  playerSprite.src = "./src/player/Player.png";
+  playerSprite.src = CUTSCENE_PLAYER_FALLBACK_URL;
   const narratorSprite = new Image();
-  narratorSprite.src = "./src/city/narrator.png";
+  narratorSprite.src = CUTSCENE_NARRATOR_URL;
   const backgroundLevelOneSprite = new Image();
-  backgroundLevelOneSprite.src = "./src/game/Backgroundlvlone.png";
+  backgroundLevelOneSprite.src = CUTSCENE_BACKGROUND_LEVEL_ONE_URL;
 
   function spriteReady(img){
     return !!(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
@@ -160,7 +165,7 @@ import S from './core/sharedState.js';
 
   let showIcons=0;
   const symbolsSprite = new Image();
-  symbolsSprite.src = "./src/symbols/Allesymbole.png";
+  symbolsSprite.src = CUTSCENE_SYMBOLS_URL;
 
   function drawSymbolSheet(x,y,a){
     a=(a==null?1:a);
@@ -297,13 +302,13 @@ import S from './core/sharedState.js';
   }
 
   const script=[
-    {speaker:"Erzähler", text:"Spielsteuerung:\n\u2022 Bewegung: WASD\n\u2022 Angriff: Linke Maustaste (halten = Dauerfeuer)\n\u2022 Ab Level 2: Schild auf E\n\u2022 Ab Level 3: Korallenbegleiter auf R\n\u2022 Ab Level 4: Ultimate auf T (1 Aktivierung)"},
+    {speaker:"Erzähler", text:"Spielsteuerung:\n\u2022 Bewegung: WASD\n\u2022 Angriff: Linke Maustaste (halten = Dauerfeuer)\n\u2022 Ab Level 2: Schild auf E\n\u2022 Ab Level 3: Korallenbegleiter auf R\n\u2022 Ab Level 4: Ultimate auf T (1 Aktivierung)\n\u2022 Hub-Menü: Tab"},
     {speaker:"Erzähler", text:"Tief unter der Oberfläche schuften Fische in engen Stollen \u2013 Diamanten für den gierigen Cashfisch."},
     {speaker:"Erzähler", text:"Er hortet jeden Glitzerstein. Für die anderen bleibt: nichts."},
     {speaker:"Spieler (murmelt)", text:"Jetzt muss ich schon wieder im Stollen arbeiten..."},
     {speaker:"Spieler", text:"Ich hab genug davon. Ich breche aus!"},
-    {speaker:"Erzähler", text:"Drei Symbole können den Ausgang öffnen: ein Schlüssel-Symbol, ein Geldschein-Symbol und ein Yacht-Symbol."},
-    {speaker:"Erzähler", text:"Besiege ihre Wächter, nimm dir die Zeichen \u2013 und stürze den Cashfisch."},
+    {speaker:"Erzähler", text:"Drei Symbole können den Ausgang öffnen: ein Schlüssel-Symbol, ein Geldschein-Symbol und ein Yacht-Symbol. Nutze den Teleporter, um in die Stadt zurückzukehren."},
+    {speaker:"Erzähler", text:"Besiege ihre Wächter, nimm dir die Zeichen \u2013 und stürze den Cashfisch. In der Stadt warten Händler, Gärtner, Hafen und Akademie."},
     {speaker:"Spieler (entschlossen)", text:"Kein Stollen mehr. Jetzt nehme ich mir die Freiheit."}
   ];
 
@@ -328,7 +333,7 @@ import S from './core/sharedState.js';
         if (typeof S.cashBeginGame === 'function') S.cashBeginGame();
         else if (typeof S.cashResetGame === 'function') S.cashResetGame();
       }catch(err){
-        const g=document.getElementById('globalErr'); if(g){ g.textContent='Boot-Fehler: '+err.message; g.style.display='block'; }
+        const g=document.getElementById('globalErr'); if(g){ g.textContent=`Boot-Fehler: ${err.message}`; g.style.display='block'; }
       }
       return;
     }
@@ -347,10 +352,14 @@ import S from './core/sharedState.js';
   
   const keyAdvance = e => {
     if (!cutsceneEnabled) return;
+    // Dungeon-Schutz: Cutscene-Handler dürfen im Dungeon nichts tun
+    if (cutWrap && cutWrap.style.display === 'none') return;
     handleKeyAdvance(e);
   };
   const pointerAdvance = () => {
     if (!cutsceneEnabled) return;
+    // Dungeon-Schutz: Cutscene-Handler dürfen im Dungeon nichts tun
+    if (cutWrap && cutWrap.style.display === 'none') return;
     onAdvance();
   };
   document.addEventListener('keydown', keyAdvance, {passive:false});
@@ -363,8 +372,8 @@ import S from './core/sharedState.js';
     const lines=[];
     let cur='';
     ctx.font='20px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif';
-    for(let w of words){
-      const test=cur?cur+' '+w:w;
+    for(const w of words){
+      const test=cur?`${cur} ${w}`:w;
       const width=ctx.measureText(test).width;
       if(width>maxW && cur){ lines.push(cur); cur=w; }
       else cur=test;
@@ -375,6 +384,14 @@ import S from './core/sharedState.js';
 
   let last=performance.now();
   function loop(now){
+    if (!cutsceneEnabled) {
+      requestAnimationFrame(loop);
+      return;
+    }
+    if (cutWrap && cutWrap.style.display === 'none') {
+      return;
+    }
+
     const dt=Math.min(33,now-last); last=now;
     drawCutsceneBackdrop(now);
     for(const b of bubbles){ b.y-=b.spd; if(b.y<-10){ b.y=cvs.height+10; b.x=Math.random()*cvs.width;} ctx.globalAlpha=.7; ctx.strokeStyle='rgba(255,255,255,.75)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; }
@@ -401,7 +418,7 @@ import S from './core/sharedState.js';
     const pad=16, boxH=130;
     ctx.save(); ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(0,cvs.height-boxH-12,cvs.width,boxH+12); ctx.fillStyle='#0b1320cc'; ctx.fillRect(0,cvs.height-boxH,cvs.width,boxH); ctx.restore();
     ctx.save(); ctx.font='16px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; ctx.fillStyle='#9aa3c7'; const cur=script[Math.min(idx,script.length-1)]; if(cur){ ctx.fillText(cur.speaker||'', pad+4, cvs.height-boxH+26); } ctx.fillStyle='#e8ecff'; ctx.font='20px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; const text=typing?typed:(script[idx]?script[idx].text:typed); const lines=wrapText(text,760); let y=cvs.height-boxH+56; for(const L of lines){ ctx.fillText(L, pad+4, y); y+=28; } ctx.restore();
-    ctx.save(); ctx.font='600 14px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; ctx.fillStyle='#9aa3c7'; ctx.textAlign='right'; const blink=Math.floor(now/500)%2===0?'':' \u25B6'; ctx.fillText(cutDone?'Space/Klick: Start':('Space/Klick: Weiter'+blink), cvs.width-14, cvs.height-14); ctx.restore();
+    ctx.save(); ctx.font='600 14px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif'; ctx.fillStyle='#9aa3c7'; ctx.textAlign='right'; const blink=Math.floor(now/500)%2===0?'':' \u25B6'; ctx.fillText(cutDone?'Space/Klick: Start':(`Space/Klick: Weiter${blink}`), cvs.width-14, cvs.height-14); ctx.restore();
 
     if(showIcons>0){
       const gridSize = 50;

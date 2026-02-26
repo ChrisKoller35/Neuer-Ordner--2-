@@ -8,12 +8,19 @@
 
 import S from '../core/sharedState.js';
 
+const CHARACTER_SPRITE_URLS = {
+  player: new URL('../player/Player.png', import.meta.url).href,
+  pinkqualle: new URL('../player/Playerpinkqualle.png', import.meta.url).href,
+  kleinerdrache: new URL('../player/playerkleinerdrache.png', import.meta.url).href,
+  engelfisch: new URL('../player/Playerengelfisch.png', import.meta.url).href
+};
+
 // Charakter-Pfade
 S.characterSprites = {
-  'player': './src/player/Player.png',
-  'pinkqualle': './src/player/Playerpinkqualle.png',
-  'kleinerdrache': './src/player/playerkleinerdrache.png',
-  'engelfisch': './src/player/Playerengelfisch.png'
+  'player': CHARACTER_SPRITE_URLS.player,
+  'pinkqualle': CHARACTER_SPRITE_URLS.pinkqualle,
+  'kleinerdrache': CHARACTER_SPRITE_URLS.kleinerdrache,
+  'engelfisch': CHARACTER_SPRITE_URLS.engelfisch
 };
 
 // Warte auf DOM
