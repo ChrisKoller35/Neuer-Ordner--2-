@@ -4,7 +4,7 @@
 "use strict";
 
 import { TAU } from '../core/constants.js';
-import { spriteReady } from '../core/assets.js';
+import { spriteReady, ManifestAssets } from '../core/assets.js';
 import S from '../core/sharedState.js';
 import {
 	CITY_GRID_CELL_SIZE,
@@ -12,31 +12,7 @@ import {
 	CITY_GRID_ROWS,
 	CITY_FLOOR_HEIGHT
 } from './constants.js';
-import { createAnimationPlayer } from '../animation/animationLoader.js';
-
-// ============================================================
-// ANIMATION TEST - Nutzt globale S.ANIM_TEST Variable
-// ============================================================
-let testAnimationLoading = false;
-let lastAnimTime = 0;
-
-function loadTestAnimation() {
-	if (testAnimationLoading || S.ANIM_TEST?.player) return;
-	testAnimationLoading = true;
-	console.log('[AnimTest] Lade Animation...');
-	
-	createAnimationPlayer('./src/animation/player_walk.anim.json')
-		.then(player => {
-			console.log('[AnimTest] Animation geladen!', player.data.totalFrames, 'Frames');
-			player.play();
-			S.ANIM_TEST.player = player;
-			lastAnimTime = performance.now();
-		})
-		.catch(e => {
-			console.error('[AnimTest] Fehler:', e);
-			testAnimationLoading = false;
-		});
-}
+import { updatePlayerAnimation, renderPlayerAnimation } from '../animation/playerAnimation.js';
 
 // Spieler wird ca. 71px oberhalb von y gezeichnet
 const PLAYER_VISUAL_OFFSET = 71;
@@ -173,8 +149,10 @@ function renderBuilding(ctx, city, cityBgSprite) {
 function renderNPCs(ctx, city, sprites) {
 	const NPC_SPRITE_SCALE = 0.22;
 	const NPC_MISSION_SCALE = 0.22;
+	const npcList = Array.isArray(city?.npcs) ? city.npcs : [];
 	
-	for (const npc of city.npcs) {
+	for (const npc of npcList) {
+		if (!npc) continue;
 		const nx = npc.x;
 		const ny = npc.y;
 		
@@ -233,81 +211,186 @@ function renderNPCs(ctx, city, sprites) {
 }
 
 /**
+ * Zeigt das zuletzt generierte KI-Sprite als Stadt-Testpanel
+ */
+function renderGeneratedSpriteTest(ctx, city) {
+	const generatedSprites = ManifestAssets.getGeneratedSprites();
+	if (!generatedSprites.length) return;
+
+	const latest = generatedSprites[generatedSprites.length - 1];
+	const generatedSprite = ManifestAssets.getAsset('generatedSprites', latest.key);
+	if (!spriteReady(generatedSprite)) return;
+
+	const spriteX = city.buildingX + city.buildingWidth - 150;
+	const spriteY = city.buildingY + 122;
+	ctx.drawImage(generatedSprite, spriteX, spriteY, 96, 96);
+}
+
+const uiHelpIconCache = {
+	signature: '',
+	icons: {
+		inventory: null,
+		teleporter: null,
+		key: null
+	}
+};
+
+function getUiHelpIconSet() {
+	const generatedSprites = ManifestAssets.getGeneratedSprites();
+	const uiHelpEntries = generatedSprites
+		.filter(entry => entry && entry.category === 'ui-help')
+		.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+	const newest = uiHelpEntries[0]?.createdAt || '';
+	const signature = `${uiHelpEntries.length}:${newest}`;
+	if (uiHelpIconCache.signature === signature) {
+		return uiHelpIconCache.icons;
+	}
+
+	const pick = keyword => {
+		const candidate = uiHelpEntries.find(entry => {
+			const haystack = `${entry.key || ''} ${entry.id || ''} ${entry.prompt || ''}`.toLowerCase();
+			return haystack.includes(keyword);
+		});
+		if (!candidate) return null;
+		return ManifestAssets.getAsset('generatedSprites', candidate.key);
+	};
+
+	uiHelpIconCache.signature = signature;
+	uiHelpIconCache.icons = {
+		inventory: pick('inventory'),
+		teleporter: pick('teleporter'),
+		key: pick('key')
+	};
+
+	return uiHelpIconCache.icons;
+}
+
+/**
+ * Zeichnet kontextuelle Stadt-Hinweise (ohne Kamera-Offset)
+ */
+function renderCityHints(ctx, city, width, height) {
+	if (!city || !city.player) return;
+	S.CITY_HINT_HITBOXES = [];
+
+	const iconSet = getUiHelpIconSet();
+	const iconInventory = iconSet.inventory;
+	const iconTeleporter = iconSet.teleporter;
+	const iconKey = iconSet.key;
+
+	const hints = [
+		{ key: "I", text: "Inventar öffnen", icon: iconInventory, action: "openInventory" },
+		{ key: "Tab", text: "Hub-Menü", icon: iconKey, action: "openHub" }
+	];
+
+	const showTeleporterHint = !!S.nearTeleporter;
+	if (showTeleporterHint) {
+		hints.push({ key: "E", text: "Teleporter benutzen", icon: iconTeleporter, action: "openTeleporter" });
+	}
+
+	const merchant = Array.isArray(city.npcs)
+		? city.npcs.find(npc => npc && npc.id === "merchant")
+		: null;
+	if (merchant) {
+		const dx = city.player.x - merchant.x;
+		const dy = city.player.y - merchant.y;
+		const nearMerchant = (dx * dx + dy * dy) < (90 * 90);
+		if (nearMerchant && !showTeleporterHint) {
+			hints.push({ key: "E", text: "Händler sprechen", icon: iconKey, action: "openMerchant" });
+		}
+	}
+
+	const boxX = 16;
+	const boxYStart = height - 44 - (hints.length - 1) * 36;
+	const boxHeight = 28;
+
+	ctx.save();
+	ctx.textAlign = "left";
+	ctx.textBaseline = "middle";
+	ctx.font = "14px 'Segoe UI', sans-serif";
+
+	hints.forEach((hint, index) => {
+		const y = boxYStart + index * 36;
+		const keyText = `[${hint.key}]`;
+			const hasIcon = spriteReady(hint.icon);
+			const iconWidth = hasIcon ? 18 : 0;
+		const keyWidth = ctx.measureText(keyText).width;
+		const hintWidth = ctx.measureText(hint.text).width;
+			const boxWidth = Math.ceil(24 + iconWidth + (hasIcon ? 8 : 0) + keyWidth + 12 + hintWidth + 14);
+
+		ctx.fillStyle = "rgba(0,20,40,0.72)";
+		ctx.strokeStyle = "rgba(40,120,200,0.35)";
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		ctx.roundRect(boxX, y, boxWidth, boxHeight, 6);
+		ctx.fill();
+		ctx.stroke();
+
+		if (hint.action) {
+			S.CITY_HINT_HITBOXES.push({
+				action: hint.action,
+				x: boxX,
+				y,
+				width: boxWidth,
+				height: boxHeight
+			});
+		}
+
+			let textX = boxX + 10;
+			if (hasIcon) {
+				ctx.drawImage(hint.icon, textX, y + (boxHeight - 18) / 2, 18, 18);
+				textX += 26;
+			}
+
+			ctx.fillStyle = "#ffffff";
+			ctx.fillText(keyText, textX, y + boxHeight / 2);
+
+		ctx.fillStyle = "#9ed0ff";
+			ctx.fillText(hint.text, textX + 10 + keyWidth, y + boxHeight / 2);
+	});
+
+	ctx.restore();
+}
+
+/**
  * Zeichnet den Spieler
  */
 function renderPlayer(ctx, player, playerSprite) {
 	const playerOffsetX = -3.5;
 	const playerOffsetY = 50.0;
 	
-	// ============================================================
-	// ANIMATION TEST - Nutzt globale S.ANIM_TEST
-	// ============================================================
-	const animTest = S.ANIM_TEST;
+	// Animation updaten
+	updatePlayerAnimation();
 	
-	if (animTest?.enabled) {
-		// Lade Animation falls noch nicht geladen
-		if (!animTest.player) {
-			loadTestAnimation();
-			return;
-		}
-		
-		// Update Animation
-		const now = performance.now();
-		const dt = now - lastAnimTime;
-		lastAnimTime = now;
-		animTest.player.update(dt);
-		
-		// Animation zeichnen - gleiche Größe wie Original-Spieler
-		// Bild ist 922x1383, wir wollen ~166x249 (wie Original mit scale 0.18)
-		const imgW = animTest.player.data.image.width;
-		const imgH = animTest.player.data.image.height;
-		const scale = 0.18; // Gleich wie normales Spielersprite
-		const drawW = imgW * scale;
-		const drawH = imgH * scale;
-		
-		ctx.save();
-		ctx.translate(player.x + playerOffsetX, player.y + playerOffsetY);
-		if (player.dir < 0) {
-			ctx.scale(-1, 1);
-		}
-		const bob = Math.sin(performance.now() * 0.003) * 2;
-		// Render mit offset nach oben (wie beim normalen Spieler)
-		// Scale für render = 0.18 * (imgW / canvasW) damit die Bildgröße stimmt
-		const renderScale = scale * (imgW / animTest.player.data.canvasWidth);
-		animTest.player.render(
-			ctx,
-			-drawW / 2,
-			-drawH + bob,
-			renderScale,
-			false
-		);
-		ctx.restore();
-		return;
-	}
-	// ============================================================
+	// Animierter Spieler
+	const bob = Math.sin(performance.now() * 0.003) * 2;
+	const rendered = renderPlayerAnimation(ctx, player.x, player.y, 0.18, player.dir, {
+		bob,
+		offsetX: playerOffsetX,
+		offsetY: playerOffsetY,
+		anchorBottom: true
+	});
 	
-	if (spriteReady(playerSprite)) {
-		const scale = 0.18;
-		const drawW = playerSprite.naturalWidth * scale;
-		const drawH = playerSprite.naturalHeight * scale;
-		
-		ctx.save();
-		ctx.translate(player.x + playerOffsetX, player.y + playerOffsetY);
-		if (player.dir < 0) {
-			ctx.scale(-1, 1);
+	if (!rendered) {
+		// Fallback: Statisches Sprite während Animation lädt
+		if (spriteReady(playerSprite)) {
+			const scale = 0.18;
+			const drawW = playerSprite.naturalWidth * scale;
+			const drawH = playerSprite.naturalHeight * scale;
+			ctx.save();
+			ctx.translate(player.x + playerOffsetX, player.y + playerOffsetY);
+			if (player.dir < 0) ctx.scale(-1, 1);
+			ctx.drawImage(playerSprite, -drawW / 2, -drawH + bob, drawW, drawH);
+			ctx.restore();
+		} else {
+			ctx.fillStyle = "rgba(100, 200, 255, 0.95)";
+			ctx.beginPath();
+			ctx.arc(player.x + playerOffsetX, player.y + playerOffsetY - 15, player.r, 0, TAU);
+			ctx.fill();
+			ctx.strokeStyle = "rgba(255,255,255,0.5)";
+			ctx.lineWidth = 2;
+			ctx.stroke();
 		}
-		const bob = Math.sin(performance.now() * 0.003) * 2;
-		ctx.drawImage(playerSprite, -drawW / 2, -drawH + bob, drawW, drawH);
-		ctx.restore();
-	} else {
-		// Fallback
-		ctx.fillStyle = "rgba(100, 200, 255, 0.95)";
-		ctx.beginPath();
-		ctx.arc(player.x + playerOffsetX, player.y + playerOffsetY - 15, player.r, 0, TAU);
-		ctx.fill();
-		ctx.strokeStyle = "rgba(255,255,255,0.5)";
-		ctx.lineWidth = 2;
-		ctx.stroke();
 	}
 }
 
@@ -434,15 +517,23 @@ function renderGridDebug(ctx, city, player) {
 	const pRow = Math.floor(((player.y - PLAYER_VISUAL_OFFSET) - city.buildingY) / cellSize);
 	const gKey = `${pCol},${pRow}`;
 	const inGrid = S.CITY_WALKABLE_GRID && S.CITY_WALKABLE_GRID[gKey];
+	const canvasWidth = ctx.canvas?.width || city.width || 1280;
+	const boxWidth = 360;
+	const boxHeight = 52;
+	const boxX = canvasWidth - boxWidth - 14;
+	const boxY = 14;
 	
 	ctx.save();
 	ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-	ctx.fillRect(10, city.height - 60, 320, 50);
+	ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+	ctx.strokeStyle = "rgba(90, 170, 255, 0.35)";
+	ctx.lineWidth = 1.5;
+	ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 	ctx.fillStyle = inGrid ? "#0f0" : "#f00";
 	ctx.font = "bold 14px monospace";
 	ctx.textAlign = "left";
-	ctx.fillText(`Grid: Col=${pCol}, Row=${pRow}`, 20, city.height - 40);
-	ctx.fillText(`Im Grid: ${inGrid ? "JA ✓" : "NEIN ✗"} | Zellen: ${Object.keys(S.CITY_WALKABLE_GRID || {}).length}`, 20, city.height - 20);
+	ctx.fillText(`Grid: Col=${pCol}, Row=${pRow}`, boxX + 10, boxY + 20);
+	ctx.fillText(`Im Grid: ${inGrid ? "JA ✓" : "NEIN ✗"} | Zellen: ${Object.keys(S.CITY_WALKABLE_GRID || {}).length}`, boxX + 10, boxY + 40);
 	ctx.restore();
 }
 
@@ -486,7 +577,7 @@ function renderFloorDebugLines(ctx, city, floors) {
 		const indivOffset = individualOffsets[i] || 0;
 		const groundY = floor.y + CITY_FLOOR_HEIGHT - FLOOR_OFFSET + userOffset + indivOffset;
 		
-		S.CITY_FLOORS_DEBUG.push({ index: i, groundY: groundY });
+		S.CITY_FLOORS_DEBUG.push({ index: i, groundY });
 		
 		ctx.strokeStyle = indivOffset !== 0 ? "#00ff00" : "#ffff00";
 		ctx.lineWidth = indivOffset !== 0 ? 6 : 4;
@@ -542,7 +633,7 @@ function renderFloorDebugLines(ctx, city, floors) {
 	ctx.fillStyle = userOffset === 0 ? "#888" : "#00ff00";
 	ctx.font = "bold 20px monospace";
 	ctx.textAlign = "center";
-	ctx.fillText("Global: " + (userOffset >= 0 ? "+" : "") + userOffset, 625, 38);
+	ctx.fillText(`Global: ${  userOffset >= 0 ? "+" : ""  }${userOffset}`, 625, 38);
 }
 
 /**
@@ -590,6 +681,7 @@ export function renderCity(renderCtx) {
 	// === Welt-Elemente ===
 	renderWater(ctx, city);
 	renderBuilding(ctx, city, sprites.cityBackground);
+	renderGeneratedSpriteTest(ctx, city);
 	renderNPCs(ctx, city, sprites);
 	renderPlayer(ctx, player, sprites.player);
 	
@@ -598,6 +690,7 @@ export function renderCity(renderCtx) {
 	
 	// === UI-Elemente (ohne Kamera) ===
 	renderUI(ctx, width, height, player);
+	renderCityHints(ctx, city, width, height);
 	
 	// === Debug-Modi ===
 	renderGridEditor(ctx, city, player);

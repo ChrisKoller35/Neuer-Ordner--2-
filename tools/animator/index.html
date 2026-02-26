@@ -15,8 +15,10 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #1a1a2e;
             color: #eee;
-            min-height: 100vh;
+            height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         
         /* Header */
@@ -70,7 +72,8 @@
         /* Main Layout */
         .main-container {
             display: flex;
-            height: calc(100vh - 52px - 150px);
+            flex: 1;
+            min-height: 0;
         }
         
         /* Canvas Area */
@@ -220,7 +223,8 @@
         
         /* Timeline */
         .timeline-container {
-            height: 150px;
+            min-height: 150px;
+            max-height: 250px;
             background: #16213e;
             border-top: 2px solid #0f3460;
             display: flex;
@@ -252,7 +256,7 @@
         .timeline-scroll {
             flex: 1;
             overflow-x: auto;
-            overflow-y: hidden;
+            overflow-y: auto;
             padding: 10px 15px;
         }
         
@@ -345,6 +349,36 @@
             font-size: 12px;
             display: flex;
             justify-content: space-between;
+            z-index: 10;
+        }
+        
+        /* Zoom Indicator */
+        .zoom-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(15, 52, 96, 0.9);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 5;
+            user-select: none;
+        }
+        
+        .zoom-controls button {
+            padding: 3px 8px;
+            font-size: 14px;
+            min-width: 28px;
+        }
+        
+        .zoom-controls span {
+            min-width: 45px;
+            text-align: center;
+            font-weight: bold;
+            color: #4ecdc4;
         }
         
         /* Mode indicator */
@@ -444,6 +478,12 @@
                 <h2>📁 Bild hier reinziehen</h2>
                 <p>oder klicke auf "Bild laden"</p>
             </div>
+            <div class="zoom-controls">
+                <button onclick="zoomIn()">+</button>
+                <span id="zoomDisplay">100%</span>
+                <button onclick="zoomOut()">−</button>
+                <button onclick="resetZoom()" style="margin-left: 5px; font-size: 11px;">↺ Reset</button>
+            </div>
         </div>
         
         <!-- Side Panel -->
@@ -454,6 +494,7 @@
                     <p class="help-text">Ziehe Rechtecke auf dem Bild um Bereiche zu markieren.</p>
                 </div>
                 <button onclick="addPart()" style="margin-top: 10px; width: 100%;">+ Bereich hinzufügen</button>
+                <button onclick="addEyePart()" style="margin-top: 5px; width: 100%; background: #2d6a4f;">👁 Auge hinzufügen</button>
             </div>
             
             <div class="panel-section">
@@ -498,7 +539,12 @@
                     <b>Leertaste</b> - Play/Pause<br>
                     <b>←/→</b> - Frame vor/zurück<br>
                     <b>Entf</b> - Bereich löschen<br>
-                    <b>Esc</b> - Polygon abbrechen
+                    <b>Esc</b> - Polygon abbrechen<br>
+                    <b>E</b> - Auge hinzufügen<br>
+                    <b>Mausrad</b> - Zoom<br>
+                    <b>Mittelklick+Ziehen</b> - Verschieben<br>
+                    <b>+/−</b> - Zoom rein/raus<br>
+                    <b>0</b> - Zoom zurücksetzen
                 </p>
             </div>
         </div>
@@ -601,7 +647,14 @@
             // View
             zoom: 1,
             panX: 0,
-            panY: 0
+            panY: 0,
+            isPanning: false,
+            panStart: { x: 0, y: 0 },
+            panStartOffset: { x: 0, y: 0 },
+            
+            // Cycle tracking für Abspiel-Häufigkeit
+            cycleCount: 0,
+            partCycleActive: {}  // partId -> ob dieses Part aktiv ist in diesem Zyklus
         };
         
         // Colors for parts
@@ -646,6 +699,16 @@
             canvas.addEventListener('mousemove', onMouseMove);
             canvas.addEventListener('mouseup', onMouseUp);
             canvas.addEventListener('mouseleave', onMouseUp);
+            
+            // Zoom mit Mausrad
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            
+            // Mittelklick-Pan verhindern (kein Auto-Scroll)
+            canvas.addEventListener('auxclick', (e) => e.preventDefault());
+            canvas.addEventListener('contextmenu', (e) => {
+                // Rechtsklick nur verhindern wenn gepannt wird
+                if (state.isPanning) e.preventDefault();
+            });
             
             // Keyboard
             document.addEventListener('keydown', onKeyDown);
@@ -727,6 +790,9 @@
                 // Pivot-Punkt (Standard: Mitte)
                 pivotX: x + width / 2,
                 pivotY: y + height / 2,
+                // Abspiel-Häufigkeit: 'every' = jedes Mal, 'every2' = jedes 2. Mal,
+                // 'every3' = jedes 3. Mal, 'random' = zufällig (natürlich)
+                playbackMode: 'every',
                 // Keyframes mit 3D-Transformationen + Ecken-Offsets
                 // z: Tiefe (-100 = weit weg/klein, +100 = nah/groß)
                 // skewX/Y: Perspektivische Verzerrung
@@ -764,6 +830,63 @@
                 canvas.height / 2 - 50,
                 100, 100
             );
+        }
+
+        function addEyePart() {
+            if (!state.imageLoaded) {
+                alert('Bitte erst ein Bild laden!');
+                return;
+            }
+            createEyePart(
+                canvas.width / 2,
+                canvas.height / 2,
+                30
+            );
+        }
+
+        function createEyePart(cx, cy, radius) {
+            const id = Date.now();
+            const colorIndex = state.parts.length % partColors.length;
+
+            const part = {
+                id,
+                name: 'Auge ' + (state.parts.filter(p => p.type === 'eye').length + 1),
+                color: partColors[colorIndex],
+                type: 'eye',
+                // Bounding box für hit-testing
+                x: cx - radius,
+                y: cy - radius,
+                width: radius * 2,
+                height: radius * 2,
+                // Kreis-Daten
+                eyeCenterX: cx,
+                eyeCenterY: cy,
+                eyeRadius: radius,
+                eyeColor: '#000000',
+                // Pivot = Kreis-Mittelpunkt
+                pivotX: cx,
+                pivotY: cy,
+                // Abspiel-Häufigkeit (Auge blinzelt nicht jede Runde)
+                playbackMode: 'random',
+                // Keyframes: fillAmount 1 = geschlossen, 0 = offen
+                // fillDirection: 'top' (Lid kommt von oben) oder 'bottom' (von unten)
+                keyframes: {
+                    0: {
+                        x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0,
+                        c0x: 0, c0y: 0, c1x: 0, c1y: 0, c2x: 0, c2y: 0, c3x: 0, c3y: 0,
+                        fillAmount: 1.0
+                    }
+                }
+            };
+
+            state.parts.push(part);
+            state.selectedPartId = id;
+            updatePartsList();
+            updatePropertiesPanel();
+            updateTimeline();
+            render();
+            setStatus('Auge erstellt! Animiere fillAmount: 1=zu, 0=offen');
+            return part;
         }
         
         function deletePart(id) {
@@ -870,7 +993,8 @@
                 c2x: lerp(prev.c2x || 0, next.c2x || 0, t),
                 c2y: lerp(prev.c2y || 0, next.c2y || 0, t),
                 c3x: lerp(prev.c3x || 0, next.c3x || 0, t),
-                c3y: lerp(prev.c3y || 0, next.c3y || 0, t)
+                c3y: lerp(prev.c3y || 0, next.c3y || 0, t),
+                fillAmount: lerp(prev.fillAmount != null ? prev.fillAmount : 1, next.fillAmount != null ? next.fillAmount : 1, t)
             };
         }
         
@@ -901,14 +1025,59 @@
         function startPlay() {
             const fps = parseInt(document.getElementById('animFPS').value) || 12;
             state.isPlaying = true;
+            state.cycleCount = 0;
+            // Zu Beginn: Entscheide für jedes Part ob es in diesem Zyklus aktiv ist
+            initPartCycleActive();
             document.getElementById('playBtn').textContent = '⏸ Pause';
             
             state.playInterval = setInterval(() => {
+                const prevFrame = state.currentFrame;
                 state.currentFrame = (state.currentFrame + 1) % state.totalFrames;
+                
+                // Neuer Zyklus erkannt (Frame ist zurück auf 0)
+                if (state.currentFrame === 0 && prevFrame !== 0) {
+                    state.cycleCount++;
+                    initPartCycleActive();
+                }
+                
                 updateFrameDisplay();
                 updateTimeline();
                 render();
             }, 1000 / fps);
+        }
+        
+        /**
+         * Entscheidet für jeden Part ob er in diesem Zyklus seine Frames abspielen soll
+         */
+        function initPartCycleActive() {
+            state.partCycleActive = {};
+            for (const part of state.parts) {
+                const mode = part.playbackMode || 'every';
+                if (mode === 'every') {
+                    state.partCycleActive[part.id] = true;
+                } else if (mode === 'every2') {
+                    state.partCycleActive[part.id] = (state.cycleCount % 2 === 0);
+                } else if (mode === 'every3') {
+                    state.partCycleActive[part.id] = (state.cycleCount % 3 === 0);
+                } else if (mode === 'random') {
+                    // Zufällig: ca. 25-35% Chance pro Zyklus (natürliches Blinzeln)
+                    state.partCycleActive[part.id] = (Math.random() < 0.3);
+                }
+            }
+        }
+        
+        /**
+         * Gibt den effektiven Frame für ein Part zurück.
+         * Wenn das Part in diesem Zyklus inaktiv ist, bleibt es auf Frame 0.
+         */
+        function getEffectiveFrame(part) {
+            if (!state.isPlaying) return state.currentFrame;
+            const mode = part.playbackMode || 'every';
+            if (mode === 'every') return state.currentFrame;
+            
+            // Part ist in diesem Zyklus nicht aktiv -> Frame 0 (Ruhepose)
+            if (!state.partCycleActive[part.id]) return 0;
+            return state.currentFrame;
         }
         
         function stopPlay() {
@@ -964,6 +1133,22 @@
         
         function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
+            // Berechne die angezeigte Größe vs. interne Canvas-Größe
+            const displayScaleX = canvas.width / rect.width;
+            const displayScaleY = canvas.height / rect.height;
+            // Bildschirm -> Canvas-Koordinaten (berücksichtigt CSS-Transform zoom/pan)
+            const screenX = (e.clientX - rect.left) * displayScaleX;
+            const screenY = (e.clientY - rect.top) * displayScaleY;
+            // Rücktransformation: Screen -> Welt (undo zoom+pan)
+            return {
+                x: (screenX - state.panX) / state.zoom,
+                y: (screenY - state.panY) / state.zoom
+            };
+        }
+        
+        /** Gibt die Rohposition ohne Zoom/Pan zurück (für Pan-Drag) */
+        function getRawMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
             return {
                 x: e.clientX - rect.left,
                 y: e.clientY - rect.top
@@ -971,6 +1156,17 @@
         }
         
         function onMouseDown(e) {
+            // Mittelklick: Pan starten
+            if (e.button === 1) {
+                e.preventDefault();
+                state.isPanning = true;
+                const raw = getRawMousePos(e);
+                state.panStart = { x: raw.x, y: raw.y };
+                state.panStartOffset = { x: state.panX, y: state.panY };
+                canvas.style.cursor = 'grab';
+                return;
+            }
+            
             const pos = getMousePos(e);
             
             // Polygon-Modus hat Priorität
@@ -1045,6 +1241,16 @@
         }
         
         function onMouseMove(e) {
+            // Pan mit Mittelklick
+            if (state.isPanning) {
+                const raw = getRawMousePos(e);
+                state.panX = state.panStartOffset.x + (raw.x - state.panStart.x);
+                state.panY = state.panStartOffset.y + (raw.y - state.panStart.y);
+                canvas.style.cursor = 'grabbing';
+                render();
+                return;
+            }
+            
             const pos = getMousePos(e);
             document.getElementById('mousePos').textContent = `${Math.round(pos.x)}, ${Math.round(pos.y)}`;
             
@@ -1053,8 +1259,9 @@
                 const first = state.polygonPoints[0];
                 const dx = pos.x - first.x;
                 const dy = pos.y - first.y;
+                const closeRadius = 15 / state.zoom;
                 const wasHover = state.polygonHoverFirst;
-                state.polygonHoverFirst = (dx * dx + dy * dy <= 15 * 15);
+                state.polygonHoverFirst = (dx * dx + dy * dy <= closeRadius * closeRadius);
                 if (wasHover !== state.polygonHoverFirst) {
                     canvas.style.cursor = state.polygonHoverFirst ? 'pointer' : 'crosshair';
                     render();
@@ -1063,17 +1270,21 @@
             
             if (state.isDrawing) {
                 render();
-                // Preview-Rechteck zeichnen
+                // Preview-Rechteck zeichnen (im Zoom/Pan-Kontext)
                 const x = Math.min(pos.x, state.drawStart.x);
                 const y = Math.min(pos.y, state.drawStart.y);
                 const w = Math.abs(pos.x - state.drawStart.x);
                 const h = Math.abs(pos.y - state.drawStart.y);
                 
+                ctx.save();
+                ctx.translate(state.panX, state.panY);
+                ctx.scale(state.zoom, state.zoom);
                 ctx.strokeStyle = '#e94560';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 2 / state.zoom;
+                ctx.setLineDash([5 / state.zoom, 5 / state.zoom]);
                 ctx.strokeRect(x, y, w, h);
                 ctx.setLineDash([]);
+                ctx.restore();
             }
             
             if (state.isDragging && state.selectedPartId) {
@@ -1082,6 +1293,18 @@
                 
                 const dx = pos.x - state.dragStart.x;
                 const dy = pos.y - state.dragStart.y;
+
+                // Eye-Part: Drag bewegt den Mittelpunkt
+                if (part.type === 'eye' && (state.dragMode === 'move' || state.dragMode === 'corner-move')) {
+                    part.eyeCenterX = state.dragPartStart.pivotX + dx;
+                    part.eyeCenterY = state.dragPartStart.pivotY + dy;
+                    part.x = part.eyeCenterX - part.eyeRadius;
+                    part.y = part.eyeCenterY - part.eyeRadius;
+                    part.pivotX = part.eyeCenterX;
+                    part.pivotY = part.eyeCenterY;
+                    render();
+                    return;
+                }
                 
                 if (state.dragMode === 'corner') {
                     // Ecke ziehen - Keyframe updaten (Verzerr-Modus)
@@ -1123,6 +1346,13 @@
         }
         
         function onMouseUp(e) {
+            // Pan beenden
+            if (state.isPanning) {
+                state.isPanning = false;
+                canvas.style.cursor = state.mode === 'draw' ? 'crosshair' : 'default';
+                return;
+            }
+            
             if (state.isDrawing) {
                 const pos = getMousePos(e);
                 const x = Math.min(pos.x, state.drawStart.x);
@@ -1153,7 +1383,8 @@
                 const first = points[0];
                 const dx = pos.x - first.x;
                 const dy = pos.y - first.y;
-                if (dx * dx + dy * dy <= 15 * 15) {
+                const closeRadius = 15 / state.zoom;
+                if (dx * dx + dy * dy <= closeRadius * closeRadius) {
                     // Form schließen und Part erstellen
                     const part = createPartFromPolygon(points);
                     state.polygonPoints = [];
@@ -1191,7 +1422,7 @@
             if (!part) return -1;
             
             const transform = getInterpolatedTransform(part, state.currentFrame);
-            const cornerRadius = 10; // Klick-Radius für Ecken
+            const cornerRadius = 10 / state.zoom; // Klick-Radius für Ecken (zoom-angepasst)
             
             // Für Polygon-Parts: Bounding-Box-Ecken (nur im V-Modus)
             if (part.polygon) {
@@ -1314,6 +1545,10 @@
                     // Polygon-Modus Toggle
                     togglePolygonMode();
                     break;
+                case 'e':
+                case 'E':
+                    addEyePart();
+                    break;
                 case 'Escape':
                     // Polygon abbrechen
                     if (state.polygonMode && state.polygonPoints.length > 0) {
@@ -1337,6 +1572,16 @@
                     if (state.selectedPartId) {
                         deletePart(state.selectedPartId);
                     }
+                    break;
+                case '+':
+                case '=':
+                    zoomIn();
+                    break;
+                case '-':
+                    zoomOut();
+                    break;
+                case '0':
+                    resetZoom();
                     break;
             }
         }
@@ -1424,6 +1669,8 @@
                 pivotY: minY + height / 2,
                 // Polygon-Punkte (relativ zur Bounding Box für V-Modus)
                 polygon: points.map(p => ({ x: p.x, y: p.y })),
+                // Abspiel-Häufigkeit
+                playbackMode: 'every',
                 // Keyframes
                 keyframes: {
                     0: { 
@@ -1444,11 +1691,86 @@
         }
         
         // ============================================================
+        // ZOOM & PAN
+        // ============================================================
+        
+        function onWheel(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            // Mausposition auf Canvas (in Pixel)
+            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+            
+            // Alte Welt-Position unter Maus
+            const worldX = (mx - state.panX) / state.zoom;
+            const worldY = (my - state.panY) / state.zoom;
+            
+            // Zoom ändern
+            const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+            const newZoom = Math.max(0.25, Math.min(10, state.zoom * zoomFactor));
+            
+            // Pan anpassen damit die Mausposition gleich bleibt
+            state.panX = mx - worldX * newZoom;
+            state.panY = my - worldY * newZoom;
+            state.zoom = newZoom;
+            
+            updateZoomDisplay();
+            render();
+        }
+        
+        function zoomIn() {
+            // Zoom zur Canvas-Mitte
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const worldX = (cx - state.panX) / state.zoom;
+            const worldY = (cy - state.panY) / state.zoom;
+            
+            state.zoom = Math.min(10, state.zoom * 1.25);
+            state.panX = cx - worldX * state.zoom;
+            state.panY = cy - worldY * state.zoom;
+            
+            updateZoomDisplay();
+            render();
+        }
+        
+        function zoomOut() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const worldX = (cx - state.panX) / state.zoom;
+            const worldY = (cy - state.panY) / state.zoom;
+            
+            state.zoom = Math.max(0.25, state.zoom / 1.25);
+            state.panX = cx - worldX * state.zoom;
+            state.panY = cy - worldY * state.zoom;
+            
+            updateZoomDisplay();
+            render();
+        }
+        
+        function resetZoom() {
+            state.zoom = 1;
+            state.panX = 0;
+            state.panY = 0;
+            updateZoomDisplay();
+            render();
+            setStatus('Zoom zurückgesetzt');
+        }
+        
+        function updateZoomDisplay() {
+            document.getElementById('zoomDisplay').textContent = Math.round(state.zoom * 100) + '%';
+        }
+        
+        // ============================================================
         // RENDERING
         // ============================================================
         
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Zoom/Pan Transform anwenden
+            ctx.save();
+            ctx.translate(state.panX, state.panY);
+            ctx.scale(state.zoom, state.zoom);
             
             // Bild mit korrektem Seitenverhältnis zeichnen
             if (state.image) {
@@ -1480,9 +1802,41 @@
                     ctx.rect(0, 0, canvas.width, canvas.height);
                     
                     // Part-Bereiche als "Löcher" ausschneiden (mit evenodd)
+                    // Eye-Parts werden NICHT ausgeschnitten (die sind transparent)
+                    const cutoutPad = 2; // Pixel Rand-Erweiterung gegen Geisterbilder
                     for (const part of state.parts) {
-                        // Rechteck für diesen Part (wird ausgeschnitten)
-                        ctx.rect(part.x, part.y, part.width, part.height);
+                        if (part.type === 'eye') continue;
+                        // Nur ausschneiden bei 'cutout' oder 'fill' Modus (nicht bei 'none'/false)
+                        const mode = part.cutout === false ? 'none' : (part.cutout || 'cutout');
+                        if (mode === 'none') continue;
+                        
+                        // Fill-Parts brauchen größeren Cutout (Outline mit entfernen)
+                        const pad = mode === 'fill' ? 12 : cutoutPad;
+                        
+                        if (part.polygon && part.polygon.length >= 3) {
+                            // Polygon-Part: Exakte Polygon-Form als Cutout (leicht expanded)
+                            const cx = part.polygon.reduce((s, p) => s + p.x, 0) / part.polygon.length;
+                            const cy = part.polygon.reduce((s, p) => s + p.y, 0) / part.polygon.length;
+                            ctx.moveTo(
+                                part.polygon[0].x + ((part.polygon[0].x - cx) / (Math.sqrt((part.polygon[0].x - cx)**2 + (part.polygon[0].y - cy)**2) || 1)) * pad,
+                                part.polygon[0].y + ((part.polygon[0].y - cy) / (Math.sqrt((part.polygon[0].x - cx)**2 + (part.polygon[0].y - cy)**2) || 1)) * pad
+                            );
+                            for (let i = 1; i < part.polygon.length; i++) {
+                                const p = part.polygon[i];
+                                const dx = p.x - cx, dy = p.y - cy;
+                                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                                ctx.lineTo(p.x + (dx / len) * pad, p.y + (dy / len) * pad);
+                            }
+                            ctx.closePath();
+                        } else {
+                            // Rechteck-Part: Bounding-Box mit Padding
+                            ctx.rect(
+                                part.x - pad,
+                                part.y - pad,
+                                part.width + pad * 2,
+                                part.height + pad * 2
+                            );
+                        }
                     }
                     
                     // evenodd = überlappende Bereiche werden ausgeschnitten
@@ -1493,6 +1847,98 @@
                     ctx.drawImage(state.image, 0, 0, drawW, drawH);
                     ctx.restore();
                     
+                    // === FILL-MODUS: Löcher mit Rand-Pixeln füllen (echte Dilation) ===
+                    // Wir erstellen ein Hilfsbild OHNE die Fill-Parts, dann wachsen die
+                    // Rand-Pixel Schritt für Schritt nach innen (1px pro Iteration)
+                    const fillParts = state.parts.filter(p => {
+                        if (p.type === 'eye') return false;
+                        const mode = p.cutout === false ? 'none' : (p.cutout || 'cutout');
+                        return mode === 'fill';
+                    });
+                    
+                    if (fillParts.length > 0) {
+                        // Gecachtes Fill-Canvas erstellen/updaten
+                        if (!state._fillCanvas) {
+                            state._fillCanvas = document.createElement('canvas');
+                        }
+                        const fc = state._fillCanvas;
+                        fc.width = canvas.width;
+                        fc.height = canvas.height;
+                        const fctx = fc.getContext('2d');
+                        
+                        // Schritt 1: Originalbild zeichnen
+                        fctx.clearRect(0, 0, fc.width, fc.height);
+                        fctx.drawImage(state.image, 0, 0, drawW, drawH);
+                        
+                        // Schritt 2: Alle Fill-Parts ausschneiden (transparent machen)
+                        fctx.globalCompositeOperation = 'destination-out';
+                        for (const part of fillParts) {
+                            fctx.beginPath();
+                            if (part.polygon && part.polygon.length >= 3) {
+                                // Polygon größer ausschneiden (inkl. Outline)
+                                const cx = part.polygon.reduce((s, p) => s + p.x, 0) / part.polygon.length;
+                                const cy = part.polygon.reduce((s, p) => s + p.y, 0) / part.polygon.length;
+                                for (let i = 0; i < part.polygon.length; i++) {
+                                    const p = part.polygon[i];
+                                    const dx = p.x - cx, dy = p.y - cy;
+                                    const len = Math.sqrt(dx*dx + dy*dy) || 1;
+                                    const ex = p.x + (dx/len) * 10;
+                                    const ey = p.y + (dy/len) * 10;
+                                    if (i === 0) fctx.moveTo(ex, ey);
+                                    else fctx.lineTo(ex, ey);
+                                }
+                                fctx.closePath();
+                            } else {
+                                fctx.rect(part.x - 10, part.y - 10, part.width + 20, part.height + 20);
+                            }
+                            fctx.fill();
+                        }
+                        
+                        // Schritt 3: Rand-Pixel nach innen wachsen lassen (Dilation)
+                        // destination-over zeichnet NUR in transparente Bereiche
+                        fctx.globalCompositeOperation = 'destination-over';
+                        const maxDilate = 60; // Genug Iterationen für größere Löcher
+                        for (let d = 0; d < maxDilate; d++) {
+                            // In 8 Richtungen um je 1px verschieben (inkl. diagonal)
+                            fctx.drawImage(fc, -1,  0);
+                            fctx.drawImage(fc,  1,  0);
+                            fctx.drawImage(fc,  0, -1);
+                            fctx.drawImage(fc,  0,  1);
+                            fctx.drawImage(fc, -1, -1);
+                            fctx.drawImage(fc,  1, -1);
+                            fctx.drawImage(fc, -1,  1);
+                            fctx.drawImage(fc,  1,  1);
+                        }
+                        fctx.globalCompositeOperation = 'source-over';
+                        
+                        // Schritt 4: Nur die Füll-Bereiche auf den Hauptcanvas zeichnen
+                        // Clip mit 12px-expandiertem Polygon (gleich wie Hintergrund-Cutout)
+                        for (const part of fillParts) {
+                            ctx.save();
+                            ctx.globalAlpha = 0.3;
+                            ctx.beginPath();
+                            if (part.polygon && part.polygon.length >= 3) {
+                                const cx = part.polygon.reduce((s, p) => s + p.x, 0) / part.polygon.length;
+                                const cy = part.polygon.reduce((s, p) => s + p.y, 0) / part.polygon.length;
+                                for (let i = 0; i < part.polygon.length; i++) {
+                                    const p = part.polygon[i];
+                                    const dx = p.x - cx, dy = p.y - cy;
+                                    const len = Math.sqrt(dx*dx + dy*dy) || 1;
+                                    const ex = p.x + (dx/len) * 12;
+                                    const ey = p.y + (dy/len) * 12;
+                                    if (i === 0) ctx.moveTo(ex, ey);
+                                    else ctx.lineTo(ex, ey);
+                                }
+                                ctx.closePath();
+                            } else {
+                                ctx.rect(part.x - 12, part.y - 12, part.width + 24, part.height + 24);
+                            }
+                            ctx.clip();
+                            ctx.drawImage(fc, 0, 0);
+                            ctx.restore();
+                        }
+                    }
+                    
                     ctx.globalAlpha = 1;
                 }
             }
@@ -1500,7 +1946,14 @@
             // Parts zeichnen - MIT Bildinhalt!
             for (const part of state.parts) {
                 const isSelected = part.id === state.selectedPartId;
-                const transform = getInterpolatedTransform(part, state.currentFrame);
+                const effectiveFrame = getEffectiveFrame(part);
+                const transform = getInterpolatedTransform(part, effectiveFrame);
+
+                // === EYE PART: Eigene Render-Logik ===
+                if (part.type === 'eye') {
+                    renderEyePart(part, transform, isSelected);
+                    continue;
+                }
                 
                 // ZIEL-Ecken berechnen (Rechteck + Animation-Offsets)
                 const corners = getPartCorners(part, transform);
@@ -1691,8 +2144,116 @@
             if (state.polygonMode && state.polygonPoints.length > 0) {
                 drawPolygonPreview();
             }
+            
+            // Zoom/Pan Transform beenden
+            ctx.restore();
         }
         
+        // ============================================================
+        // EYE RENDERING
+        // ============================================================
+
+        function renderEyePart(part, transform, isSelected) {
+            const fillAmount = transform.fillAmount != null ? transform.fillAmount : 1.0;
+            const cx = part.eyeCenterX + (transform.x || 0);
+            const cy = part.eyeCenterY + (transform.y || 0);
+            const radius = part.eyeRadius * (transform.scaleX || 1);
+            const color = part.eyeColor || '#000000';
+
+            ctx.save();
+
+            // Transform um Pivot
+            ctx.translate(cx, cy);
+            ctx.rotate(transform.rotation || 0);
+            ctx.translate(-cx, -cy);
+
+            if (fillAmount > 0.001) {
+                // Eyelid-Rendering: Kreis von oben nach unten füllen
+                // fillAmount 1.0 = voll gefüllt (Auge zu)
+                // fillAmount 0.0 = leer (Auge offen)
+                ctx.save();
+
+                // Clip auf den Kreis
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.clip();
+
+                // Füllbereich: von oben (cy - radius) bis (cy - radius + fillAmount * diameter)
+                const diameter = radius * 2;
+                const fillHeight = fillAmount * diameter;
+                const fillTop = cy - radius;
+
+                ctx.fillStyle = color;
+                ctx.fillRect(cx - radius, fillTop, diameter, fillHeight);
+
+                // Leichter Bogen-Rand am unteren Ende der Füllung für natürlicheren Look
+                if (fillAmount > 0.05 && fillAmount < 0.95) {
+                    const edgeY = fillTop + fillHeight;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, edgeY, radius * 0.9, radius * 0.15, 0, 0, Math.PI);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            // Augen-Umriss (nur wenn ausgewählt — sonst komplett transparent)
+            if (isSelected) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = part.color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Ausgewählt: Handles anzeigen
+            if (isSelected) {
+                // Pivot/Center
+                ctx.beginPath();
+                ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = part.color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Radius-Handle (rechts)
+                const handleX = cx + radius;
+                ctx.beginPath();
+                ctx.arc(handleX, cy, 5, 0, Math.PI * 2);
+                ctx.fillStyle = part.color;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // FillAmount-Indikator (Linie bei der aktuellen Füllhöhe)
+                if (fillAmount > 0.01 && fillAmount < 0.99) {
+                    const fillY = cy - radius + fillAmount * radius * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - radius - 5, fillY);
+                    ctx.lineTo(cx + radius + 5, fillY);
+                    ctx.strokeStyle = '#e94560';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 2]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Label
+                    ctx.fillStyle = '#e94560';
+                    ctx.font = '10px sans-serif';
+                    ctx.fillText(`${Math.round(fillAmount * 100)}%`, cx + radius + 8, fillY + 4);
+                }
+
+                // Name
+                ctx.fillStyle = part.color;
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText(part.name, cx - radius, cy - radius - 10);
+            }
+
+            ctx.restore();
+        }
+
         // Zeichnet die Polygon-Vorschau während der Erstellung
         function drawPolygonPreview() {
             const points = state.polygonPoints;
@@ -1945,6 +2506,31 @@
                     <span class="prop-label">Name</span>
                     <input type="text" value="${part.name}" onchange="updatePartName(${part.id}, this.value)">
                 </div>
+                <div class="prop-group" style="margin-bottom: 10px;">
+                    <span class="prop-label">🔄 Abspiel-Häufigkeit</span>
+                    <select onchange="updatePlaybackMode(${part.id}, this.value)" 
+                            style="width: 100%; padding: 5px; background: #1a1a2e; color: #eee; border: 1px solid #0f3460; border-radius: 4px;">
+                        <option value="every" ${(part.playbackMode || 'every') === 'every' ? 'selected' : ''}>Jede Runde</option>
+                        <option value="every2" ${part.playbackMode === 'every2' ? 'selected' : ''}>Jede 2. Runde</option>
+                        <option value="every3" ${part.playbackMode === 'every3' ? 'selected' : ''}>Jede 3. Runde</option>
+                        <option value="random" ${part.playbackMode === 'random' ? 'selected' : ''}>Zufällig (~30%)</option>
+                    </select>
+                    <p class="help-text" style="margin-top: 3px; font-size: 10px;">Wie oft die Frames dieses Teils abgespielt werden. Gut für Augen-Blinzeln!</p>
+                </div>
+                <div class="prop-group" style="margin-bottom: 10px;">
+                    <span class="prop-label">✂️ Hintergrund-Modus</span>
+                    <select onchange="updateCutout(${part.id}, this.value)" 
+                            style="width: 100%; padding: 5px; background: #1a1a2e; color: #eee; border: 1px solid #0f3460; border-radius: 4px;">
+                        <option value="cutout" ${(part.cutout || 'cutout') === 'cutout' || part.cutout === true || part.cutout === undefined ? 'selected' : ''}>✂️ Ausschneiden (Rand-Teile)</option>
+                        <option value="fill" ${part.cutout === 'fill' ? 'selected' : ''}>🧹 Ausschneiden + Füllen (Innere Teile)</option>
+                        <option value="none" ${part.cutout === false || part.cutout === 'none' ? 'selected' : ''}>👁 Überlagern (nur drüber zeichnen)</option>
+                    </select>
+                    <p class="help-text" style="margin-top: 3px; font-size: 10px;">
+                        <b>Ausschneiden</b>: Für Teile am Rand (Flossen, Arme). Schneidet die Form aus dem Hintergrund.<br>
+                        <b>Ausschn.+Füllen</b>: Für Teile INNERHALB des Körpers. Schneidet aus und füllt das Loch mit Körper-Pixeln.<br>
+                        <b>Überlagern</b>: Keine Änderung am Hintergrund, zeichnet nur drüber.
+                    </p>
+                </div>
                 <h4 style="color: #888; font-size: 11px; margin: 10px 0 5px;">POSITION</h4>
                 <div class="properties-grid">
                     <div class="prop-group">
@@ -2037,6 +2623,33 @@
                 </div>
                 <button onclick="resetCorners(${part.id})" style="margin-top: 8px; width: 100%; padding: 4px;">Ecken zurücksetzen</button>
                 <p class="help-text" style="margin-top: 8px;">Z: -100=weit weg, +100=nah<br>Skew: Perspektive neigen</p>
+                ${part.type === 'eye' ? `
+                <h4 style="color: #2d6a4f; font-size: 11px; margin: 15px 0 5px;">👁 AUGE</h4>
+                <div class="properties-grid">
+                    <div class="prop-group">
+                        <span class="prop-label">Füllmenge (0-1)</span>
+                        <input type="range" min="0" max="1" step="0.01" value="${transform.fillAmount != null ? transform.fillAmount : 1}"
+                               oninput="updatePartTransform(${part.id}, 'fillAmount', parseFloat(this.value)); this.nextElementSibling.textContent = parseFloat(this.value).toFixed(2)"
+                               style="width: 100%; accent-color: #2d6a4f;">
+                        <span style="font-size: 12px; color: #aaa;">${(transform.fillAmount != null ? transform.fillAmount : 1).toFixed(2)}</span>
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Radius</span>
+                        <input type="number" value="${part.eyeRadius}" min="5" max="200"
+                               onchange="updateEyeRadius(${part.id}, parseFloat(this.value))">
+                    </div>
+                    <div class="prop-group">
+                        <span class="prop-label">Farbe</span>
+                        <input type="color" value="${part.eyeColor || '#000000'}" 
+                               onchange="updateEyeColor(${part.id}, this.value)"
+                               style="width: 100%; height: 30px; padding: 2px;">
+                    </div>
+                </div>
+                <p class="help-text">0 = Auge offen, 1 = Auge geschlossen<br>Setze Keyframes um das Blinzeln zu animieren!</p>
+                <div style="margin-top: 8px;">
+                    <button onclick="presetBlink(${part.id})" style="width: 100%; padding: 6px; background: #2d6a4f;">⚡ Blinzel-Animation erstellen</button>
+                </div>
+                ` : ''}
             `;
         }
         
@@ -2045,6 +2658,25 @@
             if (part) {
                 part.name = name;
                 updatePartsList();
+                render();
+            }
+        }
+        
+        function updatePlaybackMode(id, mode) {
+            const part = state.parts.find(p => p.id === id);
+            if (part) {
+                part.playbackMode = mode;
+                const labels = { every: 'Jede Runde', every2: 'Jede 2. Runde', every3: 'Jede 3. Runde', random: 'Zufällig' };
+                setStatus(`${part.name}: Abspiel-Häufigkeit → ${labels[mode] || mode}`);
+            }
+        }
+        
+        function updateCutout(id, mode) {
+            const part = state.parts.find(p => p.id === id);
+            if (part) {
+                part.cutout = mode;
+                const labels = { cutout: 'Ausschneiden', fill: 'Ausschneiden + Füllen', none: 'Überlagern' };
+                setStatus(`${part.name}: Hintergrund-Modus → ${labels[mode] || mode}`);
                 render();
             }
         }
@@ -2064,6 +2696,59 @@
             render();
         }
         
+        function updateEyeRadius(id, radius) {
+            const part = state.parts.find(p => p.id === id);
+            if (!part || part.type !== 'eye') return;
+            part.eyeRadius = Math.max(5, radius);
+            part.width = part.eyeRadius * 2;
+            part.height = part.eyeRadius * 2;
+            part.x = part.eyeCenterX - part.eyeRadius;
+            part.y = part.eyeCenterY - part.eyeRadius;
+            render();
+        }
+
+        function updateEyeColor(id, color) {
+            const part = state.parts.find(p => p.id === id);
+            if (!part || part.type !== 'eye') return;
+            part.eyeColor = color;
+            render();
+        }
+
+        function presetBlink(id) {
+            const part = state.parts.find(p => p.id === id);
+            if (!part || part.type !== 'eye') return;
+
+            // Ensure enough frames
+            const neededFrames = 8;
+            if (state.totalFrames < neededFrames) {
+                state.totalFrames = neededFrames;
+                document.getElementById('totalFrames').value = neededFrames;
+            }
+
+            // Blinzel-Preset: offen -> zu -> offen
+            // Frame 0: offen (0)
+            // Frame 1: halb zu (0.3)
+            // Frame 2: fast zu (0.7)
+            // Frame 3: zu (1.0)
+            // Frame 4: fast zu (0.7)
+            // Frame 5: halb offen (0.3)
+            // Frame 6: offen (0)
+            // Frame 7: offen (0)
+            const blinkPattern = [0, 0.3, 0.7, 1.0, 0.7, 0.3, 0, 0];
+
+            for (let i = 0; i < blinkPattern.length && i < state.totalFrames; i++) {
+                if (!part.keyframes[i]) {
+                    part.keyframes[i] = { ...getInterpolatedTransform(part, i) };
+                }
+                part.keyframes[i].fillAmount = blinkPattern[i];
+            }
+
+            updateTimeline();
+            updatePropertiesPanel();
+            render();
+            setStatus('Blinzel-Animation erstellt! Drücke Play zum Testen.');
+        }
+
         function resetCorners(id) {
             const part = state.parts.find(p => p.id === id);
             if (!part) return;
@@ -2286,9 +2971,42 @@
                 // Für jeden Part
                 for (const part of state.parts) {
                     const transform = getInterpolatedTransform(part, frame);
-                    
-                    // Ecken berechnen
-                    const corners = getPartCorners(part, transform);
+
+                    // Eye-Part Export
+                    if (part.type === 'eye') {
+                        const fillAmount = transform.fillAmount != null ? transform.fillAmount : 1.0;
+                        const cx = part.eyeCenterX + (transform.x || 0);
+                        const cy = part.eyeCenterY + (transform.y || 0);
+                        const radius = part.eyeRadius * (transform.scaleX || 1);
+                        const color = part.eyeColor || '#000000';
+
+                        ectx.save();
+                        ectx.scale(scale, scale);
+                        ectx.translate(offsetX / scale, offsetY / scale);
+                        ectx.translate(cx, cy);
+                        ectx.rotate(transform.rotation || 0);
+                        ectx.translate(-cx, -cy);
+
+                        if (fillAmount > 0.001) {
+                            ectx.save();
+                            ectx.beginPath();
+                            ectx.arc(cx, cy, radius, 0, Math.PI * 2);
+                            ectx.clip();
+                            const diameter = radius * 2;
+                            const fillHeight = fillAmount * diameter;
+                            ectx.fillStyle = color;
+                            ectx.fillRect(cx - radius, cy - radius, diameter, fillHeight);
+                            if (fillAmount > 0.05 && fillAmount < 0.95) {
+                                const edgeY = cy - radius + fillHeight;
+                                ectx.beginPath();
+                                ectx.ellipse(cx, edgeY, radius * 0.9, radius * 0.15, 0, 0, Math.PI);
+                                ectx.fill();
+                            }
+                            ectx.restore();
+                        }
+                        ectx.restore();
+                        continue;
+                    }
                     
                     // Prüfen ob Animation-Ecken verzerrt sind (V-Modus)
                     const hasCornerDeformation = (transform.c0x || 0) !== 0 || (transform.c0y || 0) !== 0 ||

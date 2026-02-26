@@ -29,15 +29,15 @@ export function createCameraState(canvas, options = {}) {
 		viewHeight: canvas.height,
 		
 		// World dimensions
-		worldWidth: worldWidth,
-		worldHeight: worldHeight,
-		sceneCount: sceneCount,
+		worldWidth,
+		worldHeight,
+		sceneCount,
 		sceneWidth: canvas.width,  // Each scene is one canvas width
 		
 		// Follow settings
-		followSpeed: followSpeed,
-		deadZoneX: deadZoneX,
-		deadZoneY: deadZoneY,
+		followSpeed,
+		deadZoneX,
+		deadZoneY,
 		
 		// Target position (for smooth following)
 		targetX: 0,

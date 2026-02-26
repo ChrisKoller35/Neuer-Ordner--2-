@@ -9,7 +9,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "npm run dev",
-    "compress-assets": "node scripts/compress-assets.js"
+    "generate:sprite": "node scripts/generate-sprite.js",
+    "generate:sprite:dry": "node scripts/generate-sprite.js --dry-run --prompt \"test sprite\"",
+    "generate:sprites": "node scripts/generate-sprite.js --prompts-file scripts/sprite-prompts.txt",
+    "compress-assets": "node scripts/compress-assets.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\""
   },
   "keywords": [
     "spiel",
@@ -20,8 +29,14 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.3.0",
     "live-server": "^1.2.2",
+    "prettier": "^3.8.1",
     "sharp": "^0.33.5",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }

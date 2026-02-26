@@ -47,11 +47,7 @@ export function createFoeUpdateSystem(deps) {
      */
     function updateBogenschreck(foe, dt, primaryCoverRock, drift) {
         const rock = primaryCoverRock;
-        let rockCenterX = null;
-        let rockCenterY = null;
-        let rockRadiusX = null;
-        let rockRadiusY = null;
-        let desiredHoverX = null;
+        let rockCenterX, rockCenterY, rockRadiusX, rockRadiusY, desiredHoverX;
         let hoveringOverCover = false;
 
         if (rock && rock.landed) {
@@ -241,8 +237,7 @@ export function createFoeUpdateSystem(deps) {
                 foe.chargeTimer = (foe.chargeCooldown || 3200) + Math.random() * 400;
                 foe.speed = cruiseSpeed;
             }
-        } else {
-            if (foe.passing) {
+        } else if (foe.passing) {
                 foe.damage = 1;
                 foe.speed = cruiseSpeed;
                 foe.x -= cruiseSpeed * dt;
@@ -276,7 +271,6 @@ export function createFoeUpdateSystem(deps) {
                     }
                 }
             }
-        }
 
         // Cover collision
         const hitCover = resolveFoeCoverCollision(foe, prevX, prevY);
@@ -362,28 +356,41 @@ export function createFoeUpdateSystem(deps) {
      */
     function updateFoes(dt) {
         const primaryCoverRock = state.coverRocks.find(rock => rock.landed);
+        const player = state.player;
+        const timeBubble = state.timeBubbleAbility;
 
         for (const foe of state.foes) {
             if (foe.dead) continue;
-            if (foe.coverDetourCooldown > 0) foe.coverDetourCooldown = Math.max(0, foe.coverDetourCooldown - dt);
-            foe.sway += dt * 0.0036;
-            const drift = Math.sin(foe.sway * 1.4) * 0.06 * dt;
+            let foeDt = dt;
+            if (timeBubble?.active && player) {
+                const bubbleRadius = timeBubble.radius == null ? 200 : timeBubble.radius;
+                const dxBubble = foe.x - player.x;
+                const dyBubble = foe.y - player.y;
+                if (Math.hypot(dxBubble, dyBubble) <= bubbleRadius) {
+                    const slowFactor = timeBubble.slowFactor == null ? 0.45 : timeBubble.slowFactor;
+                    foeDt *= Math.max(0.2, Math.min(1, slowFactor));
+                }
+            }
+
+            if (foe.coverDetourCooldown > 0) foe.coverDetourCooldown = Math.max(0, foe.coverDetourCooldown - foeDt);
+            foe.sway += foeDt * 0.0036;
+            const drift = Math.sin(foe.sway * 1.4) * 0.06 * foeDt;
             const prevX = foe.x;
             const prevY = foe.y;
 
             // Type-specific behavior
             if (foe.type === "bogenschreck") {
-                updateBogenschreck(foe, dt, primaryCoverRock, drift);
+                updateBogenschreck(foe, foeDt, primaryCoverRock, drift);
             } else if (foe.type === "oktopus") {
-                updateOktopus(foe, dt, drift);
+                updateOktopus(foe, foeDt, drift);
             } else if (foe.type === "ritterfisch") {
-                updateRitterfisch(foe, dt, primaryCoverRock, drift, prevX, prevY);
+                updateRitterfisch(foe, foeDt, primaryCoverRock, drift, prevX, prevY);
             } else {
-                updateJelly(foe, dt, drift);
+                updateJelly(foe, foeDt, drift);
             }
 
             // Cover avoidance (for all types)
-            applyFoeCoverAvoidance(foe, dt, primaryCoverRock, prevX, prevY);
+            applyFoeCoverAvoidance(foe, foeDt, primaryCoverRock, prevX, prevY);
         }
 
         // World Mode: Calculate left boundary based on camera position

@@ -25,9 +25,9 @@ export const inputState = {
 };
 
 /**
- * Prüft ob eine Taste einer Key-Set entspricht
- * @param {string} key - Die Taste
- * @param {Set} keySet - Das Set mit gültigen Tasten
+ * Checks whether a key matches a key-set
+ * @param {string} key - The key
+ * @param {Set} keySet - The set of valid keys
  * @returns {boolean}
  */
 function matchesKey(key, keySet) {
@@ -35,9 +35,9 @@ function matchesKey(key, keySet) {
 }
 
 /**
- * Prüft ob ein Code einer Code-Set entspricht
- * @param {string} code - Der Tastatur-Code
- * @param {Set} codeSet - Das Set mit gültigen Codes
+ * Checks whether a code matches a code-set
+ * @param {string} code - The keyboard code
+ * @param {Set} codeSet - The set of valid codes
  * @returns {boolean}
  */
 function matchesCode(code, codeSet) {
@@ -45,8 +45,8 @@ function matchesCode(code, codeSet) {
 }
 
 /**
- * Verarbeitet ein KeyDown-Event
- * @param {KeyboardEvent} e - Das Keyboard-Event
+ * Handles a KeyDown event
+ * @param {KeyboardEvent} e - The keyboard event
  */
 export function handleKeyDown(e) {
 	const key = e.key;
@@ -63,8 +63,8 @@ export function handleKeyDown(e) {
 }
 
 /**
- * Verarbeitet ein KeyUp-Event
- * @param {KeyboardEvent} e - Das Keyboard-Event
+ * Handles a KeyUp event
+ * @param {KeyboardEvent} e - The keyboard event
  */
 export function handleKeyUp(e) {
 	const key = e.key;
@@ -81,7 +81,7 @@ export function handleKeyUp(e) {
 }
 
 /**
- * Setzt alle Eingaben zurück
+ * Resets all inputs
  */
 export function resetInput() {
 	inputState.left = false;
@@ -95,8 +95,8 @@ export function resetInput() {
 }
 
 /**
- * Gibt die Bewegungsrichtung zurück
- * @returns {{ x: number, y: number }} Normalisierte Bewegungsrichtung
+ * Returns the movement direction
+ * @returns {{ x: number, y: number }} Normalised movement direction
  */
 export function getMovementDirection() {
 	let dx = 0;
@@ -107,7 +107,7 @@ export function getMovementDirection() {
 	if (inputState.up) dy -= 1;
 	if (inputState.down) dy += 1;
 	
-	// Normalisieren für diagonale Bewegung
+	// Normalise for diagonal movement
 	const len = Math.sqrt(dx * dx + dy * dy);
 	if (len > 0) {
 		dx /= len;

@@ -38,8 +38,8 @@ export function createMapSystem(ctx) {
 	let hoveredBuilding = null;
 	let animationProgress = 0;
 	let animationDirection = 0; // 0 = keine, 1 = öffnen, -1 = schließen
-	let buildingIcons = new Map();
-	let mapBackground = null;
+	const buildingIcons = new Map();
+	const mapBackground = null;
 	
 	/**
 	 * Initialisiert die Map-Icons

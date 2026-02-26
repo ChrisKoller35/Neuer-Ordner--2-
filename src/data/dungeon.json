@@ -1,0 +1,215 @@
+{
+  "_comment": "Dungeon Chunk-Bibliothek: 20 Basis-Chunks für den PoC",
+  "_tileRef": "0=Floor, 1=Wall, 2=Pit, 3=Spikes, 4=Door",
+  "tileSize": 24,
+  "chunkCols": 32,
+  "chunkRows": 18,
+  "gridCols": 6,
+  "gridRows": 3,
+  "biomes": {
+    "stein": {
+      "label": "Steinverliese",
+      "floorRange": [1, 15],
+      "palette": {
+        "floor": "#3a3a4a",
+        "floorAlt": "#32323f",
+        "wall": "#1a1a2e",
+        "wallTop": "#24243a",
+        "pit": "#0a0a12",
+        "spikes": "#8b2252",
+        "door": "rgba(74,222,128,0.15)",
+        "doorFrame": "#2d7a4f",
+        "bgTop": "#12122a",
+        "bgBottom": "#1e1e35",
+        "dekor": "#3d5a4a",
+        "dekorStone": "rgba(100,100,120,0.3)"
+      }
+    },
+    "eis": {
+      "label": "Eiskristallhöhlen",
+      "floorRange": [16, 30],
+      "palette": {
+        "floor": "#4a6a8a",
+        "floorAlt": "#3d5d7d",
+        "wall": "#1a2a3e",
+        "wallTop": "#2a3a4e",
+        "pit": "#0a1520",
+        "spikes": "#66ccff",
+        "door": "rgba(0,255,204,0.15)",
+        "doorFrame": "#008866",
+        "bgTop": "#0e1e30",
+        "bgBottom": "#1a3050",
+        "dekor": "#4a8a9a",
+        "dekorStone": "rgba(100,140,170,0.3)"
+      }
+    },
+    "lava": {
+      "label": "Vulkanfestung",
+      "floorRange": [31, 50],
+      "palette": {
+        "floor": "#5a3a2a",
+        "floorAlt": "#4d3025",
+        "wall": "#2e1a0e",
+        "wallTop": "#3a2418",
+        "pit": "#1a0a00",
+        "spikes": "#ff4400",
+        "door": "rgba(255,170,0,0.15)",
+        "doorFrame": "#aa6600",
+        "bgTop": "#1a0e06",
+        "bgBottom": "#2e1a10",
+        "dekor": "#8a4a2a",
+        "dekorStone": "rgba(130,80,40,0.3)"
+      }
+    }
+  },
+  "chunkTypes": {
+    "start":      { "weight": 0, "mandatory": true,  "maxPerFloor": 1, "icon": "🏠" },
+    "exit":       { "weight": 0, "mandatory": true,  "maxPerFloor": 1, "icon": "🚪" },
+    "boss":       { "weight": 0, "mandatory": true,  "maxPerFloor": 1, "icon": "💀" },
+    "checkpoint":  { "weight": 0, "mandatory": true,  "maxPerFloor": 1, "icon": "⛳" },
+    "combat":     { "weight": 40, "mandatory": false, "maxPerFloor": 99, "icon": "⚔️" },
+    "corridor":   { "weight": 25, "mandatory": false, "maxPerFloor": 99, "icon": "🔗" },
+    "treasure":   { "weight": 12, "mandatory": false, "maxPerFloor": 3,  "icon": "💎" },
+    "danger":     { "weight": 10, "mandatory": false, "maxPerFloor": 3,  "icon": "⚠️" },
+    "merchant":   { "weight": 3,  "mandatory": false, "maxPerFloor": 1,  "icon": "🛒" }
+  },
+  "enemyTiers": {
+    "stein": ["qualle", "steinkrabbe", "leuchtfisch", "seeigel", "muraene", "panzerfisch", "tintenfisch", "steinwaechter", "geisterkrabbe", "nadelrochen", "schattenfisch", "korallenruestling"],
+    "eis":   ["eiskrabbe", "frostqualle", "oktopus", "shadowfish", "frostmuraene", "gletscherschildkroete", "kristallspinne"],
+    "lava":  ["magmakrabbe", "feuerfisch", "stingray", "seadrake", "lavaborwurm", "aschegeist", "vulkanturm"]
+  },
+  "floorEnemyPools": {
+    "1":  [{ "type": "qualle", "w": 50 }, { "type": "steinkrabbe", "w": 30 }, { "type": "leuchtfisch", "w": 20 }],
+    "2":  [{ "type": "qualle", "w": 30 }, { "type": "steinkrabbe", "w": 25 }, { "type": "leuchtfisch", "w": 20 }, { "type": "seeigel", "w": 25 }],
+    "3":  [{ "type": "qualle", "w": 15 }, { "type": "steinkrabbe", "w": 15 }, { "type": "leuchtfisch", "w": 15 }, { "type": "seeigel", "w": 15 }, { "type": "muraene", "w": 15 }, { "type": "geisterkrabbe", "w": 15 }, { "type": "nadelrochen", "w": 10 }],
+    "4":  [{ "type": "steinkrabbe", "w": 15 }, { "type": "leuchtfisch", "w": 15 }, { "type": "seeigel", "w": 20 }, { "type": "muraene", "w": 20 }, { "type": "geisterkrabbe", "w": 15 }, { "type": "nadelrochen", "w": 15 }],
+    "5":  [{ "type": "steinkrabbe", "w": 10 }, { "type": "leuchtfisch", "w": 10 }, { "type": "seeigel", "w": 15 }, { "type": "muraene", "w": 20 }, { "type": "panzerfisch", "w": 15 }, { "type": "geisterkrabbe", "w": 10 }, { "type": "nadelrochen", "w": 10 }, { "type": "schattenfisch", "w": 10 }],
+    "6":  [{ "type": "leuchtfisch", "w": 10 }, { "type": "seeigel", "w": 15 }, { "type": "muraene", "w": 15 }, { "type": "panzerfisch", "w": 15 }, { "type": "tintenfisch", "w": 10 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "nadelrochen", "w": 10 }],
+    "7":  [{ "type": "seeigel", "w": 12 }, { "type": "muraene", "w": 15 }, { "type": "panzerfisch", "w": 15 }, { "type": "tintenfisch", "w": 15 }, { "type": "schattenfisch", "w": 13 }, { "type": "korallenruestling", "w": 15 }, { "type": "geisterkrabbe", "w": 15 }],
+    "8":  [{ "type": "seeigel", "w": 10 }, { "type": "muraene", "w": 15 }, { "type": "panzerfisch", "w": 20 }, { "type": "tintenfisch", "w": 15 }, { "type": "steinwaechter", "w": 8 }, { "type": "schattenfisch", "w": 12 }, { "type": "korallenruestling", "w": 10 }, { "type": "nadelrochen", "w": 10 }],
+    "9":  [{ "type": "muraene", "w": 15 }, { "type": "panzerfisch", "w": 20 }, { "type": "tintenfisch", "w": 20 }, { "type": "steinwaechter", "w": 10 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "geisterkrabbe", "w": 10 }],
+    "10": [{ "type": "muraene", "w": 10 }, { "type": "panzerfisch", "w": 20 }, { "type": "tintenfisch", "w": 20 }, { "type": "steinwaechter", "w": 15 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "nadelrochen", "w": 10 }],
+    "11": [{ "type": "panzerfisch", "w": 15 }, { "type": "tintenfisch", "w": 20 }, { "type": "steinwaechter", "w": 20 }, { "type": "muraene", "w": 10 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "geisterkrabbe", "w": 10 }],
+    "12": [{ "type": "panzerfisch", "w": 15 }, { "type": "tintenfisch", "w": 20 }, { "type": "steinwaechter", "w": 20 }, { "type": "muraene", "w": 10 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "nadelrochen", "w": 10 }],
+    "13": [{ "type": "tintenfisch", "w": 20 }, { "type": "steinwaechter", "w": 25 }, { "type": "panzerfisch", "w": 15 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 15 }, { "type": "muraene", "w": 10 }],
+    "14": [{ "type": "tintenfisch", "w": 20 }, { "type": "steinwaechter", "w": 30 }, { "type": "panzerfisch", "w": 15 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "geisterkrabbe", "w": 10 }],
+    "15": [{ "type": "steinwaechter", "w": 30 }, { "type": "tintenfisch", "w": 20 }, { "type": "panzerfisch", "w": 15 }, { "type": "schattenfisch", "w": 15 }, { "type": "korallenruestling", "w": 10 }, { "type": "muraene", "w": 10 }],
+
+    "16": [{ "type": "eiskrabbe", "w": 30 }, { "type": "frostqualle", "w": 25 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 15 }, { "type": "kristallspinne", "w": 10 }],
+    "17": [{ "type": "eiskrabbe", "w": 25 }, { "type": "frostqualle", "w": 20 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 15 }, { "type": "frostmuraene", "w": 10 }, { "type": "kristallspinne", "w": 10 }],
+    "18": [{ "type": "eiskrabbe", "w": 20 }, { "type": "frostqualle", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 15 }, { "type": "frostmuraene", "w": 15 }, { "type": "kristallspinne", "w": 15 }],
+    "19": [{ "type": "eiskrabbe", "w": 15 }, { "type": "frostqualle", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 15 }, { "type": "frostmuraene", "w": 15 }, { "type": "kristallspinne", "w": 10 }, { "type": "gletscherschildkroete", "w": 10 }],
+    "20": [{ "type": "eiskrabbe", "w": 15 }, { "type": "frostqualle", "w": 10 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 15 }, { "type": "frostmuraene", "w": 15 }, { "type": "kristallspinne", "w": 15 }, { "type": "gletscherschildkroete", "w": 10 }],
+    "21": [{ "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 15 }, { "type": "frostmuraene", "w": 20 }, { "type": "kristallspinne", "w": 15 }, { "type": "gletscherschildkroete", "w": 10 }, { "type": "eiskrabbe", "w": 10 }, { "type": "frostqualle", "w": 10 }],
+    "22": [{ "type": "oktopus", "w": 20 }, { "type": "frostmuraene", "w": 20 }, { "type": "kristallspinne", "w": 15 }, { "type": "gletscherschildkroete", "w": 10 }, { "type": "shadowfish", "w": 15 }, { "type": "eiskrabbe", "w": 10 }, { "type": "frostqualle", "w": 10 }],
+    "23": [{ "type": "oktopus", "w": 20 }, { "type": "frostmuraene", "w": 20 }, { "type": "kristallspinne", "w": 15 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "shadowfish", "w": 15 }, { "type": "eiskrabbe", "w": 15 }],
+    "24": [{ "type": "oktopus", "w": 20 }, { "type": "frostmuraene", "w": 20 }, { "type": "kristallspinne", "w": 15 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "shadowfish", "w": 15 }, { "type": "frostqualle", "w": 15 }],
+    "25": [{ "type": "oktopus", "w": 20 }, { "type": "frostmuraene", "w": 20 }, { "type": "kristallspinne", "w": 15 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "shadowfish", "w": 15 }, { "type": "eiskrabbe", "w": 15 }],
+    "26": [{ "type": "frostmuraene", "w": 25 }, { "type": "kristallspinne", "w": 20 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 20 }],
+    "27": [{ "type": "frostmuraene", "w": 25 }, { "type": "kristallspinne", "w": 20 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 20 }],
+    "28": [{ "type": "frostmuraene", "w": 25 }, { "type": "kristallspinne", "w": 20 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 20 }],
+    "29": [{ "type": "frostmuraene", "w": 25 }, { "type": "kristallspinne", "w": 20 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 20 }],
+    "30": [{ "type": "frostmuraene", "w": 25 }, { "type": "kristallspinne", "w": 20 }, { "type": "gletscherschildkroete", "w": 15 }, { "type": "oktopus", "w": 20 }, { "type": "shadowfish", "w": 20 }],
+
+    "31": [{ "type": "magmakrabbe", "w": 30 }, { "type": "feuerfisch", "w": 20 }, { "type": "stingray", "w": 20 }, { "type": "aschegeist", "w": 15 }, { "type": "vulkanturm", "w": 15 }],
+    "32": [{ "type": "magmakrabbe", "w": 20 }, { "type": "feuerfisch", "w": 20 }, { "type": "stingray", "w": 20 }, { "type": "seadrake", "w": 10 }, { "type": "aschegeist", "w": 15 }, { "type": "vulkanturm", "w": 15 }],
+    "33": [{ "type": "magmakrabbe", "w": 15 }, { "type": "feuerfisch", "w": 15 }, { "type": "stingray", "w": 20 }, { "type": "seadrake", "w": 15 }, { "type": "lavaborwurm", "w": 15 }, { "type": "aschegeist", "w": 10 }, { "type": "vulkanturm", "w": 10 }],
+    "34": [{ "type": "stingray", "w": 20 }, { "type": "seadrake", "w": 15 }, { "type": "lavaborwurm", "w": 20 }, { "type": "aschegeist", "w": 15 }, { "type": "vulkanturm", "w": 10 }, { "type": "magmakrabbe", "w": 10 }, { "type": "feuerfisch", "w": 10 }],
+    "35": [{ "type": "stingray", "w": 20 }, { "type": "seadrake", "w": 20 }, { "type": "lavaborwurm", "w": 20 }, { "type": "aschegeist", "w": 15 }, { "type": "vulkanturm", "w": 15 }, { "type": "magmakrabbe", "w": 10 }]
+  },
+  "enemyStats": {
+    "qualle":        { "baseHP": 2,  "speed": 0.03, "ai": "drift",   "damage": 1, "color": "#88ddff", "label": "Qualle" },
+    "steinkrabbe":   { "baseHP": 3,  "speed": 0.04, "ai": "ground",  "damage": 1, "color": "#aa7744", "label": "Steinkrabbe" },
+    "leuchtfisch":   { "baseHP": 2,  "speed": 0.06, "ai": "kamikaze","damage": 2, "color": "#ffee44", "label": "Leuchtfisch" },
+    "seeigel":       { "baseHP": 4,  "speed": 0.00, "ai": "turret",  "damage": 1, "color": "#aa44aa", "label": "Seeigel", "shootInterval": 3000, "projectileSpeed": 0.2 },
+    "muraene":       { "baseHP": 4,  "speed": 0.15, "ai": "ambush",  "damage": 2, "color": "#44aa55", "label": "Muräne" },
+    "panzerfisch":   { "baseHP": 6,  "speed": 0.03, "ai": "tank",    "damage": 1, "color": "#889999", "label": "Panzerfisch", "frontalArmor": 0.5 },
+    "tintenfisch":   { "baseHP": 3,  "speed": 0.05, "ai": "flee",    "damage": 1, "color": "#9966cc", "label": "Tintenfisch", "inkInterval": 5000 },
+    "steinwaechter": { "baseHP": 10, "speed": 0.02, "ai": "elite",   "damage": 2, "color": "#667788", "label": "Steinwächter", "shockwaveInterval": 4000 },
+
+    "geisterkrabbe":  { "baseHP": 3,  "speed": 0.05, "ai": "ambush_static", "damage": 1, "color": "#5588aa", "label": "Geisterkrabbe", "dashDamage": 1, "secondHit": true },
+    "nadelrochen":    { "baseHP": 3,  "speed": 0.04, "ai": "predictive",    "damage": 1.5, "color": "#886666", "label": "Nadelrochen", "shootInterval": 2500, "projectileSpeed": 0.25 },
+    "schattenfisch":  { "baseHP": 4,  "speed": 0.09, "ai": "kamikaze",      "damage": 1, "color": "#334455", "label": "Schattenfisch", "splitOnDeath": true, "splitHP": 2 },
+    "korallenruestling": { "baseHP": 3, "speed": 0.03, "ai": "patrol_hunt", "damage": 1, "color": "#cc6688", "label": "Korallenrüstling", "buffAura": true, "buffRadius": 80, "buffAmount": 0.2 },
+
+    "eiskrabbe":      { "baseHP": 5,  "speed": 0.04, "ai": "ground",   "damage": 1, "color": "#88ccee", "label": "Eiskrabbe", "freezeOnHit": true, "freezeDuration": 800 },
+    "frostqualle":    { "baseHP": 3,  "speed": 0.04, "ai": "drift",    "damage": 0.5, "color": "#aaddff", "label": "Frostqualle", "frostAura": true, "frostRadius": 60, "slowAmount": 0.4 },
+    "oktopus":        { "baseHP": 6,  "speed": 0.03, "ai": "flee",     "damage": 1, "color": "#9966ff", "label": "Oktopus", "inkInterval": 4000, "tentacleCount": 3 },
+    "shadowfish":     { "baseHP": 4,  "speed": 0.06, "ai": "ambush",   "damage": 1, "color": "#666699", "label": "Shadowfish", "blinkCooldown": 3000, "pushForce": 30 },
+    "frostmuraene":   { "baseHP": 5,  "speed": 0.15, "ai": "ambush",   "damage": 1.5, "color": "#55aacc", "label": "Frostmuräne", "freezeOnHit": true, "freezeDuration": 1000 },
+    "gletscherschildkroete": { "baseHP": 12, "speed": 0.015, "ai": "tank", "damage": 2, "color": "#aaccdd", "label": "Gletscherschildkröte", "frontalArmor": 0.7, "knockback": 35, "maxPerRoom": 1 },
+    "kristallspinne": { "baseHP": 4,  "speed": 0.05, "ai": "turret",   "damage": 1, "color": "#bbddff", "label": "Kristallspinne", "shootInterval": 2000, "projectileSpeed": 0.22, "webTrap": true },
+
+    "magmakrabbe":    { "baseHP": 7,  "speed": 0.04, "ai": "ground",   "damage": 1.5, "color": "#cc4422", "label": "Magmakrabbe", "lavaTrail": true, "lavaTrailDuration": 2000 },
+    "feuerfisch":     { "baseHP": 3,  "speed": 0.10, "ai": "kamikaze", "damage": 3, "color": "#ff6600", "label": "Feuerfisch", "explodeRadius": 50 },
+    "stingray":       { "baseHP": 5,  "speed": 0.06, "ai": "predictive", "damage": 1.5, "color": "#ffcc00", "label": "Stingray", "stunOnHit": true, "stunDuration": 600 },
+    "seadrake":       { "baseHP": 8,  "speed": 0.05, "ai": "berserker",  "damage": 2, "color": "#ff3300", "label": "Sea Drake", "breathAttack": true, "breathRange": 80, "breathArc": 1.2 },
+    "lavaborwurm":    { "baseHP": 6,  "speed": 0.04, "ai": "ambush",     "damage": 2, "color": "#aa3311", "label": "Lavaborwurm", "burrowCooldown": 4000 },
+    "aschegeist":     { "baseHP": 5,  "speed": 0.05, "ai": "drift",      "damage": 1, "color": "#777766", "label": "Aschegeist", "deathExplosionDelay": 1500, "deathExplosionRadius": 50 },
+    "vulkanturm":     { "baseHP": 8,  "speed": 0.00, "ai": "turret",     "damage": 1.5, "color": "#993300", "label": "Vulkanturm", "shootInterval": 2500, "projectileSpeed": 0.28, "lavaProjectile": true }
+  },
+  "bossDefinitions": {
+    "1":  { "name": "Riesenkrabbe Granitklaue",   "color": "#cc3322", "attacks": ["charge", "claw_slam"],                       "hp": 40,  "speed": 0.03, "telegraphMs": 600, "stunOnWallHit": 500 },
+    "2":  { "name": "Quallenkönigin Auroraveil",    "color": "#44ccee", "attacks": ["tentacle_sweep", "spawn_adds", "ink_pulse"], "hp": 55,  "speed": 0.03, "telegraphMs": 700, "addAI": ["kamikaze", "kamikaze", "flee"], "addFormationDelay": 5000 },
+    "3":  { "name": "Steinaal Tiefenbiss",          "color": "#55aa55", "attacks": ["burrow", "salve"],                           "hp": 70,  "speed": 0.04, "telegraphMs": 500, "salveInterval": 400, "salveProjectileSpeed": 0.45, "burrowTelegraphMs": 800 },
+    "4":  { "name": "Korallenkönig Spektralkoralle", "color": "#ee7744", "attacks": ["spread", "homing", "coral_barrier"],        "hp": 85,  "speed": 0.02, "telegraphMs": 600 },
+    "5":  { "name": "Hammerhai Titanflosse",         "color": "#7799aa", "attacks": ["charge", "wallbounce"],                     "hp": 100, "speed": 0.05, "telegraphMs": 500, "chargeBounces": 3 },
+    "6":  { "name": "Seeschlangen-Zwillinge",        "color": "#aa44cc", "attacks": ["spread", "spawn_adds", "fusion"],          "hp": 110, "speed": 0.04, "telegraphMs": 500, "isTwinBoss": true },
+    "7":  { "name": "Abgrund-Angler Finsternisauge", "color": "#334466", "attacks": ["lure_pull", "darkness", "charge"],         "hp": 130, "speed": 0.04, "telegraphMs": 600, "darknessDimming": 0.6, "silhouetteVisible": true },
+    "8":  { "name": "Gezeitenwurm Wurmvater",        "color": "#55cc33", "attacks": ["burrow", "poison_trail", "segment_slam"],  "hp": 145, "speed": 0.06, "telegraphMs": 500, "segments": 6, "segmentHP": 3, "splitOnLowHP": true },
+    "9":  { "name": "Nautilus-Magier Spiralvoid",    "color": "#6644cc", "attacks": ["ring", "shield_orbs", "spawn_walls"],      "hp": 160, "speed": 0.03, "telegraphMs": 700, "reverseRingPhase2": true },
+    "10": { "name": "Kristalldrache Glitzerreaper",  "color": "#66ddff", "attacks": ["rain", "charge", "reflect"],               "hp": 180, "speed": 0.04, "telegraphMs": 600, "mirrorCount": 8 },
+    "11": { "name": "Phantom-Rochen",                "color": "#8888bb", "attacks": ["laser", "phaseshift", "charge"],           "hp": 200, "speed": 0.05, "telegraphMs": 500, "phantomCopies": 2 },
+    "12": { "name": "Korallengolem Fragmentier",     "color": "#cc8855", "attacks": ["shockwave", "spread", "split"],            "hp": 220, "speed": 0.02, "telegraphMs": 600, "splitPuzzle": true },
+    "13": { "name": "Tintenfürst Abyssmaster",       "color": "#663399", "attacks": ["tentacle", "ink", "vortex"],               "hp": 240, "speed": 0.03, "telegraphMs": 500 },
+    "14": { "name": "Geisterkapitän",                "color": "#aabbcc", "attacks": ["salve", "charge", "spawn_adds", "boomerang"], "hp": 260, "speed": 0.05, "telegraphMs": 500, "invisibleWhileAddsAlive": true },
+    "15": { "name": "Steinkönig Ewiger Hüter",       "color": "#aa6633", "attacks": ["shockwave", "rain", "charge", "spawn_adds", "enrage"], "hp": 300, "speed": 0.03, "phases": 3, "telegraphMs": 600, "shrinkRoom": true }
+  },
+  "floorProgression": {
+    "enemyCountBase": 3,
+    "enemyCountPerFloor": 0.3,
+    "enemyHPScale": 1.0,
+    "enemyHPPerFloor": 0.08,
+    "bossHPBase": 60,
+    "bossHPPerFloor": 15,
+    "lootChanceBase": 0.3,
+    "lootChancePerFloor": 0.005,
+    "coinRewardBase": 50,
+    "coinRewardPerFloor": 25
+  },
+  "eliteDefinitions": {
+    "1":  { "base": "qualle",         "modifier": "haste",    "label": "Schnellqualle",         "hpMult": 2.5, "speedMult": 1.8, "damageMult": 1.5 },
+    "2":  { "base": "steinkrabbe",    "modifier": "armored",  "label": "Panzerkrabbe",          "hpMult": 3.0, "speedMult": 1.0, "damageMult": 2.0, "frontalArmor": 0.6 },
+    "3":  { "base": "leuchtfisch",    "modifier": "split",    "label": "Spaltleuchter",         "hpMult": 2.0, "speedMult": 1.2, "damageMult": 1.5, "splitOnDeath": true },
+    "4":  { "base": "seeigel",        "modifier": "rapid",    "label": "Sturmigel",             "hpMult": 2.5, "speedMult": 1.0, "damageMult": 1.5, "shootIntervalMult": 0.5 },
+    "5":  { "base": "muraene",        "modifier": "toxic",    "label": "Giftmuräne",            "hpMult": 2.0, "speedMult": 1.3, "damageMult": 1.5, "poisonOnHit": true },
+    "6":  { "base": "geisterkrabbe",  "modifier": "phantom",  "label": "Phantomkrabbe",         "hpMult": 2.5, "speedMult": 1.5, "damageMult": 2.0, "phaseShift": true },
+    "7":  { "base": "nadelrochen",    "modifier": "sniper",   "label": "Scharfschütz-Rochen",   "hpMult": 2.0, "speedMult": 1.0, "damageMult": 2.0, "projectileSpeedMult": 1.5 },
+    "8":  { "base": "panzerfisch",    "modifier": "fortress", "label": "Festungsfisch",         "hpMult": 3.0, "speedMult": 0.8, "damageMult": 1.5, "frontalArmor": 0.8 },
+    "9":  { "base": "tintenfisch",    "modifier": "swarm",    "label": "Schwarmtintenfisch",    "hpMult": 2.0, "speedMult": 1.3, "damageMult": 1.0, "spawnCount": 3 },
+    "10": { "base": "schattenfisch",  "modifier": "void",     "label": "Voidfisch",             "hpMult": 3.0, "speedMult": 1.5, "damageMult": 2.0 },
+    "11": { "base": "korallenruestling", "modifier": "commander", "label": "Korallenkommandant", "hpMult": 3.0, "speedMult": 1.0, "damageMult": 1.5, "buffRadius": 120 },
+    "12": { "base": "steinwaechter",  "modifier": "colossus", "label": "Koloss-Wächter",        "hpMult": 2.5, "speedMult": 1.2, "damageMult": 2.0, "shockwaveRadius": 200 },
+    "13": { "base": "muraene",        "modifier": "alpha",    "label": "Alpha-Muräne",          "hpMult": 3.0, "speedMult": 1.5, "damageMult": 2.0 },
+    "14": { "base": "steinwaechter",  "modifier": "ancient",  "label": "Uralter Wächter",       "hpMult": 3.5, "speedMult": 1.0, "damageMult": 2.5 },
+    "15": { "base": "steinwaechter",  "modifier": "miniboss", "label": "Mini-Boss Steinwächter", "hpMult": 5.0, "speedMult": 1.5, "damageMult": 3.0, "isMiniBoss": true }
+  },
+  "statusEffectBudget": {
+    "maxSimultaneous": 2,
+    "priorityHierarchy": {
+      "freeze": 5,
+      "stun": 4,
+      "slow": 3,
+      "poison": 2,
+      "burn": 1,
+      "sightReduction": 0
+    }
+  },
+  "roomTypes": {
+    "open_arena":    { "label": "Offene Arena",           "spawnMax": 8,  "allowHeavy": true },
+    "corridor":      { "label": "Enger Korridor",         "spawnMax": 4,  "allowHeavy": false },
+    "multi_chamber": { "label": "Mehrere Kammern",        "spawnMax": 6,  "allowHeavy": false },
+    "ambush_room":   { "label": "Hinterhalt-Raum",        "spawnMax": 5,  "allowHeavy": false, "prePlacedOnly": true },
+    "hazard_zone":   { "label": "Gefahrenzonen-Raum",     "spawnMax": 5,  "allowHeavy": true }
+  }
+}

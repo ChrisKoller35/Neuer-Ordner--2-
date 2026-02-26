@@ -1,0 +1,174 @@
+{
+  "_comment": "Gärtnerei-Daten: Pflanz-System mit 3 Seltenheits-Stufen + Gebäude-Upgrades",
+  "buildingLevels": {
+    "1": { "slots": 4, "label": "Kleiner Garten", "upgradeCost": 0 },
+    "2": { "slots": 8, "label": "Mittlerer Garten", "upgradeCost": 500 },
+    "3": { "slots": 16, "label": "Großer Garten", "upgradeCost": 1500 }
+  },
+  "maxActiveBuffs": 3,
+  "plants": {
+    "rotblatt": {
+      "id": "rotblatt",
+      "label": "Rotblatt",
+      "rarity": "common",
+      "icon": "🌿",
+      "growthTime": 120000,
+      "seedPrice": 50,
+      "shopLevel": 1,
+      "purchasable": true,
+      "description": "+8% maximale LP für 1 Run",
+      "buff": {
+        "stat": "maxHp",
+        "type": "percent",
+        "value": 0.08,
+        "label": "+8% Max-LP"
+      }
+    },
+    "steinmoos": {
+      "id": "steinmoos",
+      "label": "Steinmoos",
+      "rarity": "common",
+      "icon": "🪨",
+      "growthTime": 120000,
+      "seedPrice": 40,
+      "shopLevel": 1,
+      "purchasable": true,
+      "description": "+5% physische Rüstung",
+      "buff": {
+        "stat": "armor",
+        "type": "percent",
+        "value": 0.05,
+        "label": "+5% Rüstung"
+      }
+    },
+    "windkraut": {
+      "id": "windkraut",
+      "label": "Windkraut",
+      "rarity": "common",
+      "icon": "🌾",
+      "growthTime": 120000,
+      "seedPrice": 60,
+      "shopLevel": 1,
+      "purchasable": true,
+      "description": "+10% Bewegungsgeschwindigkeit",
+      "buff": {
+        "stat": "speed",
+        "type": "percent",
+        "value": 0.10,
+        "label": "+10% Speed"
+      }
+    },
+    "frostdistel": {
+      "id": "frostdistel",
+      "label": "Frostdistel",
+      "rarity": "rare",
+      "icon": "❄️",
+      "growthTime": 360000,
+      "seedPrice": 200,
+      "shopLevel": 2,
+      "purchasable": true,
+      "description": "Angriffe verlangsamen Gegner für 0.5s",
+      "buff": {
+        "stat": "slowOnHit",
+        "type": "special",
+        "value": 0.5,
+        "label": "Slow-on-Hit 0.5s"
+      }
+    },
+    "goldene-ranke": {
+      "id": "goldene-ranke",
+      "label": "Goldene Ranke",
+      "rarity": "rare",
+      "icon": "🌟",
+      "growthTime": 360000,
+      "seedPrice": 180,
+      "shopLevel": 2,
+      "purchasable": true,
+      "description": "+15% Gold-Drop im nächsten Run",
+      "buff": {
+        "stat": "coinBonus",
+        "type": "percent",
+        "value": 0.15,
+        "label": "+15% Gold"
+      }
+    },
+    "schattenlilie": {
+      "id": "schattenlilie",
+      "label": "Schattenlilie",
+      "rarity": "rare",
+      "icon": "🌑",
+      "growthTime": 360000,
+      "seedPrice": 250,
+      "shopLevel": 2,
+      "purchasable": true,
+      "description": "Erste tödliche Verletzung ignorieren (1x)",
+      "buff": {
+        "stat": "deathSave",
+        "type": "special",
+        "value": 1,
+        "label": "1x Todes-Schutz"
+      }
+    },
+    "abyssale-bluete": {
+      "id": "abyssale-bluete",
+      "label": "Abyssale Blüte",
+      "rarity": "epic",
+      "icon": "🌺",
+      "growthTime": 900000,
+      "seedPrice": 0,
+      "shopLevel": 0,
+      "purchasable": false,
+      "description": "Alle Helfer +20% Schaden für 1 Run",
+      "buff": {
+        "stat": "allyDamage",
+        "type": "percent",
+        "value": 0.20,
+        "label": "+20% Helfer-DMG"
+      }
+    },
+    "phoenixdorn": {
+      "id": "phoenixdorn",
+      "label": "Phönixdorn",
+      "rarity": "epic",
+      "icon": "🔥",
+      "growthTime": 900000,
+      "seedPrice": 0,
+      "shopLevel": 0,
+      "purchasable": false,
+      "description": "Nach Tod im Dungeon: 1x mit 30% HP wiederbeleben",
+      "buff": {
+        "stat": "revive",
+        "type": "special",
+        "value": 0.3,
+        "label": "1x Wiederbelebung 30%"
+      }
+    },
+    "mondorchidee": {
+      "id": "mondorchidee",
+      "label": "Mondorchidee",
+      "rarity": "epic",
+      "icon": "🌙",
+      "growthTime": 900000,
+      "seedPrice": 0,
+      "shopLevel": 0,
+      "purchasable": false,
+      "description": "Abkürzungen kosten diesen Run 50% weniger Gold",
+      "buff": {
+        "stat": "shortcutDiscount",
+        "type": "percent",
+        "value": 0.50,
+        "label": "-50% Abkürzungskosten"
+      }
+    }
+  },
+  "rarityColors": {
+    "common": "#8fbc8f",
+    "rare": "#6495ed",
+    "epic": "#da70d6"
+  },
+  "rarityLabels": {
+    "common": "Gewöhnlich",
+    "rare": "Selten",
+    "epic": "Episch"
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "_comment": "Hafen-Daten: Expeditions-System mit Schiffen, Routen & Loot",
+  "buildingLevels": {
+    "1": { "ships": 1, "label": "Kleiner Hafen", "upgradeCost": 0 },
+    "2": { "ships": 2, "label": "Mittlerer Hafen", "upgradeCost": 800 },
+    "3": { "ships": 3, "label": "Großer Hafen", "upgradeCost": 2000 }
+  },
+  "ships": {
+    "kutter": {
+      "id": "kutter",
+      "name": "Kutter",
+      "icon": "⛵",
+      "description": "Ein kleines, zuverlässiges Fischerboot.",
+      "unlockLevel": 1,
+      "baseSpeed": 1.0,
+      "baseLoot": 1.0
+    },
+    "brigg": {
+      "id": "brigg",
+      "name": "Brigg",
+      "icon": "🚢",
+      "description": "Ein schnelles Handelsschiff mit mehr Ladekapazität.",
+      "unlockLevel": 2,
+      "baseSpeed": 1.2,
+      "baseLoot": 1.3
+    },
+    "galeone": {
+      "id": "galeone",
+      "name": "Galeone",
+      "icon": "🏴‍☠️",
+      "description": "Ein mächtiges Expeditionsschiff für gefährliche Gewässer.",
+      "unlockLevel": 3,
+      "baseSpeed": 0.9,
+      "baseLoot": 1.8
+    }
+  },
+  "shipUpgrades": {
+    "1": { "label": "Standard", "speedMult": 1.0, "lootMult": 1.0, "cost": 0 },
+    "2": { "label": "Verstärkt", "speedMult": 1.15, "lootMult": 1.2, "cost": 400 },
+    "3": { "label": "Meisterwerk", "speedMult": 1.3, "lootMult": 1.5, "cost": 1200 }
+  },
+  "routes": {
+    "nordroute": {
+      "id": "nordroute",
+      "name": "Nordroute — Eisige Gewässer",
+      "icon": "🧊",
+      "description": "Ergiebig an Erzen und seltenen Mineralien.",
+      "duration": 600000,
+      "dangerLevel": 1,
+      "lootTable": [
+        { "item": "Eisenerz", "icon": "⛏️", "chance": 0.8, "min": 2, "max": 5 },
+        { "item": "Froststein", "icon": "💎", "chance": 0.4, "min": 1, "max": 2 },
+        { "item": "Obsidian", "icon": "🪨", "chance": 0.15, "min": 1, "max": 1 },
+        { "item": "Gold", "icon": "💰", "chance": 1.0, "min": 50, "max": 150 }
+      ]
+    },
+    "suedroute": {
+      "id": "suedroute",
+      "name": "Südroute — Tropische Inseln",
+      "icon": "🌴",
+      "description": "Reich an seltenen Samen und exotischen Pflanzen.",
+      "duration": 600000,
+      "dangerLevel": 1,
+      "lootTable": [
+        { "item": "Samen: Rotblatt", "icon": "🌿", "chance": 0.6, "min": 1, "max": 3 },
+        { "item": "Samen: Frostdistel", "icon": "❄️", "chance": 0.25, "min": 1, "max": 1 },
+        { "item": "Tropenholz", "icon": "🪵", "chance": 0.5, "min": 2, "max": 4 },
+        { "item": "Gold", "icon": "💰", "chance": 1.0, "min": 60, "max": 180 }
+      ]
+    },
+    "tiefseeroute": {
+      "id": "tiefseeroute",
+      "name": "Tiefseeroute — Abyssale Tiefen",
+      "icon": "🌊",
+      "description": "Gefährlich, aber mit seltenen Schätzen und Helfer-Karten.",
+      "duration": 900000,
+      "dangerLevel": 3,
+      "lootTable": [
+        { "item": "Abyssales Erz", "icon": "🟣", "chance": 0.5, "min": 1, "max": 3 },
+        { "item": "Helferkarte: Tank", "icon": "🛡️", "chance": 0.12, "min": 1, "max": 1 },
+        { "item": "Helferkarte: Heiler", "icon": "💚", "chance": 0.10, "min": 1, "max": 1 },
+        { "item": "Helferkarte: DPS", "icon": "⚔️", "chance": 0.08, "min": 1, "max": 1 },
+        { "item": "Gold", "icon": "💰", "chance": 1.0, "min": 100, "max": 300 }
+      ]
+    },
+    "handelsroute": {
+      "id": "handelsroute",
+      "name": "Handelsroute — Küstenhandel",
+      "icon": "📦",
+      "description": "Sichere Route mit stabilem Goldeinkommen.",
+      "duration": 480000,
+      "dangerLevel": 0,
+      "lootTable": [
+        { "item": "Handelsware", "icon": "📦", "chance": 0.7, "min": 1, "max": 3 },
+        { "item": "Heiltrank", "icon": "❤️", "chance": 0.3, "min": 1, "max": 2 },
+        { "item": "Gold", "icon": "💰", "chance": 1.0, "min": 120, "max": 250 }
+      ]
+    }
+  },
+  "crewBonus": {
+    "tank": { "lootMult": 1.1, "label": "+10% Loot (Tank schützt Ladung)" },
+    "healer": { "lootMult": 1.05, "speedMult": 1.1, "label": "+5% Loot, +10% Speed" },
+    "dps": { "lootMult": 1.25, "label": "+25% Loot (DPS räumt Piraten)" }
+  }
+}

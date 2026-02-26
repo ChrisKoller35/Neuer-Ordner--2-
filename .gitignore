@@ -14,6 +14,8 @@ yarn-error.log*
 # Environment files
 .env
 .env.*
+.env.local
+!.env.example
 
 # Editor settings
 .vscode/
@@ -23,3 +25,4 @@ Thumbs.db
 # Temporary files
 tmp/
 tmp_err.txt
+scripts/sprite-prompts.local.txt

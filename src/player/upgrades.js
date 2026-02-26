@@ -17,8 +17,13 @@ export function createUpgradeSystem(ctx) {
     if (!state.upgrades) {
         state.upgrades = {
             currentLevel: 0,  // 0 = kein Upgrade, 1-7 = Upgrade-Stufe
-            purchasedLevels: []
+            purchasedLevels: [],
+            purchasedCompanionUpgrades: []
         };
+    }
+
+    if (!Array.isArray(state.upgrades.purchasedCompanionUpgrades)) {
+        state.upgrades.purchasedCompanionUpgrades = [];
     }
     
     /**
@@ -33,6 +38,35 @@ export function createUpgradeSystem(ctx) {
      */
     function getCurrentLevel() {
         return state.upgrades.currentLevel;
+    }
+
+    function getCompanionUpgrades() {
+        return upgradesData.companionUpgrades || [];
+    }
+
+    function isCompanionUpgradePurchased(id) {
+        return state.upgrades.purchasedCompanionUpgrades.includes(id);
+    }
+
+    function canPurchaseCompanionUpgrade(id) {
+        const upgrade = getCompanionUpgrades().find(u => u.id === id);
+        if (!upgrade) return false;
+        if (isCompanionUpgradePurchased(id)) return false;
+        return (state.coins || 0) >= (upgrade.cost || 0);
+    }
+
+    function purchaseCompanionUpgrade(id) {
+        if (!canPurchaseCompanionUpgrade(id)) return false;
+
+        const upgrade = getCompanionUpgrades().find(u => u.id === id);
+        if (!upgrade) return false;
+
+        state.coins = (state.coins || 0) - (upgrade.cost || 0);
+        state.upgrades.purchasedCompanionUpgrades.push(id);
+
+        applyUpgradeEffects();
+        console.log(`[Upgrade] Companion-Upgrade gekauft: ${upgrade.label || id}`);
+        return true;
     }
     
     /**
@@ -94,7 +128,9 @@ export function createUpgradeSystem(ctx) {
             defenseBonus: 0,
             critChance: 0,
             lifeSteal: 0,
-            allStatsBonus: 0
+            allStatsBonus: 0,
+            coralFireRateBonus: 0,
+            coralMaxCount: 0
         };
         
         // Alle gekauften Upgrades summieren
@@ -105,6 +141,19 @@ export function createUpgradeSystem(ctx) {
                 if (effects[type] !== undefined) {
                     effects[type] += value;
                 }
+            }
+        }
+
+        for (const id of state.upgrades.purchasedCompanionUpgrades) {
+            const companionUpgrade = getCompanionUpgrades().find(u => u.id === id);
+            const effect = companionUpgrade?.effect;
+            if (!effect) continue;
+
+            if (Number.isFinite(effect.coralFireRateBonus)) {
+                effects.coralFireRateBonus += effect.coralFireRateBonus;
+            }
+            if (Number.isFinite(effect.coralMaxCount)) {
+                effects.coralMaxCount += effect.coralMaxCount;
             }
         }
         
@@ -148,6 +197,10 @@ export function createUpgradeSystem(ctx) {
         
         // Life Steal
         player.upgradeLifeSteal = effects.lifeSteal + effects.allStatsBonus;
+
+        // Companion-Boni
+        player.coralFireRateBonus = Math.max(0, effects.coralFireRateBonus || 0);
+        player.coralMaxCountBonus = Math.max(0, Math.floor(effects.coralMaxCount || 0));
         
         // Visueller Effekt für Renderer
         const currentUpgrade = upgradesData.levels.find(u => u.level === state.upgrades.currentLevel);
@@ -173,6 +226,10 @@ export function createUpgradeSystem(ctx) {
     return {
         getUpgradeLevels,
         getCurrentLevel,
+        getCompanionUpgrades,
+        isCompanionUpgradePurchased,
+        canPurchaseCompanionUpgrade,
+        purchaseCompanionUpgrade,
         getNextUpgrade,
         canPurchaseUpgrade,
         purchaseUpgrade,

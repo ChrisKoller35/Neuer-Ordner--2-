@@ -26,6 +26,12 @@ export const KEY_SHOOT = new Set([" ", "Space"]);
 export const CODE_SHOOT = new Set(["Space"]);
 export const KEY_TALENT_TREE = new Set(["u", "U"]);
 export const CODE_TALENT_TREE = new Set(["KeyU"]);
+export const KEY_DASH_CURRENT = new Set(["q", "Q"]);
+export const CODE_DASH_CURRENT = new Set(["KeyQ"]);
+export const KEY_DEPTH_MINE = new Set(["x", "X"]);
+export const CODE_DEPTH_MINE = new Set(["KeyX"]);
+export const KEY_TIME_BUBBLE = new Set(["c", "C"]);
+export const CODE_TIME_BUBBLE = new Set(["KeyC"]);
 
 // Stadt-Konstanten
 export const CITY_SCALE = 3;
@@ -47,35 +53,35 @@ export const LEVEL3_FLOOR_COLLISION_RATIO = 1;
 export const LEVEL3_FLOOR_COLLISION_PAD = 0;
 
 // ============================================================
-// TIMING CONSTANTS - Delta-Time und Frame-Rate
+// TIMING CONSTANTS - Delta-Time and Frame Rate
 // ============================================================
 
 /**
- * Maximale Delta-Zeit pro Frame (ms)
- * Verhindert Physik-Sprünge bei Tab-Wechsel oder Lag-Spikes
- * 100ms = ~10 FPS Minimum, alles darüber wird gecappt
+ * Maximum delta-time per frame (ms)
+ * Prevents physics jumps on tab-switch or lag-spikes
+ * 100ms = ~10 FPS minimum, anything above is capped
  */
 export const MAX_DELTA_TIME = 100;
 
 /**
- * Minimale Delta-Zeit pro Frame (ms)
- * Verhindert Division durch 0 und zu kleine Werte
+ * Minimum delta-time per frame (ms)
+ * Prevents division by zero and excessively small values
  */
 export const MIN_DELTA_TIME = 1;
 
 /**
- * Ideale Delta-Zeit für 60 FPS (ms)
- * Verwendet als Referenz für physikbasierte Berechnungen
+ * Ideal delta-time for 60 FPS (ms)
+ * Used as reference for physics-based calculations
  */
 export const IDEAL_DELTA_TIME = 16.67;
 
 /**
- * Schwellenwert für "langes Frame" (ms)
- * Wenn überschritten, wird das Spiel als "laggy" betrachtet
+ * Threshold for a "long frame" (ms)
+ * If exceeded, the game is considered laggy
  */
 export const LONG_FRAME_THRESHOLD = 50;
 
 /**
- * Anzahl Frames die für FPS-Durchschnittsberechnung verwendet werden
+ * Number of frames used for FPS averaging
  */
 export const FPS_SAMPLE_SIZE = 60;

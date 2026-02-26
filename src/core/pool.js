@@ -1,17 +1,17 @@
 // ============================================================
-// OBJECT POOL - Wiederverwendung von Objekten
+// OBJECT POOL - Object reuse
 // ============================================================
-// Verhindert Garbage Collection Stutter durch Objekt-Recycling
+// Prevents garbage collection stutter through object recycling
 
 /**
- * Generischer Object Pool für häufig erstellte/gelöschte Objekte
+ * Generic Object Pool for frequently created/deleted objects
  * @template T
  */
 export class ObjectPool {
 	/**
-	 * @param {() => T} factory - Funktion die neue Objekte erstellt
-	 * @param {(obj: T) => void} [reset] - Optional: Funktion zum Zurücksetzen eines Objekts
-	 * @param {number} [initialSize=0] - Anzahl vorallokierter Objekte
+	 * @param {() => T} factory - Function that creates new objects
+	 * @param {(obj: T) => void} [reset] - Optional: function to reset an object
+	 * @param {number} [initialSize=0] - Number of pre-allocated objects
 	 */
 	constructor(factory, reset = null, initialSize = 0) {
 		/** @type {T[]} */
@@ -21,7 +21,7 @@ export class ObjectPool {
 		this._acquired = 0;
 		this._created = 0;
 		
-		// Vorallokieren
+		// Pre-allocate
 		for (let i = 0; i < initialSize; i++) {
 			this._pool.push(factory());
 			this._created++;
@@ -29,7 +29,7 @@ export class ObjectPool {
 	}
 	
 	/**
-	 * Holt ein Objekt aus dem Pool (oder erstellt ein neues)
+	 * Acquires an object from the pool (or creates a new one)
 	 * @returns {T}
 	 */
 	acquire() {
@@ -42,7 +42,7 @@ export class ObjectPool {
 	}
 	
 	/**
-	 * Gibt ein Objekt zurück in den Pool
+	 * Returns an object back to the pool
 	 * @param {T} obj
 	 */
 	release(obj) {
@@ -54,7 +54,7 @@ export class ObjectPool {
 	}
 	
 	/**
-	 * Gibt mehrere Objekte zurück
+	 * Returns multiple objects
 	 * @param {T[]} objects
 	 */
 	releaseAll(objects) {
@@ -64,14 +64,14 @@ export class ObjectPool {
 	}
 	
 	/**
-	 * Aktuelle Pool-Größe (verfügbare Objekte)
+	 * Current pool size (available objects)
 	 */
 	get available() {
 		return this._pool.length;
 	}
 	
 	/**
-	 * Debug-Statistiken
+	 * Debug statistics
 	 */
 	get stats() {
 		return {
@@ -79,13 +79,13 @@ export class ObjectPool {
 			totalCreated: this._created,
 			totalAcquired: this._acquired,
 			reuseRate: this._acquired > 0 
-				? ((this._acquired - this._created) / this._acquired * 100).toFixed(1) + '%'
+				? `${((this._acquired - this._created) / this._acquired * 100).toFixed(1)  }%`
 				: '0%'
 		};
 	}
 	
 	/**
-	 * Pool leeren (für Level-Wechsel etc.)
+	 * Clear pool (for level changes etc.)
 	 */
 	clear() {
 		this._pool.length = 0;
@@ -93,11 +93,11 @@ export class ObjectPool {
 }
 
 // ============================================================
-// Vordefinierte Pools für häufige Spielobjekte
+// Pre-defined pools for common game objects
 // ============================================================
 
 /**
- * Shot (Spieler-Schuss) Pool
+ * Shot (player projectile) Pool
  */
 export const shotPool = new ObjectPool(
 	// Factory
@@ -106,6 +106,7 @@ export const shotPool = new ObjectPool(
 		y: 0,
 		vx: 0,
 		vy: 0,
+		damage: 1,
 		life: 0,
 		spriteScale: 0.1,
 		spriteOffsetX: 6,
@@ -119,6 +120,7 @@ export const shotPool = new ObjectPool(
 		shot.y = 0;
 		shot.vx = 0;
 		shot.vy = 0;
+		shot.damage = 1;
 		shot.life = 0;
 		shot.spriteScale = 0.1;
 		shot.spriteOffsetX = 6;
@@ -130,7 +132,7 @@ export const shotPool = new ObjectPool(
 );
 
 /**
- * Foe (Gegner) Pool
+ * Foe (enemy) Pool
  */
 export const foePool = new ObjectPool(
 	// Factory
@@ -386,11 +388,11 @@ export const foeArrowPool = new ObjectPool(
 );
 
 // ============================================================
-// Helper: Pool-Statistiken für Debugging
+// Helper: Pool statistics for debugging
 // ============================================================
 
 /**
- * Gibt Debug-Statistiken aller Pools aus
+ * Outputs debug statistics for all pools
  */
 export function getPoolStats() {
 	return {
@@ -406,7 +408,7 @@ export function getPoolStats() {
 }
 
 /**
- * Setzt alle Pool-Statistiken zurück (für Level-Wechsel)
+ * Resets all pool statistics (for level changes)
  */
 export function clearAllPools() {
 	shotPool.clear();

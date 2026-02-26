@@ -14,18 +14,14 @@ export const INVENTORY_TEMPLATE = `
 		</div>
 	</div>
 	<div class="city-inventory-section">
-		<div class="city-inventory-sub">Inventar</div>
-		<div class="city-inventory-grid">
-			<div class="city-slot" data-slot="inv-1"><span class="city-slot-label">Slot 1</span></div>
-			<div class="city-slot" data-slot="inv-2"><span class="city-slot-label">Slot 2</span></div>
-			<div class="city-slot" data-slot="inv-3"><span class="city-slot-label">Slot 3</span></div>
-			<div class="city-slot" data-slot="inv-4"><span class="city-slot-label">Slot 4</span></div>
-			<div class="city-slot" data-slot="inv-5"><span class="city-slot-label">Slot 5</span></div>
-			<div class="city-slot" data-slot="inv-6"><span class="city-slot-label">Slot 6</span></div>
-			<div class="city-slot" data-slot="inv-7"><span class="city-slot-label">Slot 7</span></div>
-			<div class="city-slot" data-slot="inv-8"><span class="city-slot-label">Slot 8</span></div>
-			<div class="city-slot" data-slot="inv-9"><span class="city-slot-label">Slot 9</span></div>
+		<div class="city-inv-tabs" id="cityInvTabs">
+			<button class="city-inv-tab active" data-inv-tab="all">Alle</button>
+			<button class="city-inv-tab" data-inv-tab="equipment">Ausrüstung</button>
+			<button class="city-inv-tab" data-inv-tab="consumable">Verbrauch</button>
+			<button class="city-inv-tab" data-inv-tab="material">Material</button>
 		</div>
+		<div class="city-inv-slot-info" id="cityInvSlotInfo"></div>
+		<div class="city-inventory-grid" id="cityInvGrid"></div>
 	</div>
 `;
 

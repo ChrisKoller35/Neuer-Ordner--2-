@@ -1,0 +1,5 @@
+Create one clean 2D game sprite for Cashfish.
+Style: readable cartoon/pixel hybrid, clear silhouette, no text.
+Background: solid pure magenta (#FF00FF), evenly filled, no gradients, no shadows.
+Lighting: soft and game-ready.
+Output: single centered subject, no border, no watermark.

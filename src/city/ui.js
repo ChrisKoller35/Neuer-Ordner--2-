@@ -3,6 +3,21 @@
 // ============================================================
 "use strict";
 
+export function mapItemToInventoryTab(itemData) {
+	if (!itemData) return "material";
+	if (itemData.itemType === "consumable") return "consumable";
+	const newCategory = itemData.category;
+	if (newCategory === "weapon" || newCategory === "armor") return "equipment";
+	if (newCategory === "utility" || newCategory === "economy" || newCategory === "companion") return "material";
+	if (newCategory === "dungeon") {
+		return itemData.itemType === "consumable" ? "consumable" : "material";
+	}
+	if (itemData.category) return itemData.category;
+	if (itemData.type === "weapon" || itemData.type === "armor") return "equipment";
+	if (itemData.type === "consumable") return "consumable";
+	return "material";
+}
+
 /**
  * Erstellt ein City-UI Controller-Objekt
  * @param {Object} ctx - Kontext-Objekt mit allen Abhängigkeiten
@@ -39,6 +54,7 @@ export function createCityUI(ctx) {
 	let missionSelection = null;
 	let dragState = null;
 	let dragGhost = null;
+	let activeInvTab = "all";
 
 	// ============================================================
 	// VISIBILITY SYNC
@@ -69,6 +85,15 @@ export function createCityUI(ctx) {
 	};
 
 	// ============================================================
+	// INVENTORY HELPERS
+	// ============================================================
+
+	/** Leitet die Inventar-Kategorie aus Item-Daten ab */
+	const getItemCategory = (itemData) => {
+		return mapItemToInventoryTab(itemData);
+	};
+
+	// ============================================================
 	// INVENTORY UI
 	// ============================================================
 
@@ -92,14 +117,65 @@ export function createCityUI(ctx) {
 			el.title = data ? data.label : value;
 		};
 
+		// Equip-Slots (immer sichtbar)
 		renderSlot("weapon", "Waffe", inventory.equipment.weapon);
 		renderSlot("armor", "Rüstung", inventory.equipment.armor);
 		renderSlot("armor2", "Rüstung II", inventory.equipment.armor2);
 
-		for (let i = 0; i < inventory.items.length; i += 1) {
-			const label = `Slot ${i + 1}`;
+		// Inventar-Grid dynamisch erzeugen/aktualisieren
+		const grid = elements.inventoryEl.querySelector("#cityInvGrid");
+		if (!grid) return;
+
+		// Slots dynamisch erzeugen falls noch nicht vorhanden oder Anzahl geändert
+		const existingSlots = grid.querySelectorAll(".city-slot");
+		if (existingSlots.length !== inventory.items.length) {
+			grid.innerHTML = "";
+			for (let i = 0; i < inventory.items.length; i++) {
+				const slotDiv = document.createElement("div");
+				slotDiv.className = "city-slot";
+				slotDiv.dataset.slot = `inv-${i + 1}`;
+				slotDiv.innerHTML = `<span class="city-slot-label">Slot ${i + 1}</span>`;
+				grid.appendChild(slotDiv);
+			}
+		}
+
+		// Alle Inventar-Slots rendern und nach Tab filtern
+		let totalItems = 0;
+		let filteredCount = 0;
+		for (let i = 0; i < inventory.items.length; i++) {
+			const slotName = `inv-${i + 1}`;
 			const value = inventory.items[i];
-			renderSlot(`inv-${i + 1}`, label, value);
+			const data = value ? getItemData(value) : null;
+			const category = data ? getItemCategory(data) : null;
+
+			if (value) totalItems++;
+
+			// Tab-Filter: "all" zeigt alles, sonst nur passende Kategorie + leere Slots
+			const slotEl = grid.querySelector(`[data-slot="${slotName}"]`);
+			if (slotEl) {
+				let visible = true;
+				if (activeInvTab !== "all") {
+					visible = !value || category === activeInvTab;
+				}
+				slotEl.style.display = visible ? "" : "none";
+				if (visible && value) filteredCount++;
+			}
+
+			renderSlot(slotName, `Slot ${i + 1}`, value);
+		}
+
+		// Tab-Buttons aktualisieren
+		const tabBar = elements.inventoryEl.querySelector("#cityInvTabs");
+		if (tabBar) {
+			for (const btn of tabBar.querySelectorAll(".city-inv-tab")) {
+				btn.classList.toggle("active", btn.dataset.invTab === activeInvTab);
+			}
+		}
+
+		// Slot-Info anzeigen
+		const infoEl = elements.inventoryEl.querySelector("#cityInvSlotInfo");
+		if (infoEl) {
+			infoEl.textContent = `${totalItems} / ${inventory.items.length} Slots belegt`;
 		}
 	};
 
@@ -310,6 +386,22 @@ export function createCityUI(ctx) {
 	// ============================================================
 
 	const setupEventListeners = () => {
+		// Inventory Tab Clicks
+		if (elements.inventoryEl) {
+			elements.inventoryEl.addEventListener("click", event => {
+				// Dungeon-Schutz
+				const state = getState();
+				if (state.mode === 'dungeon' || state.mode === 'dungeon_menu') return;
+				const target = event.target;
+				if (!(target instanceof HTMLElement)) return;
+				const tab = target.closest(".city-inv-tab");
+				if (tab && tab.dataset.invTab) {
+					activeInvTab = tab.dataset.invTab;
+					updateInventoryUI();
+				}
+			});
+		}
+
 		// Inventory Drag & Drop
 		if (elements.inventoryEl) {
 			elements.inventoryEl.addEventListener("pointerdown", event => {
@@ -328,6 +420,9 @@ export function createCityUI(ctx) {
 		// Shop Click Handler
 		if (elements.merchantEl) {
 			elements.merchantEl.addEventListener("click", event => {
+				// Dungeon-Schutz
+				const state = getState();
+				if (state.mode === 'dungeon' || state.mode === 'dungeon_menu') return;
 				const target = event.target;
 				if (!(target instanceof HTMLElement)) return;
 				const action = target.dataset.action;
@@ -365,6 +460,9 @@ export function createCityUI(ctx) {
 		// Mission Click Handler
 		if (elements.missionEl) {
 			elements.missionEl.addEventListener("click", event => {
+				// Dungeon-Schutz: Missions-Panel darf im Dungeon nichts auslösen
+				const state = getState();
+				if (state.mode === 'dungeon' || state.mode === 'dungeon_menu') return;
 				const target = event.target;
 				if (!(target instanceof HTMLElement)) return;
 				const action = target.dataset.action;

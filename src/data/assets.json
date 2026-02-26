@@ -1,184 +1,258 @@
 {
-	"version": "1.0",
-	"description": "Asset-Manifest für Lazy Loading - gruppiert nach Szenen/Leveln",
-	
-	"playerVariants": {
-		"player": "./player/Player.png",
-		"pinkqualle": "./player/Playerpinkqualle.png",
-		"kleinerdrache": "./player/playerkleinerdrache.png",
-		"engelfisch": "./player/Playerengelfisch.png"
-	},
-	
-	"groups": {
-		"core": {
-			"description": "Immer geladene Basis-Assets",
-			"preload": true,
-			"assets": {
-				"player": "./player/Player.png",
-				"shot": "./player/player-shot.png",
-				"heal": "./game/heal-potion.png",
-				"symbolGeldschein": "./symbols/Geldscheinsymbol.png"
-			}
-		},
-		
-		"menu": {
-			"description": "Titelbildschirm und Menü",
-			"preload": true,
-			"assets": {
-				"titelbild": "./ui/Titelbild.png",
-				"titelbildZwei": "./ui/Titelbildzwei.png",
-				"startbutton": "./ui/Startbutton.png"
-			}
-		},
-		
-		"level1": {
-			"description": "Level 1 - Ozean (Jelly + Shark Boss)",
-			"preload": false,
-			"assets": {
-				"backgroundLevelOne": "./game/Backgroundlvlone.png",
-				"foe": "./foes/foe-jelly.png",
-				"boss": "./foes/boss-shark.png",
-				"coverRock": "./game/Fels.png"
-			}
-		},
-		
-		"level2": {
-			"description": "Level 2 - Lava Zone (Bogenschreck + Parfüm-Kraken)",
-			"preload": false,
-			"assets": {
-				"floorSprite": "./game/Bodenlava.png",
-				"bogenschreck": "./foes/Aquischwer-Bogenschreck.png",
-				"parfumKraken": "./foes/Parfüm-Kraken.png"
-			}
-		},
-		
-		"level3": {
-			"description": "Level 3 - Tiefsee (Oktopus + Ritterfisch)",
-			"preload": false,
-			"assets": {
-				"floorSprite": "./game/Boden.png",
-				"oktopus": "./foes/Oktopus.png",
-				"oktopusProjectile": "./foes/Oktopuspfeil.png",
-				"ritterfisch": "./foes/Ritterfisch.png"
-			}
-		},
-		
-		"level4": {
-			"description": "Level 4 - Gold Zone (Yachtwal + Cashfish Boss)",
-			"preload": false,
-			"assets": {
-				"floorSprite": "./game/Bodengold.png",
-				"yachtwal": "./foes/Yachtwal.png",
-				"cashfish": "./foes/Cashfish.png"
-			}
-		},
-		
-		"level5": {
-			"description": "Level 5 - Mission 2 Start (Shadowfish + Leviathan Boss)",
-			"preload": false,
-			"assets": {
-				"shadowfish": "./foes/shadowfish.png",
-				"leviathan": "./foes/leviathan.png"
-			}
-		},
-		
-		"level6": {
-			"description": "Level 6 - Mission 2 (Stingray + Hydra Boss)",
-			"preload": false,
-			"assets": {
-				"stingray": "./foes/stingray.png",
-				"hydra": "./foes/hydra.png"
-			}
-		},
-		
-		"level7": {
-			"description": "Level 7 - Mission 2 (Seadrake + Deepsea-Kraken Boss)",
-			"preload": false,
-			"assets": {
-				"seadrake": "./foes/seadrake.png",
-				"deepseaKraken": "./foes/deepsea-kraken.png"
-			}
-		},
-		
-		"level8": {
-			"description": "Level 8 - Mission 2 Finale (Abyssal + Titan Boss)",
-			"preload": false,
-			"assets": {
-				"abyssal": "./foes/abyssal.png",
-				"titan": "./foes/titan.png"
-			}
-		},
-		
-		"city": {
-			"description": "Stadt-Modus",
-			"preload": false,
-			"assets": {
-				"cityPlayer": "./player/Playertopdown.png",
-				"cityBackground": "./Stadthaus.webp",
-				"npcHaendler": "./npc/Haendler.png",
-				"npcMission": "./npc/Mission.png",
-				"standwaffen": "./city/Standwaffen.png",
-				"ruestungMeer": "./city/Ruestungmeer.png",
-				"queststand": "./city/Queststand.png"
-			}
-		},
-		
-		"cityTiles": {
-			"description": "Stadt Boden-Tiles",
-			"preload": false,
-			"assets": {
-				"tile1": "./bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
-				"tile2": "./bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg",
-				"tile3": "./bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg",
-				"tile4": "./bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg",
-				"tile5": "./bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg",
-				"tile6": "./bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg"
-			}
-		},
-		
-		"abilities": {
-			"description": "Spieler-Fähigkeiten (Coral Allies etc.)",
-			"preload": false,
-			"assets": {
-				"coralAllyOne": "./game/Korallenbegleitereins.png",
-				"coralAllyTwo": "./game/Korallenbegleiterzwei.png"
-			}
-		},
-		
-		"symbols": {
-			"description": "UI Symbole",
-			"preload": false,
-			"assets": {
-				"symbolSchluessel": "./symbols/Schlüsselsymbol.png",
-				"symbolYacht": "./symbols/Yachtsymbol.png",
-				"allesymbole": "./symbols/Allesymbole.png"
-			}
-		},
-		
-		"narrator": {
-			"description": "Cutscene/Dialog Assets",
-			"preload": false,
-			"assets": {
-				"narrator": "./city/narrator.png"
-			}
-		}
-	},
-	
-	"levelMapping": {
-		"0": ["core", "level1"],
-		"1": ["core", "level1", "level2"],
-		"2": ["core", "level2", "level3"],
-		"3": ["core", "level3", "level4"],
-		"4": ["core", "level5"],
-		"5": ["core", "level5", "level6"],
-		"6": ["core", "level6", "level7"],
-		"7": ["core", "level7", "level8"]
-	},
-	
-	"sceneMapping": {
-		"menu": ["core", "menu"],
-		"game": ["core"],
-		"city": ["core", "city", "cityTiles"],
-		"cutscene": ["core", "narrator"]
-	}
+  "version": "1.0",
+  "description": "Asset-Manifest für Lazy Loading - gruppiert nach Szenen/Leveln",
+  "playerVariants": {
+    "player": "./player/Player.png",
+    "pinkqualle": "./player/Playerpinkqualle.png",
+    "kleinerdrache": "./player/playerkleinerdrache.png",
+    "engelfisch": "./player/Playerengelfisch.png"
+  },
+  "groups": {
+    "core": {
+      "description": "Immer geladene Basis-Assets",
+      "preload": true,
+      "assets": {
+        "player": "./player/Player.png",
+        "shot": "./player/player-shot.png",
+        "heal": "./game/heal-potion.png",
+        "symbolGeldschein": "./symbols/Geldscheinsymbol.png"
+      }
+    },
+    "menu": {
+      "description": "Titelbildschirm und Menü",
+      "preload": true,
+      "assets": {
+        "titelbild": "./ui/Titelbild.png",
+        "titelbildZwei": "./ui/Titelbildzwei.png",
+        "startbutton": "./ui/Startbutton.png"
+      }
+    },
+    "level1": {
+      "description": "Level 1 - Ozean (Jelly + Shark Boss)",
+      "preload": false,
+      "assets": {
+        "backgroundLevelOne": "./game/Backgroundlvlone.png",
+        "foe": "./foes/foe-jelly.png",
+        "boss": "./foes/boss-shark.png",
+        "coverRock": "./game/Fels.png"
+      }
+    },
+    "level2": {
+      "description": "Level 2 - Lava Zone (Bogenschreck + Parfüm-Kraken)",
+      "preload": false,
+      "assets": {
+        "floorSprite": "./game/Bodenlava.png",
+        "bogenschreck": "./foes/Aquischwer-Bogenschreck.png",
+        "parfumKraken": "./foes/Parfüm-Kraken.png"
+      }
+    },
+    "level3": {
+      "description": "Level 3 - Tiefsee (Oktopus + Ritterfisch)",
+      "preload": false,
+      "assets": {
+        "floorSprite": "./game/Boden.png",
+        "oktopus": "./foes/Oktopus.png",
+        "oktopusProjectile": "./foes/Oktopuspfeil.png",
+        "ritterfisch": "./foes/Ritterfisch.png"
+      }
+    },
+    "level4": {
+      "description": "Level 4 - Gold Zone (Yachtwal + Cashfish Boss)",
+      "preload": false,
+      "assets": {
+        "floorSprite": "./game/Bodengold.png",
+        "yachtwal": "./foes/Yachtwal.png",
+        "cashfish": "./foes/Cashfish.png"
+      }
+    },
+    "level5": {
+      "description": "Level 5 - Mission 2 Start (Shadowfish + Leviathan Boss)",
+      "preload": false,
+      "assets": {
+        "shadowfish": "./foes/shadowfish.png",
+        "leviathan": "./foes/leviathan.png"
+      }
+    },
+    "level6": {
+      "description": "Level 6 - Mission 2 (Stingray + Hydra Boss)",
+      "preload": false,
+      "assets": {
+        "stingray": "./foes/stingray.png",
+        "hydra": "./foes/hydra.png"
+      }
+    },
+    "level7": {
+      "description": "Level 7 - Mission 2 (Seadrake + Deepsea-Kraken Boss)",
+      "preload": false,
+      "assets": {
+        "seadrake": "./foes/seadrake.png",
+        "deepseaKraken": "./foes/deepsea-kraken.png"
+      }
+    },
+    "level8": {
+      "description": "Level 8 - Mission 2 Finale (Abyssal + Titan Boss)",
+      "preload": false,
+      "assets": {
+        "abyssal": "./foes/abyssal.png",
+        "titan": "./foes/titan.png"
+      }
+    },
+    "city": {
+      "description": "Stadt-Modus",
+      "preload": false,
+      "assets": {
+        "cityPlayer": "./player/Playertopdown.png",
+        "cityBackground": "./Stadthaus.webp",
+        "npcHaendler": "./npc/Haendler.png",
+        "npcMission": "./npc/Mission.png",
+        "standwaffen": "./city/Standwaffen.png",
+        "ruestungMeer": "./city/Ruestungmeer.png",
+        "queststand": "./city/Queststand.png"
+      }
+    },
+    "cityTiles": {
+      "description": "Stadt Boden-Tiles",
+      "preload": false,
+      "assets": {
+        "tile1": "./bodenstadt/openart-image_8vGhGSbW_1769841054304_raw.jpg",
+        "tile2": "./bodenstadt/openart-image_jTCfEQu9_1769840885505_raw.jpg",
+        "tile3": "./bodenstadt/openart-image_MifcQ_Zg_1769840721632_raw.jpg",
+        "tile4": "./bodenstadt/openart-image_Sy6oko6r_1769840795864_raw.jpg",
+        "tile5": "./bodenstadt/openart-image_umpSDvCE_1769841003548_raw.jpg",
+        "tile6": "./bodenstadt/openart-image_YGBbUj_W_1769840721095_raw.jpg"
+      }
+    },
+    "abilities": {
+      "description": "Spieler-Fähigkeiten (Coral Allies etc.)",
+      "preload": false,
+      "assets": {
+        "coralAllyOne": "./game/Korallenbegleitereins.png",
+        "coralAllyTwo": "./game/Korallenbegleiterzwei.png"
+      }
+    },
+    "symbols": {
+      "description": "UI Symbole",
+      "preload": false,
+      "assets": {
+        "symbolSchluessel": "./symbols/Schlüsselsymbol.png",
+        "symbolYacht": "./symbols/Yachtsymbol.png",
+        "allesymbole": "./symbols/Allesymbole.png"
+      }
+    },
+    "generatedSprites": {
+      "description": "Automatisch erzeugte KI-Sprites",
+      "preload": false,
+      "assets": {
+        "foe_pixel-art-fish-alchemist-wit_080917": "./symbols/generated/foe-pixel-art-fish-alchemist-with-glowing-vial-2026-02-25T08-09-17-876Z.png",
+        "city-test_cartoon-fish-mechanic-mascot_081253": "./symbols/generated/city-test-cartoon-fish-mechanic-mascot-clean-isolated-char-2026-02-25T08-12-53-920Z.png",
+        "city-test_cartoon-fish-inventor-mascot_081805": "./symbols/generated/city-test-cartoon-fish-inventor-mascot-2026-02-25T08-18-05-780Z.png",
+        "city-test_cartoon-fish-inventor-mascot_082103": "./symbols/generated/city-test-cartoon-fish-inventor-mascot-2026-02-25T08-21-03-792Z.png",
+        "ui-help_pixel-art-key-icon-golden-gl_091024": "./symbols/generated/ui-help-pixel-art-key-icon-golden-glow-underwater-fish-g-2026-02-25T09-10-24-186Z.png",
+        "ui-help_pixel-art-inventory-bag-icon_091032": "./symbols/generated/ui-help-pixel-art-inventory-bag-icon-underwater-fish-gam-2026-02-25T09-10-32-092Z.png",
+        "ui-help_pixel-art-teleporter-icon-gl_091048": "./symbols/generated/ui-help-pixel-art-teleporter-icon-glowing-blue-portal-si-2026-02-25T09-10-48-971Z.png",
+        "ui-hub_pixel-art-talent-tree-glowin_092725": "./symbols/generated/ui-hub-pixel-art-talent-tree-glowing-skill-tree-fish-ga-2026-02-25T09-27-25-843Z.png",
+        "ui-hub_pixel-art-upgrade-arrow-star_092732": "./symbols/generated/ui-hub-pixel-art-upgrade-arrow-stars-golden-fish-underw-2026-02-25T09-27-32-647Z.png",
+        "ui-hub_pixel-art-merchant-fish-shop_092738": "./symbols/generated/ui-hub-pixel-art-merchant-fish-shop-coins-badge-underwa-2026-02-25T09-27-38-696Z.png",
+        "ui-hub_pixel-art-garden-seaweed-cor_092744": "./symbols/generated/ui-hub-pixel-art-garden-seaweed-coral-plants-fish-urban-2026-02-25T09-27-44-938Z.png",
+        "ui-hub_pixel-art-harbor-ship-dock-n_092751": "./symbols/generated/ui-hub-pixel-art-harbor-ship-dock-nautical-fish-underwa-2026-02-25T09-27-51-835Z.png",
+        "ui-hub_pixel-art-teleporter-swirlin_092758": "./symbols/generated/ui-hub-pixel-art-teleporter-swirling-portal-glowing-blu-2026-02-25T09-27-58-280Z.png",
+        "ui-hub_pixel-art-quest-scroll-missi_092803": "./symbols/generated/ui-hub-pixel-art-quest-scroll-missions-adventure-fish-u-2026-02-25T09-28-03-918Z.png",
+        "ui-hub_pixel-art-inventory-bag-item_092809": "./symbols/generated/ui-hub-pixel-art-inventory-bag-items-equipment-underwat-2026-02-25T09-28-09-830Z.png",
+        "ui-hub_pixel-art-academy-book-wisdo_092816": "./symbols/generated/ui-hub-pixel-art-academy-book-wisdom-glow-fish-underwat-2026-02-25T09-28-16-685Z.png",
+        "companion_pixel-art-coral-companion-fi_105042": "./symbols/generated/companion-pixel-art-coral-companion-fish-creature-teal-glo-2026-02-25T10-50-42-792Z.png",
+        "companion_pixel-art-elite-coral-compan_105049": "./symbols/generated/companion-pixel-art-elite-coral-companion-dark-glowing-upg-2026-02-25T10-50-49-583Z.png",
+        "companion_pixel-art-shield-bubble-blue_105056": "./symbols/generated/companion-pixel-art-shield-bubble-blue-glow-protection-fis-2026-02-25T10-50-56-100Z.png",
+        "items_pixel-art-rapid-fish-gill-bo_220816": "./symbols/generated/items-pixel-art-rapid-fish-gill-booster-emblem-underwa-2026-02-25T22-08-16-915Z.png",
+        "items_pixel-art-twin-harpoon-cross_220823": "./symbols/generated/items-pixel-art-twin-harpoon-crossed-weapon-emblem-und-2026-02-25T22-08-23-961Z.png",
+        "items_pixel-art-depth-charge-bomb-_220829": "./symbols/generated/items-pixel-art-depth-charge-bomb-with-splash-ring-und-2026-02-25T22-08-29-261Z.png",
+        "items_pixel-art-sea-glass-armor-ch_220834": "./symbols/generated/items-pixel-art-sea-glass-armor-chestplate-teal-shards-2026-02-25T22-08-34-938Z.png",
+        "items_pixel-art-coral-vest-red-cor_220840": "./symbols/generated/items-pixel-art-coral-vest-red-coral-armor-piece-under-2026-02-25T22-08-40-771Z.png",
+        "items_pixel-art-titan-scale-shield_220846": "./symbols/generated/items-pixel-art-titan-scale-shield-plate-heavy-armor-u-2026-02-25T22-08-46-345Z.png",
+        "items_pixel-art-current-boots-fin-_220852": "./symbols/generated/items-pixel-art-current-boots-fin-boots-speed-trail-un-2026-02-25T22-08-52-551Z.png",
+        "items_pixel-art-bubble-dash-swirl-_220858": "./symbols/generated/items-pixel-art-bubble-dash-swirl-trail-symbol-underwa-2026-02-25T22-08-58-397Z.png",
+        "items_pixel-art-magnet-shell-coin-_220903": "./symbols/generated/items-pixel-art-magnet-shell-coin-pull-aura-underwater-2026-02-25T22-09-03-846Z.png",
+        "items_pixel-art-fortune-pearl-glow_220910": "./symbols/generated/items-pixel-art-fortune-pearl-glowing-lucky-orb-underw-2026-02-25T22-09-10-403Z.png",
+        "items_pixel-art-treasure-map-scrol_220915": "./symbols/generated/items-pixel-art-treasure-map-scroll-with-x-mark-underw-2026-02-25T22-09-15-490Z.png",
+        "items_pixel-art-black-market-pass-_220920": "./symbols/generated/items-pixel-art-black-market-pass-dark-ticket-gold-tri-2026-02-25T22-09-20-679Z.png",
+        "items_pixel-art-dungeon-flask-heal_220927": "./symbols/generated/items-pixel-art-dungeon-flask-healing-potion-bottle-un-2026-02-25T22-09-27-612Z.png",
+        "items_pixel-art-rage-elixir-red-po_220934": "./symbols/generated/items-pixel-art-rage-elixir-red-potion-fierce-glow-und-2026-02-25T22-09-34-042Z.png",
+        "items_pixel-art-coral-charm-talism_220939": "./symbols/generated/items-pixel-art-coral-charm-talisman-with-tiny-coral-a-2026-02-25T22-09-39-250Z.png",
+        "items_pixel-art-swarm-ring-with-or_220944": "./symbols/generated/items-pixel-art-swarm-ring-with-orbiting-coral-sparks--2026-02-25T22-09-44-835Z.png",
+        "items_pixel-art-abyss-lantern-deep_220950": "./symbols/generated/items-pixel-art-abyss-lantern-deep-sea-lamp-blue-glow--2026-02-25T22-09-50-428Z.png",
+        "items_pixel-art-kraken-ink-vial-da_220955": "./symbols/generated/items-pixel-art-kraken-ink-vial-dark-purple-cloud-unde-2026-02-25T22-09-55-844Z.png",
+        "items_pixel-art-tide-stone-rune-ro_221001": "./symbols/generated/items-pixel-art-tide-stone-rune-rock-with-water-waves--2026-02-25T22-10-01-476Z.png",
+        "items_pixel-art-golden-fin-shiny-f_221007": "./symbols/generated/items-pixel-art-golden-fin-shiny-fish-fin-trophy-under-2026-02-25T22-10-07-448Z.png",
+        "ability_pixel-art-speed-dash-trail-g_223757": "./symbols/generated/ability-pixel-art-speed-dash-trail-glow-fish-movement-bl-2026-02-25T22-37-57-402Z.png",
+        "ability_pixel-art-underwater-mine-bo_223807": "./symbols/generated/ability-pixel-art-underwater-mine-bomb-glowing-red-fish--2026-02-25T22-38-07-672Z.png",
+        "ability_pixel-art-time-slow-bubble-p_223818": "./symbols/generated/ability-pixel-art-time-slow-bubble-purple-glow-fish-game-2026-02-25T22-38-18-880Z.png",
+        "ability_pixel-art-green-life-leech-a_223828": "./symbols/generated/ability-pixel-art-green-life-leech-aura-healing-glow-fis-2026-02-25T22-38-28-610Z.png"
+      }
+    },
+    "narrator": {
+      "description": "Cutscene/Dialog Assets",
+      "preload": false,
+      "assets": {
+        "narrator": "./city/narrator.png"
+      }
+    }
+  },
+  "levelMapping": {
+    "0": [
+      "core",
+      "level1"
+    ],
+    "1": [
+      "core",
+      "level1",
+      "level2"
+    ],
+    "2": [
+      "core",
+      "level2",
+      "level3"
+    ],
+    "3": [
+      "core",
+      "level3",
+      "level4"
+    ],
+    "4": [
+      "core",
+      "level5"
+    ],
+    "5": [
+      "core",
+      "level5",
+      "level6"
+    ],
+    "6": [
+      "core",
+      "level6",
+      "level7"
+    ],
+    "7": [
+      "core",
+      "level7",
+      "level8"
+    ]
+  },
+  "sceneMapping": {
+    "menu": [
+      "core",
+      "menu"
+    ],
+    "game": [
+      "core",
+      "generatedSprites"
+    ],
+    "city": [
+      "core",
+      "city",
+      "cityTiles"
+    ],
+    "cutscene": [
+      "core",
+      "narrator"
+    ]
+  }
 }

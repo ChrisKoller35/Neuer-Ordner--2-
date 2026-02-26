@@ -6,6 +6,7 @@
 // Führt Teleportation zu Gebäuden durch
 
 import { createTeleporterPlaceholder } from '../core/placeholders.js';
+import S from '../core/sharedState.js';
 
 /**
  * Teleporter-Konstanten
@@ -22,7 +23,7 @@ export const TELEPORTER_CONFIG = {
 // ===== CITY PORTAL POSITION STORAGE =====
 const CITY_PORTAL_STORAGE_KEY = 'CITY_TELEPORTER_POSITION';
 // Fest eingebaute Position (vom Benutzer mit Portal-Editor festgelegt)
-const DEFAULT_CITY_PORTAL_POSITION = { x: 1350.54262597656, y: 521.276874023439 };
+const DEFAULT_CITY_PORTAL_POSITION = { x: 1346.792, y: 524.094 };
 
 /**
  * Erstellt das Teleporter-System
@@ -89,11 +90,16 @@ export function createTeleporterSystem(ctx) {
 		savePosition();
 		const exportData = `// Stadt-Portal Position
 CITY_TELEPORTER: { x: ${teleporterWorldPosition.x}, y: ${teleporterWorldPosition.y} }`;
-		
+
+		if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+			alert(`Position: x=${  teleporterWorldPosition.x  }, y=${  teleporterWorldPosition.y}`);
+			return;
+		}
+
 		navigator.clipboard.writeText(exportData).then(() => {
-			alert('✅ Stadt-Portal-Position gespeichert & kopiert!\n\n' + exportData);
+			alert(`✅ Stadt-Portal-Position gespeichert & kopiert!\n\n${  exportData}`);
 		}).catch(err => {
-			alert('Position: x=' + teleporterWorldPosition.x + ', y=' + teleporterWorldPosition.y);
+			alert(`Position: x=${  teleporterWorldPosition.x  }, y=${  teleporterWorldPosition.y}`);
 		});
 	}
 	
@@ -101,13 +107,20 @@ CITY_TELEPORTER: { x: ${teleporterWorldPosition.x}, y: ${teleporterWorldPosition
 	 * Initialisiert den Teleporter
 	 */
 	function init() {
+		S.nearTeleporter = false;
 		// Zuerst gespeicherte Position laden
 		loadSavedPosition();
 		
 		const data = getTeleporterData();
 		// Position als feste Weltkoordinaten (nicht prozentual)
 		// Nur überschreiben wenn KEINE gespeicherte Position existiert
-		if (!localStorage.getItem(CITY_PORTAL_STORAGE_KEY)) {
+		let hasSavedPosition = false;
+		try {
+			hasSavedPosition = !!localStorage.getItem(CITY_PORTAL_STORAGE_KEY);
+		} catch (e) {
+			hasSavedPosition = false;
+		}
+		if (!hasSavedPosition) {
 			if (data?.teleporter?.main_city?.worldPosition) {
 				teleporterWorldPosition = data.teleporter.main_city.worldPosition;
 			}
@@ -197,6 +210,13 @@ CITY_TELEPORTER: { x: ${teleporterWorldPosition.x}, y: ${teleporterWorldPosition
 	 * Update-Funktion
 	 */
 	function update(dt) {
+		const state = getState ? getState() : null;
+		if (!state || state.mode !== 'city') {
+			isNearTeleporter = false;
+			S.nearTeleporter = false;
+			return;
+		}
+
 		// Animation Frame Update
 		animationFrame += dt * 0.01;
 		
@@ -207,6 +227,7 @@ CITY_TELEPORTER: { x: ${teleporterWorldPosition.x}, y: ${teleporterWorldPosition
 		
 		// Proximity Check
 		isNearTeleporter = checkPlayerProximity();
+		S.nearTeleporter = isNearTeleporter;
 		
 		// Teleport-Animation
 		if (isTeleporting) {
@@ -445,7 +466,7 @@ CITY_TELEPORTER: { x: ${teleporterWorldPosition.x}, y: ${teleporterWorldPosition
 	 * Setzt die Teleporter-Position
 	 */
 	function setPosition(x, y) {
-		teleporterPosition = { x, y };
+		teleporterWorldPosition = { x, y };
 	}
 	
 	/**

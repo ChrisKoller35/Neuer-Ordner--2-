@@ -5,7 +5,7 @@
 // Konstanten
 export * from './constants.js';
 
-// Hilfsfunktionen
+// Utility functions
 export * from './utils.js';
 
 // Spielzustand

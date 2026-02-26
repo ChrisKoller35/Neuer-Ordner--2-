@@ -1,0 +1,20 @@
+pixel art rapid fish gill booster emblem underwater game item icon clean ui rapid_gill
+pixel art twin harpoon crossed weapon emblem underwater game item icon clean ui harpoon_x2
+pixel art depth charge bomb with splash ring underwater game item icon clean ui depth_charge
+pixel art sea glass armor chestplate teal shards underwater game item icon clean ui sea_glass
+pixel art coral vest red coral armor piece underwater game item icon clean ui coral_vest
+pixel art titan scale shield plate heavy armor underwater game item icon clean ui titan_scale
+pixel art current boots fin boots speed trail underwater game item icon clean ui current_boots
+pixel art bubble dash swirl trail symbol underwater game item icon clean ui bubble_dash
+pixel art magnet shell coin pull aura underwater game item icon clean ui magnet_shell
+pixel art fortune pearl glowing lucky orb underwater game item icon clean ui fortune_pearl
+pixel art treasure map scroll with x mark underwater game item icon clean ui treasure_map
+pixel art black market pass dark ticket gold trim underwater game item icon clean ui black_market
+pixel art dungeon flask healing potion bottle underwater game item icon clean ui dungeon_flask
+pixel art rage elixir red potion fierce glow underwater game item icon clean ui rage_elixir
+pixel art coral charm talisman with tiny coral ally underwater game item icon clean ui coral_charm
+pixel art swarm ring with orbiting coral sparks underwater game item icon clean ui swarm_ring
+pixel art abyss lantern deep sea lamp blue glow underwater game item icon clean ui abyss_lantern
+pixel art kraken ink vial dark purple cloud underwater game item icon clean ui kraken_ink
+pixel art tide stone rune rock with water waves underwater game item icon clean ui tide_stone
+pixel art golden fin shiny fish fin trophy underwater game item icon clean ui golden_fin

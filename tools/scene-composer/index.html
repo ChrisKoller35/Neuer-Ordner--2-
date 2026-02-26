@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashfish Scene Composer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        /* ─── HEADER ─── */
+        .header {
+            background: #16213e;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 2px solid #0f3460;
+            flex-shrink: 0;
+        }
+        .header h1 { font-size: 1.2em; color: #e94560; white-space: nowrap; }
+        .header-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        button {
+            background: #0f3460;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        button:hover { background: #e94560; }
+        button.primary { background: #e94560; }
+        button.primary:hover { background: #ff6b6b; }
+        button.active { background: #e94560; box-shadow: 0 0 6px #e94560; }
+        button:disabled { opacity: .4; cursor: not-allowed; }
+
+        .sep { width: 1px; height: 24px; background: #0f3460; margin: 0 4px; flex-shrink: 0; }
+
+        /* ─── MAIN LAYOUT ─── */
+        .main { display: flex; flex: 1; min-height: 0; }
+
+        /* ─── LEFT SIDEBAR (ASSETS) ─── */
+        .sidebar-left {
+            width: 220px;
+            background: #16213e;
+            border-right: 2px solid #0f3460;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .sidebar-left h3 {
+            color: #e94560;
+            font-size: .8em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 12px 6px;
+        }
+        .asset-drop {
+            margin: 6px 10px;
+            padding: 18px 10px;
+            border: 2px dashed #0f3460;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #667;
+            cursor: pointer;
+            transition: border-color .2s;
+        }
+        .asset-drop:hover, .asset-drop.over { border-color: #e94560; color: #e94560; }
+        .asset-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px 8px;
+        }
+        .asset-category { margin-bottom: 10px; }
+        .asset-category summary {
+            font-size: 12px;
+            color: #888;
+            cursor: pointer;
+            padding: 4px 0;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .asset-category summary:hover { color: #e94560; }
+        .asset-thumb-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            padding-top: 4px;
+        }
+        .asset-thumb {
+            aspect-ratio: 1;
+            background: #0f0f23;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .asset-thumb:hover { border-color: #0f3460; }
+        .asset-thumb.selected { border-color: #e94560; }
+        .asset-thumb img { max-width: 90%; max-height: 90%; object-fit: contain; pointer-events: none; }
+        .asset-thumb .asset-label {
+            position: absolute;
+            bottom: 0;
+            left: 0; right: 0;
+            background: rgba(0,0,0,.7);
+            font-size: 9px;
+            padding: 2px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .asset-thumb .asset-delete {
+            position: absolute;
+            top: 2px; right: 2px;
+            background: rgba(0,0,0,.6);
+            color: #f55;
+            border: none;
+            border-radius: 50%;
+            width: 16px; height: 16px;
+            font-size: 10px;
+            cursor: pointer;
+            display: none;
+            line-height: 16px;
+            padding: 0;
+        }
+        .asset-thumb:hover .asset-delete { display: block; }
+
+        /* ─── CANVAS AREA ─── */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #0a0a1a;
+        }
+        #sceneCanvas { position: absolute; top: 0; left: 0; }
+        .canvas-info {
+            position: absolute;
+            bottom: 8px; left: 8px;
+            font-size: 11px;
+            color: #555;
+            pointer-events: none;
+        }
+
+        /* ─── RIGHT SIDEBAR (PROPERTIES) ─── */
+        .sidebar-right {
+            width: 260px;
+            background: #16213e;
+            border-left: 2px solid #0f3460;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .sidebar-right h3 {
+            color: #e94560;
+            font-size: .8em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 12px 6px;
+        }
+        .prop-section { padding: 0 12px 12px; }
+        .prop-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .prop-row label {
+            font-size: 11px;
+            color: #888;
+            width: 65px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .prop-row input[type="number"],
+        .prop-row input[type="text"],
+        .prop-row select {
+            flex: 1;
+            background: #0f3460;
+            border: 1px solid #1a4a7a;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            min-width: 0;
+        }
+        .prop-row input:focus, .prop-row select:focus { outline: none; border-color: #e94560; }
+        .prop-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: #e94560; }
+        .prop-row input[type="color"] {
+            width: 32px; height: 24px;
+            border: 1px solid #1a4a7a;
+            border-radius: 4px;
+            padding: 0;
+            cursor: pointer;
+            background: transparent;
+        }
+        .prop-row input[type="range"] { flex: 1; accent-color: #e94560; }
+        .prop-row .range-val { width: 36px; text-align: right; font-size: 11px; color: #aaa; }
+
+        .no-selection {
+            padding: 30px 12px;
+            text-align: center;
+            color: #555;
+            font-size: 13px;
+        }
+
+        /* ─── LAYER BAR ─── */
+        .layer-bar {
+            background: #16213e;
+            border-top: 2px solid #0f3460;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .layer-bar span { font-size: 11px; color: #888; text-transform: uppercase; margin-right: 4px; }
+        .layer-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .layer-btn.hidden-layer { opacity: 0.35; }
+        .layer-btn .eye {
+            font-size: 9px;
+            margin-left: 4px;
+        }
+
+        /* ─── INSTANCE LIST ─── */
+        .instance-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; }
+        .inst-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            background: #0f3460;
+            border-radius: 5px;
+            margin-bottom: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            border: 1px solid transparent;
+        }
+        .inst-item:hover { background: #1a4a7a; }
+        .inst-item.selected { border-color: #e94560; background: #1a1a3e; }
+        .inst-item .inst-layer {
+            font-size: 9px;
+            background: #0a0a1a;
+            padding: 1px 5px;
+            border-radius: 3px;
+            color: #888;
+        }
+        .inst-item .inst-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .inst-item .inst-del {
+            opacity: .4;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .inst-item .inst-del:hover { opacity: 1; color: #f55; }
+
+        /* ─── CONTEXT MENU ─── */
+        .ctx-menu {
+            position: fixed;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            padding: 4px 0;
+            min-width: 180px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+            z-index: 999;
+            display: none;
+        }
+        .ctx-menu.show { display: block; }
+        .ctx-item {
+            padding: 7px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        .ctx-item:hover { background: #0f3460; }
+        .ctx-item .shortcut { color: #666; font-size: 11px; }
+        .ctx-sep { height: 1px; background: #0f3460; margin: 3px 0; }
+
+        /* ─── SCROLLBARS ─── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #1a4a7a; }
+
+        /* ─── BIOME PRESET MODAL ─── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.6);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 10px;
+            padding: 24px;
+            min-width: 340px;
+            max-width: 500px;
+        }
+        .modal h2 { color: #e94560; margin-bottom: 16px; font-size: 1.1em; }
+        .modal .biome-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .modal .biome-card {
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            border: 2px solid transparent;
+            transition: border-color .2s;
+        }
+        .modal .biome-card:hover { border-color: #e94560; }
+        .modal .btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>🐠 Scene Composer</h1>
+    <div class="header-buttons">
+        <button onclick="newProject()">Neues Projekt</button>
+        <button onclick="loadAssets()">Assets laden</button>
+        <div class="sep"></div>
+        <button id="btnGrid" onclick="toggleGrid()">Grid: Aus</button>
+        <button id="btnSnap" onclick="toggleSnap()">Snap: Aus</button>
+        <div class="sep"></div>
+        <button onclick="undo()" title="Ctrl+Z">↩ Undo</button>
+        <button onclick="redo()" title="Ctrl+Y">↪ Redo</button>
+        <div class="sep"></div>
+        <button onclick="importJSON()">Import JSON</button>
+        <button class="primary" onclick="exportJSON()">Export JSON</button>
+        <button onclick="exportPNG()">Export PNG</button>
+        <div class="sep"></div>
+        <button onclick="showBiomePresets()">Biome Presets</button>
+        <button onclick="loadBuiltinAssets()" title="Eingebaute Backgrounds aus neubackgrounds/ und Mission-3-Szenen neu laden">🖼 Built-in Assets</button>
+        <button class="primary" onclick="showMapGenerator()" title="Automatisch eine Map aus den verfügbaren Assets generieren">🗺 Map Generator</button>
+        <button id="btnParallax" onclick="toggleParallaxPreview()">Parallax ▶</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- LEFT: Asset Palette -->
+    <div class="sidebar-left">
+        <h3>Assets</h3>
+        <div class="asset-drop" id="assetDrop" onclick="loadAssets()">
+            📁 PNGs hierhin ziehen<br>oder klicken
+        </div>
+        <div class="asset-list" id="assetList"></div>
+
+        <h3>Instanzen</h3>
+        <div class="instance-list" id="instanceList"></div>
+    </div>
+
+    <!-- CENTER: Canvas -->
+    <div class="canvas-area" id="canvasArea">
+        <canvas id="sceneCanvas"></canvas>
+        <div class="canvas-info" id="canvasInfo">1200×675 | Zoom: 100%</div>
+    </div>
+
+    <!-- RIGHT: Properties -->
+    <div class="sidebar-right">
+        <h3>Eigenschaften</h3>
+        <div id="propsPanel">
+            <div class="no-selection" id="noSel">Keine Instanz ausgewählt.<br><br>Klicke ein Asset in der Palette und dann auf den Canvas, um es zu platzieren.</div>
+            <div class="prop-section" id="propFields" style="display:none">
+                <div class="prop-row"><label>Name</label><input type="text" id="propName" onchange="setProp('name',this.value)"></div>
+                <div class="prop-row"><label>X</label><input type="number" id="propX" onchange="setProp('x',+this.value)"></div>
+                <div class="prop-row"><label>Y</label><input type="number" id="propY" onchange="setProp('y',+this.value)"></div>
+                <div class="prop-row"><label>Scale X</label><input type="range" min="0.1" max="5" step="0.01" id="propSX" oninput="setProp('scaleX',+this.value);document.getElementById('valSX').textContent=this.value"><span class="range-val" id="valSX">1</span></div>
+                <div class="prop-row"><label>Scale Y</label><input type="range" min="0.1" max="5" step="0.01" id="propSY" oninput="setProp('scaleY',+this.value);document.getElementById('valSY').textContent=this.value"><span class="range-val" id="valSY">1</span></div>
+                <div class="prop-row"><label>Rotation</label><input type="range" min="-180" max="180" step="1" id="propRot" oninput="setProp('rotation',+this.value);document.getElementById('valRot').textContent=this.value+'°'"><span class="range-val" id="valRot">0°</span></div>
+                <div class="prop-row"><label>Layer</label>
+                    <select id="propLayer" onchange="setProp('layer',+this.value)">
+                        <option value="0">0 – Sky</option>
+                        <option value="1">1 – Far</option>
+                        <option value="2">2 – Mid</option>
+                        <option value="3" selected>3 – Main</option>
+                        <option value="4">4 – Floor</option>
+                        <option value="5">5 – Front</option>
+                    </select>
+                </div>
+                <div class="prop-row"><label>Flip X</label><input type="checkbox" id="propFlip" onchange="setProp('flipX',this.checked)"></div>
+                <div class="prop-row"><label>Opacity</label><input type="range" min="0" max="1" step="0.01" id="propOpacity" oninput="setProp('opacity',+this.value);document.getElementById('valOp').textContent=Math.round(this.value*100)+'%'"><span class="range-val" id="valOp">100%</span></div>
+                <div class="prop-row"><label>Tint</label><input type="checkbox" id="propTintOn" onchange="setProp('tint',this.checked?document.getElementById('propTintColor').value:null)"><input type="color" id="propTintColor" value="#ff0000" onchange="if(document.getElementById('propTintOn').checked)setProp('tint',this.value)"></div>
+                <div class="prop-row"><label>Z-Index</label><input type="number" id="propZ" value="0" onchange="setProp('zIndex',+this.value)"></div>
+                <hr style="border-color:#0f3460;margin:8px 0">
+                <div class="prop-row"><label>Kollision</label><input type="checkbox" id="propColl" onchange="setProp('collision',this.checked)"></div>
+                <div class="prop-row"><label>Hit W</label><input type="number" id="propHitW" min="1" onchange="setProp('hitWidth',+this.value)"></div>
+                <div class="prop-row"><label>Hit H</label><input type="number" id="propHitH" min="1" onchange="setProp('hitHeight',+this.value)"></div>
+            </div>
+        </div>
+
+        <h3>Hintergrund</h3>
+        <div class="prop-section">
+            <div class="prop-row"><label>Oben</label><input type="color" id="bgTop" value="#03294a" onchange="scene.background.topColor=this.value;render()"></div>
+            <div class="prop-row"><label>Mitte</label><input type="color" id="bgMid" value="#02203b" onchange="scene.background.midColor=this.value;render()"></div>
+            <div class="prop-row"><label>Unten</label><input type="color" id="bgBot" value="#02111f" onchange="scene.background.bottomColor=this.value;render()"></div>
+        </div>
+
+        <h3>Scene</h3>
+        <div class="prop-section">
+            <div class="prop-row"><label>Name</label><input type="text" id="sceneName" value="Neue Scene" onchange="scene.name=this.value"></div>
+            <div class="prop-row"><label>Biome</label>
+                <select id="sceneBiome" onchange="scene.biome=this.value">
+                    <option value="ocean">Ocean</option>
+                    <option value="deep">Deep</option>
+                    <option value="coral">Coral</option>
+                    <option value="volcano">Volcano</option>
+                    <option value="ice">Ice</option>
+                </select>
+            </div>
+            <div class="prop-row"><label>Chunk</label><input type="number" id="sceneChunk" value="0" min="0" onchange="scene.chunkIndex=+this.value"></div>
+        </div>
+    </div>
+</div>
+
+<!-- LAYER BAR -->
+<div class="layer-bar" id="layerBar">
+    <span>Layer:</span>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" onclick="ctxAction('front')">Nach ganz vorne<span class="shortcut"></span></div>
+    <div class="ctx-item" onclick="ctxAction('forward')">Eine Ebene vor<span class="shortcut"></span></div>
+    <div class="ctx-item" onclick="ctxAction('backward')">Eine Ebene zurück<span class="shortcut"></span></div>
+    <div class="ctx-item" onclick="ctxAction('back')">Nach ganz hinten<span class="shortcut"></span></div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="ctxAction('duplicate')">Duplizieren<span class="shortcut">Ctrl+D</span></div>
+    <div class="ctx-item" onclick="ctxAction('delete')" style="color:#f55">Löschen<span class="shortcut">Entf</span></div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="ctxAction('layer',0)">→ Layer 0 (Sky)</div>
+    <div class="ctx-item" onclick="ctxAction('layer',1)">→ Layer 1 (Far)</div>
+    <div class="ctx-item" onclick="ctxAction('layer',2)">→ Layer 2 (Mid)</div>
+    <div class="ctx-item" onclick="ctxAction('layer',3)">→ Layer 3 (Main)</div>
+    <div class="ctx-item" onclick="ctxAction('layer',4)">→ Layer 4 (Floor)</div>
+    <div class="ctx-item" onclick="ctxAction('layer',5)">→ Layer 5 (Front)</div>
+</div>
+
+<!-- BIOME PRESET MODAL -->
+<div class="modal-overlay" id="biomeModal">
+    <div class="modal">
+        <h2>Biome Preset wählen</h2>
+        <div class="biome-grid" id="biomeGrid"></div>
+        <div class="btn-row">
+            <button onclick="closeBiomeModal()">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<!-- HIDDEN FILE INPUTS -->
+<input type="file" id="fileAssets" multiple accept="image/png,image/webp" style="display:none" onchange="handleAssetFiles(this.files)">
+<input type="file" id="fileImport" accept=".json,.scene.json" style="display:none" onchange="handleImportFile(this.files)">
+
+<!-- MAP GENERATOR MODAL -->
+<div class="modal-overlay" id="mapGenModal">
+    <div class="modal" style="min-width:520px;max-width:620px">
+        <h2>🗺 Map Generator</h2>
+        <p style="color:#888;font-size:12px;margin-bottom:14px">Generiert automatisch ein Level aus den eingebauten Background-Assets. Du kannst das Ergebnis danach im Composer frei bearbeiten.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div>
+                <label style="font-size:11px;color:#888;text-transform:uppercase">Template</label>
+                <select id="genTemplate" style="width:100%;background:#0f3460;border:1px solid #1a4a7a;color:#fff;padding:6px 8px;border-radius:4px;font-size:13px;margin-top:4px">
+                    <option value="hoehle">🪨 Höhle (Wände + Kristalle)</option>
+                    <option value="passage">🌊 Passage (Oben/Unten-Begrenzung)</option>
+                    <option value="grotte">💎 Kristallgrotte</option>
+                    <option value="dschungel">🌿 Pflanzendschungel</option>
+                    <option value="offen">🌅 Offenes Meer</option>
+                    <option value="szene">🎬 Volle Szene (Mission-3-Style)</option>
+                    <option value="zufall">🎲 Zufällig mischen</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:#888;text-transform:uppercase">Biome</label>
+                <select id="genBiome" style="width:100%;background:#0f3460;border:1px solid #1a4a7a;color:#fff;padding:6px 8px;border-radius:4px;font-size:13px;margin-top:4px">
+                    <option value="ocean">Ocean</option>
+                    <option value="deep">Deep</option>
+                    <option value="coral">Coral</option>
+                    <option value="volcano">Volcano</option>
+                    <option value="ice">Ice</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div>
+                <label style="font-size:11px;color:#888;text-transform:uppercase">Dichte</label>
+                <input type="range" id="genDensity" min="1" max="5" value="3" style="width:100%;accent-color:#e94560;margin-top:4px">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#666"><span>Minimal</span><span>Voll</span></div>
+            </div>
+            <div>
+                <label style="font-size:11px;color:#888;text-transform:uppercase">Seed (leer = zufällig)</label>
+                <input type="number" id="genSeed" placeholder="Zufällig" style="width:100%;background:#0f3460;border:1px solid #1a4a7a;color:#fff;padding:6px 8px;border-radius:4px;font-size:13px;margin-top:4px">
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div>
+                <label style="font-size:11px;color:#888;text-transform:uppercase">Szenen-Anzahl</label>
+                <input type="number" id="genSceneCount" min="1" max="8" value="1" style="width:100%;background:#0f3460;border:1px solid #1a4a7a;color:#fff;padding:6px 8px;border-radius:4px;font-size:13px;margin-top:4px">
+            </div>
+            <div style="display:flex;align-items:end">
+                <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="genKeepExisting" style="accent-color:#e94560;width:16px;height:16px">
+                    Bestehende Instanzen behalten
+                </label>
+            </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:8px">
+            <button onclick="closeMapGenModal()">Abbrechen</button>
+            <button class="primary" onclick="generateMap()" style="min-width:140px">🎲 Generieren!</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CASHFISH SCENE COMPOSER
+//  Standalone tool — no dependencies
+// ═══════════════════════════════════════════
+
+const SCENE_W = 1200, SCENE_H = 675;
+const LAYER_NAMES = ['Sky','Far','Mid','Main','Floor','Front'];
+const LAYER_COLORS = ['#4488cc','#6644aa','#22aa88','#e94560','#aa8833','#44cc44'];
+const PARALLAX = [0.2, 0.4, 0.7, 1.0, 1.0, 1.1];
+const CATEGORIES = ['rock','coral','plant','floor','deco','structure','background','scene'];
+
+const BIOME_PRESETS = {
+    ocean:   { topColor:'#03294a', midColor:'#02203b', bottomColor:'#02111f' },
+    deep:    { topColor:'#1d0f35', midColor:'#0f1633', bottomColor:'#07091b' },
+    coral:   { topColor:'#0a3a3a', midColor:'#082828', bottomColor:'#041818' },
+    volcano: { topColor:'#3a1a0a', midColor:'#281008', bottomColor:'#180804' },
+    ice:     { topColor:'#1a3a4a', midColor:'#0f2838', bottomColor:'#051820' }
+};
+
+// ─── STATE ───
+let scene = createEmptyScene();
+let assets = [];           // { id, name, category, width, height, dataUrl, img }
+let instances = [];        // { id, assetId, name, x, y, scaleX, scaleY, rotation, layer, flipX, opacity, tint, zIndex, collision, hitWidth, hitHeight }
+let selectedAssetId = null;
+let selectedInstanceId = null;
+let layerVisibility = [true,true,true,true,true,true];
+
+// Canvas / viewport
+const canvas = document.getElementById('sceneCanvas');
+const ctx = canvas.getContext('2d');
+let zoom = 1, panX = 0, panY = 0;
+let showGrid = false, gridSize = 32, snapToGrid = false;
+
+// Interaction
+let dragging = null; // { instanceId, offsetX, offsetY }
+let panning = false, panStartX = 0, panStartY = 0, panStartPanX = 0, panStartPanY = 0;
+
+// Undo
+let undoStack = [], redoStack = [];
+const MAX_UNDO = 80;
+
+// Parallax preview
+let parallaxPreview = false, parallaxOffset = 0, parallaxDir = 1;
+let parallaxRAF = null;
+
+// Autosave
+let autosaveTimer = null;
+
+// ─── SCENE ───
+function createEmptyScene() {
+    return {
+        version: 1,
+        name: 'Neue Scene',
+        width: SCENE_W,
+        height: SCENE_H,
+        biome: 'ocean',
+        chunkIndex: 0,
+        background: { topColor:'#03294a', midColor:'#02203b', bottomColor:'#02111f' }
+    };
+}
+
+function uid() { return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+// ─── UNDO/REDO ───
+function snapshot() {
+    undoStack.push(JSON.stringify({ instances, scene }));
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    redoStack.length = 0;
+    scheduleAutosave();
+}
+function undo() {
+    if (!undoStack.length) return;
+    redoStack.push(JSON.stringify({ instances, scene }));
+    const s = JSON.parse(undoStack.pop());
+    instances = s.instances;
+    scene = s.scene;
+    restoreAfterUndoRedo();
+}
+function redo() {
+    if (!redoStack.length) return;
+    undoStack.push(JSON.stringify({ instances, scene }));
+    const s = JSON.parse(redoStack.pop());
+    instances = s.instances;
+    scene = s.scene;
+    restoreAfterUndoRedo();
+}
+function restoreAfterUndoRedo() {
+    selectedInstanceId = null;
+    updateBgInputs();
+    updateSceneInputs();
+    updateInstanceList();
+    updateProps();
+    render();
+}
+
+// ─── AUTOSAVE ───
+function scheduleAutosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(autosave, 2000);
+}
+function autosave() {
+    try {
+        localStorage.setItem('cashfish_scene_composer', JSON.stringify({
+            scene, assets: assets.map(a => ({ id:a.id, name:a.name, category:a.category, width:a.width, height:a.height, dataUrl:a.dataUrl })),
+            instances
+        }));
+    } catch(e) { /* localStorage full */ }
+}
+function loadAutosave() {
+    try {
+        const raw = localStorage.getItem('cashfish_scene_composer');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        scene = data.scene;
+        instances = data.instances || [];
+        // Restore assets
+        if (data.assets) {
+            for (const a of data.assets) {
+                const img = new Image();
+                img.src = a.dataUrl;
+                assets.push({ ...a, img });
+            }
+        }
+        updateBgInputs();
+        updateSceneInputs();
+        updateAssetList();
+        updateInstanceList();
+    } catch(e) { console.warn('Autosave load failed', e); }
+}
+
+// ─── ASSET MANAGEMENT ───
+function loadAssets() { document.getElementById('fileAssets').click(); }
+
+function handleAssetFiles(files) {
+    for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const a = {
+                    id: uid(),
+                    name: file.name.replace(/\.\w+$/, ''),
+                    category: guessCategory(file.name),
+                    width: img.naturalWidth,
+                    height: img.naturalHeight,
+                    dataUrl: e.target.result,
+                    img
+                };
+                assets.push(a);
+                updateAssetList();
+                scheduleAutosave();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function guessCategory(name) {
+    const n = name.toLowerCase();
+    if (n.includes('fels') || n.includes('rock') || n.includes('stein')) return 'rock';
+    if (n.includes('koralle') || n.includes('coral') || n.includes('riff')) return 'coral';
+    if (n.includes('pflanz') || n.includes('plant') || n.includes('tang') || n.includes('alge')) return 'plant';
+    if (n.includes('boden') || n.includes('floor') || n.includes('sand') || n.includes('lava') || n.includes('gold') || n.includes('eis') || n.includes('ice')) return 'floor';
+    if (n.includes('bg') || n.includes('hintergrund') || n.includes('background')) return 'background';
+    if (n.includes('wrack') || n.includes('säule') || n.includes('höhle') || n.includes('ruine')) return 'structure';
+    if (n.includes('szene') || n.includes('scene') || n.includes('bwl') || n.includes('mission')) return 'scene';
+    return 'deco';
+}
+
+function deleteAsset(id) {
+    // Remove instances using this asset
+    instances = instances.filter(i => i.assetId !== id);
+    assets = assets.filter(a => a.id !== id);
+    if (selectedAssetId === id) selectedAssetId = null;
+    snapshot();
+    updateAssetList();
+    updateInstanceList();
+    render();
+}
+
+function selectAsset(id) {
+    selectedAssetId = (selectedAssetId === id) ? null : id;
+    selectedInstanceId = null;
+    updateAssetList();
+    updateProps();
+}
+
+function getAsset(id) { return assets.find(a => a.id === id); }
+
+// ─── INSTANCE MANAGEMENT ───
+function addInstance(assetId, x, y) {
+    const asset = getAsset(assetId);
+    if (!asset) return;
+    snapshot();
+    const inst = {
+        id: uid(),
+        assetId,
+        name: asset.name,
+        x: Math.round(x),
+        y: Math.round(y),
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        layer: 3,
+        flipX: false,
+        opacity: 1,
+        tint: null,
+        zIndex: 0,
+        collision: false,
+        hitWidth: Math.round(asset.width * 0.45),
+        hitHeight: Math.round(asset.height * 0.4)
+    };
+    instances.push(inst);
+    selectedInstanceId = inst.id;
+    selectedAssetId = null;
+    updateAssetList();
+    updateInstanceList();
+    updateProps();
+    render();
+    return inst;
+}
+
+function deleteInstance(id) {
+    snapshot();
+    instances = instances.filter(i => i.id !== id);
+    if (selectedInstanceId === id) { selectedInstanceId = null; updateProps(); }
+    updateInstanceList();
+    render();
+}
+
+function duplicateInstance(id) {
+    const src = instances.find(i => i.id === id);
+    if (!src) return;
+    snapshot();
+    const dup = { ...src, id: uid(), x: src.x + 30, y: src.y + 30 };
+    instances.push(dup);
+    selectedInstanceId = dup.id;
+    updateInstanceList();
+    updateProps();
+    render();
+}
+
+function selectInstance(id) {
+    selectedInstanceId = id;
+    selectedAssetId = null;
+    updateAssetList();
+    updateInstanceList();
+    updateProps();
+    render();
+}
+
+function getSelectedInstance() { return instances.find(i => i.id === selectedInstanceId); }
+
+function setProp(key, val) {
+    const inst = getSelectedInstance();
+    if (!inst) return;
+    snapshot();
+    inst[key] = val;
+    updateInstanceList();
+    render();
+}
+
+// ─── SORTING ───
+function getSortedInstances() {
+    return [...instances].sort((a,b) => a.layer - b.layer || a.zIndex - b.zIndex);
+}
+
+// ─── RENDERING ───
+function render() {
+    const area = document.getElementById('canvasArea');
+    const cw = area.clientWidth, ch = area.clientHeight;
+    canvas.width = cw;
+    canvas.height = ch;
+
+    ctx.save();
+    ctx.translate(panX, panY);
+    ctx.scale(zoom, zoom);
+
+    // Background gradient
+    const bg = scene.background;
+    const grad = ctx.createLinearGradient(0, 0, 0, SCENE_H);
+    grad.addColorStop(0, bg.topColor);
+    grad.addColorStop(0.55, bg.midColor);
+    grad.addColorStop(1, bg.bottomColor);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+
+    // Grid
+    if (showGrid) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1 / zoom;
+        for (let x = 0; x <= SCENE_W; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, SCENE_H); ctx.stroke();
+        }
+        for (let y = 0; y <= SCENE_H; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SCENE_W, y); ctx.stroke();
+        }
+    }
+
+    // Instances
+    const sorted = getSortedInstances();
+    for (const inst of sorted) {
+        if (!layerVisibility[inst.layer]) continue;
+        const asset = getAsset(inst.assetId);
+        if (!asset || !asset.img.complete) continue;
+
+        let drawX = inst.x;
+        // Parallax preview offset
+        if (parallaxPreview) {
+            drawX = inst.x - parallaxOffset * PARALLAX[inst.layer];
+        }
+
+        ctx.save();
+        ctx.globalAlpha = inst.opacity;
+        ctx.translate(drawX, inst.y);
+        ctx.rotate(inst.rotation * Math.PI / 180);
+        ctx.scale(inst.scaleX * (inst.flipX ? -1 : 1), inst.scaleY);
+
+        // Tint
+        if (inst.tint) {
+            // Draw to offscreen then tint
+            ctx.drawImage(asset.img, -asset.width/2, -asset.height/2);
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.fillStyle = inst.tint;
+            ctx.fillRect(-asset.width/2, -asset.height/2, asset.width, asset.height);
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.drawImage(asset.img, -asset.width/2, -asset.height/2);
+            ctx.globalCompositeOperation = 'source-over';
+        } else {
+            ctx.drawImage(asset.img, -asset.width/2, -asset.height/2);
+        }
+        ctx.restore();
+
+        // Selection outline
+        if (inst.id === selectedInstanceId && !parallaxPreview) {
+            ctx.save();
+            ctx.translate(drawX, inst.y);
+            ctx.rotate(inst.rotation * Math.PI / 180);
+            ctx.scale(inst.scaleX * (inst.flipX ? -1 : 1), inst.scaleY);
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2 / zoom / Math.abs(inst.scaleX || 1);
+            ctx.setLineDash([6/zoom/Math.abs(inst.scaleX||1), 4/zoom/Math.abs(inst.scaleX||1)]);
+            ctx.strokeRect(-asset.width/2, -asset.height/2, asset.width, asset.height);
+            ctx.setLineDash([]);
+
+            // Collision ellipse
+            if (inst.collision) {
+                ctx.strokeStyle = '#44ff44';
+                ctx.lineWidth = 1.5 / zoom / Math.abs(inst.scaleX || 1);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, (inst.hitWidth||30)/2 / Math.abs(inst.scaleX||1), (inst.hitHeight||30)/2 / Math.abs(inst.scaleY||1), 0, 0, Math.PI*2);
+                ctx.stroke();
+            }
+
+            // Handles
+            const hw = asset.width/2, hh = asset.height/2;
+            ctx.fillStyle = '#e94560';
+            const hs = 5 / zoom / Math.abs(inst.scaleX||1);
+            for (const [hx,hy] of [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]]) {
+                ctx.fillRect(hx - hs, hy - hs, hs*2, hs*2);
+            }
+            ctx.restore();
+        }
+    }
+
+    // Scene border
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1/zoom;
+    ctx.strokeRect(0, 0, SCENE_W, SCENE_H);
+
+    // Player zone indicator (layer 3 reference)
+    if (!parallaxPreview) {
+        ctx.strokeStyle = 'rgba(233,69,96,0.2)';
+        ctx.setLineDash([8/zoom, 8/zoom]);
+        ctx.lineWidth = 1/zoom;
+        // Player bounds: 60px padding
+        ctx.strokeRect(60, 60, SCENE_W - 120, SCENE_H - 120);
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(233,69,96,0.15)';
+        ctx.font = `${11/zoom}px sans-serif`;
+        ctx.fillText('Spielerbereich', 65, 55);
+    }
+
+    ctx.restore();
+
+    // Info
+    document.getElementById('canvasInfo').textContent = `${SCENE_W}×${SCENE_H} | Zoom: ${Math.round(zoom*100)}% | Instanzen: ${instances.length}`;
+}
+
+// ─── HIT TEST ───
+function hitTest(mx, my) {
+    // Convert screen → scene coords
+    const sx = (mx - panX) / zoom;
+    const sy = (my - panY) / zoom;
+
+    // Test in reverse order (topmost first)
+    const sorted = getSortedInstances().reverse();
+    for (const inst of sorted) {
+        if (!layerVisibility[inst.layer]) continue;
+        const asset = getAsset(inst.assetId);
+        if (!asset) continue;
+
+        // Transform point into instance local space
+        const dx = sx - inst.x;
+        const dy = sy - inst.y;
+        const rad = -inst.rotation * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const lx = (cos * dx - sin * dy) / (inst.scaleX * (inst.flipX ? -1 : 1));
+        const ly = (sin * dx + cos * dy) / inst.scaleY;
+
+        if (lx >= -asset.width/2 && lx <= asset.width/2 && ly >= -asset.height/2 && ly <= asset.height/2) {
+            return inst;
+        }
+    }
+    return null;
+}
+
+// ─── CANVAS EVENTS ───
+const canvasArea = document.getElementById('canvasArea');
+
+canvasArea.addEventListener('mousedown', (e) => {
+    hideCtxMenu();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    if (e.button === 2) return; // handled by contextmenu
+
+    // Middle button = pan
+    if (e.button === 1) {
+        e.preventDefault();
+        panning = true;
+        panStartX = e.clientX; panStartY = e.clientY;
+        panStartPanX = panX; panStartPanY = panY;
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
+
+    // If an asset is selected in palette → place it
+    if (selectedAssetId) {
+        const sx = (mx - panX) / zoom;
+        const sy = (my - panY) / zoom;
+        let px = sx, py = sy;
+        if (snapToGrid) { px = Math.round(px/gridSize)*gridSize; py = Math.round(py/gridSize)*gridSize; }
+        addInstance(selectedAssetId, px, py);
+        return;
+    }
+
+    // Hit test
+    const hit = hitTest(mx, my);
+    if (hit) {
+        selectInstance(hit.id);
+        // Start drag
+        const sx = (mx - panX) / zoom;
+        const sy = (my - panY) / zoom;
+        dragging = { instanceId: hit.id, offsetX: sx - hit.x, offsetY: sy - hit.y };
+        canvas.style.cursor = 'move';
+    } else {
+        // Deselect
+        selectedInstanceId = null;
+        updateInstanceList();
+        updateProps();
+        render();
+        // Start pan
+        panning = true;
+        panStartX = e.clientX; panStartY = e.clientY;
+        panStartPanX = panX; panStartPanY = panY;
+        canvas.style.cursor = 'grabbing';
+    }
+});
+
+canvasArea.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    if (panning) {
+        panX = panStartPanX + (e.clientX - panStartX);
+        panY = panStartPanY + (e.clientY - panStartY);
+        render();
+        return;
+    }
+
+    if (dragging) {
+        const inst = instances.find(i => i.id === dragging.instanceId);
+        if (inst) {
+            const sx = (mx - panX) / zoom;
+            const sy = (my - panY) / zoom;
+            let nx = sx - dragging.offsetX;
+            let ny = sy - dragging.offsetY;
+            if (snapToGrid) { nx = Math.round(nx/gridSize)*gridSize; ny = Math.round(ny/gridSize)*gridSize; }
+            inst.x = Math.round(nx);
+            inst.y = Math.round(ny);
+            updateProps();
+            render();
+        }
+        return;
+    }
+
+    // Hover cursor
+    const hit = hitTest(mx, my);
+    canvas.style.cursor = selectedAssetId ? 'crosshair' : (hit ? 'pointer' : 'default');
+});
+
+canvasArea.addEventListener('mouseup', (e) => {
+    if (dragging) {
+        snapshot();
+        dragging = null;
+    }
+    if (panning) {
+        panning = false;
+    }
+    canvas.style.cursor = selectedAssetId ? 'crosshair' : 'default';
+});
+
+canvasArea.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const oldZoom = zoom;
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    zoom = Math.max(0.1, Math.min(5, zoom * delta));
+    // Zoom towards cursor
+    panX = mx - (mx - panX) * (zoom / oldZoom);
+    panY = my - (my - panY) * (zoom / oldZoom);
+    render();
+}, { passive: false });
+
+canvasArea.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const hit = hitTest(mx, my);
+    if (hit) {
+        selectInstance(hit.id);
+        showCtxMenu(e.clientX, e.clientY);
+    }
+});
+
+// ─── DRAG & DROP ASSETS ONTO CANVAS ───
+canvasArea.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+canvasArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const assetId = e.dataTransfer.getData('text/asset-id');
+    if (assetId) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = (e.clientX - rect.left - panX) / zoom;
+        const sy = (e.clientY - rect.top - panY) / zoom;
+        let px = sx, py = sy;
+        if (snapToGrid) { px = Math.round(px/gridSize)*gridSize; py = Math.round(py/gridSize)*gridSize; }
+        addInstance(assetId, px, py);
+        return;
+    }
+    // External file drop
+    if (e.dataTransfer.files.length) handleAssetFiles(e.dataTransfer.files);
+});
+
+// ─── DRAG & DROP ON ASSET DROP ZONE ───
+const assetDrop = document.getElementById('assetDrop');
+assetDrop.addEventListener('dragover', (e) => { e.preventDefault(); assetDrop.classList.add('over'); });
+assetDrop.addEventListener('dragleave', () => assetDrop.classList.remove('over'));
+assetDrop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    assetDrop.classList.remove('over');
+    if (e.dataTransfer.files.length) handleAssetFiles(e.dataTransfer.files);
+});
+
+// Also allow drop on entire body for convenience
+document.body.addEventListener('dragover', (e) => e.preventDefault());
+document.body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length) {
+        // Check if any are images
+        const imgs = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+        if (imgs.length) handleAssetFiles(imgs);
+        // Check if JSON
+        const jsons = [...e.dataTransfer.files].filter(f => f.name.endsWith('.json'));
+        if (jsons.length) handleImportFile(jsons);
+    }
+});
+
+// ─── KEYBOARD SHORTCUTS ───
+document.addEventListener('keydown', (e) => {
+    // Don't capture when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedInstanceId) { deleteInstance(selectedInstanceId); }
+        e.preventDefault();
+    }
+    if (ctrl && e.key === 'z') { undo(); e.preventDefault(); }
+    if (ctrl && e.key === 'y') { redo(); e.preventDefault(); }
+    if (ctrl && e.key === 'd') {
+        if (selectedInstanceId) duplicateInstance(selectedInstanceId);
+        e.preventDefault();
+    }
+    if (ctrl && e.key === 'c') {
+        if (selectedInstanceId) { window._clipboard = JSON.parse(JSON.stringify(getSelectedInstance())); }
+        e.preventDefault();
+    }
+    if (ctrl && e.key === 'v') {
+        if (window._clipboard) {
+            snapshot();
+            const dup = { ...window._clipboard, id: uid(), x: window._clipboard.x + 40, y: window._clipboard.y + 40 };
+            instances.push(dup);
+            selectedInstanceId = dup.id;
+            updateInstanceList();
+            updateProps();
+            render();
+        }
+        e.preventDefault();
+    }
+    if (ctrl && e.key === 's') { exportJSON(); e.preventDefault(); }
+    if (e.key === 'Escape') {
+        selectedAssetId = null;
+        selectedInstanceId = null;
+        updateAssetList();
+        updateInstanceList();
+        updateProps();
+        render();
+    }
+    if (e.key === 'g') { toggleGrid(); }
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        // Cycle through layers visibility
+        const visibleCount = layerVisibility.filter(Boolean).length;
+        if (visibleCount === 6) {
+            // Show only layer 0
+            layerVisibility = [true,false,false,false,false,false];
+        } else {
+            const firstHidden = layerVisibility.indexOf(false);
+            if (firstHidden >= 0 && firstHidden < 5) {
+                layerVisibility[firstHidden] = true;
+            } else {
+                layerVisibility = [true,true,true,true,true,true];
+            }
+        }
+        updateLayerBar();
+        render();
+    }
+    // Arrow keys to nudge
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && selectedInstanceId) {
+        const inst = getSelectedInstance();
+        if (inst) {
+            snapshot();
+            const step = e.shiftKey ? 10 : 1;
+            if (e.key === 'ArrowUp') inst.y -= step;
+            if (e.key === 'ArrowDown') inst.y += step;
+            if (e.key === 'ArrowLeft') inst.x -= step;
+            if (e.key === 'ArrowRight') inst.x += step;
+            updateProps();
+            render();
+        }
+        e.preventDefault();
+    }
+});
+
+// ─── CONTEXT MENU ───
+function showCtxMenu(x, y) {
+    const menu = document.getElementById('ctxMenu');
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.classList.add('show');
+}
+function hideCtxMenu() { document.getElementById('ctxMenu').classList.remove('show'); }
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.ctx-menu')) hideCtxMenu();
+});
+
+function ctxAction(action, val) {
+    hideCtxMenu();
+    const inst = getSelectedInstance();
+    if (!inst) return;
+
+    if (action === 'delete') { deleteInstance(inst.id); return; }
+    if (action === 'duplicate') { duplicateInstance(inst.id); return; }
+
+    snapshot();
+    if (action === 'layer') {
+        inst.layer = val;
+        updateProps();
+    }
+    if (action === 'front') {
+        const sameLayer = instances.filter(i => i.layer === inst.layer);
+        const maxZ = Math.max(...sameLayer.map(i => i.zIndex), 0);
+        inst.zIndex = maxZ + 1;
+    }
+    if (action === 'back') {
+        const sameLayer = instances.filter(i => i.layer === inst.layer);
+        const minZ = Math.min(...sameLayer.map(i => i.zIndex), 0);
+        inst.zIndex = minZ - 1;
+    }
+    if (action === 'forward') { inst.zIndex++; }
+    if (action === 'backward') { inst.zIndex--; }
+
+    updateInstanceList();
+    render();
+}
+
+// ─── TOOLBAR ───
+function newProject() {
+    if (!confirm('Neues Projekt starten? Nicht gespeicherte Änderungen gehen verloren.')) return;
+    scene = createEmptyScene();
+    assets = [];
+    instances = [];
+    selectedAssetId = null;
+    selectedInstanceId = null;
+    undoStack = [];
+    redoStack = [];
+    updateBgInputs();
+    updateSceneInputs();
+    updateAssetList();
+    updateInstanceList();
+    updateProps();
+    render();
+    localStorage.removeItem('cashfish_scene_composer');
+}
+
+function toggleGrid() {
+    showGrid = !showGrid;
+    document.getElementById('btnGrid').textContent = showGrid ? 'Grid: An' : 'Grid: Aus';
+    document.getElementById('btnGrid').classList.toggle('active', showGrid);
+    render();
+}
+
+function toggleSnap() {
+    snapToGrid = !snapToGrid;
+    if (snapToGrid && !showGrid) { showGrid = true; document.getElementById('btnGrid').textContent = 'Grid: An'; document.getElementById('btnGrid').classList.toggle('active', true); }
+    document.getElementById('btnSnap').textContent = snapToGrid ? `Snap: ${gridSize}px` : 'Snap: Aus';
+    document.getElementById('btnSnap').classList.toggle('active', snapToGrid);
+    render();
+}
+
+function toggleParallaxPreview() {
+    parallaxPreview = !parallaxPreview;
+    const btn = document.getElementById('btnParallax');
+    if (parallaxPreview) {
+        btn.textContent = 'Parallax ⏸';
+        btn.classList.add('active');
+        parallaxOffset = 0;
+        parallaxDir = 1;
+        animateParallax();
+    } else {
+        btn.textContent = 'Parallax ▶';
+        btn.classList.remove('active');
+        if (parallaxRAF) cancelAnimationFrame(parallaxRAF);
+        parallaxRAF = null;
+        parallaxOffset = 0;
+        render();
+    }
+}
+
+function animateParallax() {
+    if (!parallaxPreview) return;
+    parallaxOffset += parallaxDir * 2;
+    if (parallaxOffset > 400 || parallaxOffset < -400) parallaxDir *= -1;
+    render();
+    parallaxRAF = requestAnimationFrame(animateParallax);
+}
+
+// ─── BIOME PRESETS ───
+function showBiomePresets() {
+    const grid = document.getElementById('biomeGrid');
+    grid.innerHTML = '';
+    for (const [name, colors] of Object.entries(BIOME_PRESETS)) {
+        const card = document.createElement('div');
+        card.className = 'biome-card';
+        card.style.background = `linear-gradient(180deg, ${colors.topColor}, ${colors.midColor}, ${colors.bottomColor})`;
+        card.style.color = '#fff';
+        card.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+        card.onclick = () => applyBiomePreset(name);
+        grid.appendChild(card);
+    }
+    document.getElementById('biomeModal').classList.add('show');
+}
+function closeBiomeModal() { document.getElementById('biomeModal').classList.remove('show'); }
+function applyBiomePreset(name) {
+    snapshot();
+    scene.background = { ...BIOME_PRESETS[name] };
+    scene.biome = name;
+    updateBgInputs();
+    updateSceneInputs();
+    render();
+    closeBiomeModal();
+}
+
+// ─── IMPORT / EXPORT ───
+function exportJSON() {
+    const data = {
+        version: 1,
+        name: scene.name,
+        width: SCENE_W,
+        height: SCENE_H,
+        biome: scene.biome,
+        chunkIndex: scene.chunkIndex,
+        background: { ...scene.background },
+        assets: assets.map(a => ({
+            id: a.id,
+            name: a.name,
+            category: a.category,
+            width: a.width,
+            height: a.height,
+            path: `./scenes/assets/${a.name}.png`
+        })),
+        instances: instances.map(i => ({
+            assetId: i.assetId,
+            name: i.name,
+            x: i.x,
+            y: i.y,
+            scaleX: i.scaleX,
+            scaleY: i.scaleY,
+            rotation: i.rotation,
+            layer: i.layer,
+            flipX: i.flipX,
+            opacity: i.opacity,
+            tint: i.tint,
+            zIndex: i.zIndex,
+            collision: i.collision,
+            hitWidth: i.hitWidth,
+            hitHeight: i.hitHeight
+        }))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${scene.name.replace(/\s+/g, '-').toLowerCase()}.scene.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importJSON() { document.getElementById('fileImport').click(); }
+
+function handleImportFile(files) {
+    if (!files.length) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            loadSceneData(data);
+        } catch(err) {
+            alert('Fehler beim Laden: ' + err.message);
+        }
+    };
+    reader.readAsText(files[0]);
+}
+
+function loadSceneData(data) {
+    scene = {
+        version: data.version || 1,
+        name: data.name || 'Importiert',
+        width: data.width || SCENE_W,
+        height: data.height || SCENE_H,
+        biome: data.biome || 'ocean',
+        chunkIndex: data.chunkIndex || 0,
+        background: data.background || createEmptyScene().background
+    };
+
+    // Load assets (if they have dataUrl/image)
+    if (data.assets) {
+        for (const a of data.assets) {
+            // Skip if already loaded
+            if (assets.find(x => x.id === a.id)) continue;
+            if (a.image || a.dataUrl) {
+                const img = new Image();
+                img.src = a.image || a.dataUrl;
+                assets.push({
+                    id: a.id,
+                    name: a.name || 'Asset',
+                    category: a.category || 'deco',
+                    width: a.width || 100,
+                    height: a.height || 100,
+                    dataUrl: a.image || a.dataUrl,
+                    img
+                });
+            }
+        }
+    }
+
+    instances = (data.instances || []).map(i => ({
+        id: uid(),
+        assetId: i.assetId,
+        name: i.name || '',
+        x: i.x || 0,
+        y: i.y || 0,
+        scaleX: i.scaleX ?? 1,
+        scaleY: i.scaleY ?? 1,
+        rotation: i.rotation || 0,
+        layer: i.layer ?? 3,
+        flipX: i.flipX || false,
+        opacity: i.opacity ?? 1,
+        tint: i.tint || null,
+        zIndex: i.zIndex || 0,
+        collision: i.collision || false,
+        hitWidth: i.hitWidth || 60,
+        hitHeight: i.hitHeight || 40
+    }));
+
+    selectedInstanceId = null;
+    selectedAssetId = null;
+    updateBgInputs();
+    updateSceneInputs();
+    updateAssetList();
+    updateInstanceList();
+    updateProps();
+    centerView();
+    render();
+}
+
+function exportPNG() {
+    // Render to offscreen canvas at 1:1
+    const offscreen = document.createElement('canvas');
+    offscreen.width = SCENE_W;
+    offscreen.height = SCENE_H;
+    const octx = offscreen.getContext('2d');
+
+    // Background gradient
+    const bg = scene.background;
+    const grad = octx.createLinearGradient(0, 0, 0, SCENE_H);
+    grad.addColorStop(0, bg.topColor);
+    grad.addColorStop(0.55, bg.midColor);
+    grad.addColorStop(1, bg.bottomColor);
+    octx.fillStyle = grad;
+    octx.fillRect(0, 0, SCENE_W, SCENE_H);
+
+    // Instances
+    const sorted = getSortedInstances();
+    for (const inst of sorted) {
+        const asset = getAsset(inst.assetId);
+        if (!asset || !asset.img.complete) continue;
+
+        octx.save();
+        octx.globalAlpha = inst.opacity;
+        octx.translate(inst.x, inst.y);
+        octx.rotate(inst.rotation * Math.PI / 180);
+        octx.scale(inst.scaleX * (inst.flipX ? -1 : 1), inst.scaleY);
+        octx.drawImage(asset.img, -asset.width/2, -asset.height/2);
+        octx.restore();
+    }
+
+    // Download
+    const url = offscreen.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${scene.name.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
+    a.click();
+}
+
+// ─── UI UPDATES ───
+function updateAssetList() {
+    const list = document.getElementById('assetList');
+    list.innerHTML = '';
+
+    // Group by category
+    const grouped = {};
+    for (const a of assets) {
+        if (!grouped[a.category]) grouped[a.category] = [];
+        grouped[a.category].push(a);
+    }
+
+    for (const cat of CATEGORIES) {
+        if (!grouped[cat]) continue;
+        const details = document.createElement('details');
+        details.className = 'asset-category';
+        details.open = true;
+        const summary = document.createElement('summary');
+        summary.textContent = `${cat} (${grouped[cat].length})`;
+        details.appendChild(summary);
+
+        const grid = document.createElement('div');
+        grid.className = 'asset-thumb-grid';
+        for (const a of grouped[cat]) {
+            const thumb = document.createElement('div');
+            thumb.className = 'asset-thumb' + (selectedAssetId === a.id ? ' selected' : '');
+            thumb.draggable = true;
+            thumb.onclick = () => selectAsset(a.id);
+            thumb.ondragstart = (e) => { e.dataTransfer.setData('text/asset-id', a.id); };
+
+            const img = document.createElement('img');
+            img.src = a.dataUrl;
+            thumb.appendChild(img);
+
+            const label = document.createElement('div');
+            label.className = 'asset-label';
+            label.textContent = a.name;
+            thumb.appendChild(label);
+
+            const del = document.createElement('button');
+            del.className = 'asset-delete';
+            del.textContent = '×';
+            del.onclick = (e) => { e.stopPropagation(); deleteAsset(a.id); };
+            thumb.appendChild(del);
+
+            grid.appendChild(thumb);
+        }
+        details.appendChild(grid);
+        list.appendChild(details);
+    }
+}
+
+function updateInstanceList() {
+    const list = document.getElementById('instanceList');
+    list.innerHTML = '';
+    const sorted = getSortedInstances();
+    for (const inst of sorted) {
+        const item = document.createElement('div');
+        item.className = 'inst-item' + (inst.id === selectedInstanceId ? ' selected' : '');
+        item.onclick = () => selectInstance(inst.id);
+
+        const layerBadge = document.createElement('span');
+        layerBadge.className = 'inst-layer';
+        layerBadge.textContent = 'L' + inst.layer;
+        layerBadge.style.borderLeft = `3px solid ${LAYER_COLORS[inst.layer]}`;
+        item.appendChild(layerBadge);
+
+        const name = document.createElement('span');
+        name.className = 'inst-name';
+        name.textContent = inst.name || getAsset(inst.assetId)?.name || '?';
+        item.appendChild(name);
+
+        const del = document.createElement('span');
+        del.className = 'inst-del';
+        del.textContent = '×';
+        del.onclick = (e) => { e.stopPropagation(); deleteInstance(inst.id); };
+        item.appendChild(del);
+
+        list.appendChild(item);
+    }
+}
+
+function updateProps() {
+    const inst = getSelectedInstance();
+    const fields = document.getElementById('propFields');
+    const nosel = document.getElementById('noSel');
+
+    if (!inst) {
+        fields.style.display = 'none';
+        nosel.style.display = '';
+        return;
+    }
+
+    fields.style.display = '';
+    nosel.style.display = 'none';
+
+    document.getElementById('propName').value = inst.name || '';
+    document.getElementById('propX').value = inst.x;
+    document.getElementById('propY').value = inst.y;
+    document.getElementById('propSX').value = inst.scaleX; document.getElementById('valSX').textContent = inst.scaleX.toFixed(2);
+    document.getElementById('propSY').value = inst.scaleY; document.getElementById('valSY').textContent = inst.scaleY.toFixed(2);
+    document.getElementById('propRot').value = inst.rotation; document.getElementById('valRot').textContent = inst.rotation + '°';
+    document.getElementById('propLayer').value = inst.layer;
+    document.getElementById('propFlip').checked = inst.flipX;
+    document.getElementById('propOpacity').value = inst.opacity; document.getElementById('valOp').textContent = Math.round(inst.opacity * 100) + '%';
+    document.getElementById('propTintOn').checked = !!inst.tint;
+    if (inst.tint) document.getElementById('propTintColor').value = inst.tint;
+    document.getElementById('propZ').value = inst.zIndex;
+    document.getElementById('propColl').checked = inst.collision;
+    document.getElementById('propHitW').value = inst.hitWidth;
+    document.getElementById('propHitH').value = inst.hitHeight;
+}
+
+function updateBgInputs() {
+    document.getElementById('bgTop').value = scene.background.topColor;
+    document.getElementById('bgMid').value = scene.background.midColor;
+    document.getElementById('bgBot').value = scene.background.bottomColor;
+}
+
+function updateSceneInputs() {
+    document.getElementById('sceneName').value = scene.name;
+    document.getElementById('sceneBiome').value = scene.biome;
+    document.getElementById('sceneChunk').value = scene.chunkIndex;
+}
+
+function updateLayerBar() {
+    const bar = document.getElementById('layerBar');
+    bar.innerHTML = '<span>Layer:</span>';
+    for (let i = 0; i < 6; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'layer-btn' + (layerVisibility[i] ? '' : ' hidden-layer');
+        btn.style.borderLeft = `3px solid ${LAYER_COLORS[i]}`;
+        btn.innerHTML = `${i} ${LAYER_NAMES[i]} <span class="eye">${layerVisibility[i] ? '👁' : '—'}</span>`;
+        btn.onclick = () => {
+            layerVisibility[i] = !layerVisibility[i];
+            updateLayerBar();
+            render();
+        };
+        bar.appendChild(btn);
+    }
+
+    // Grid size selector
+    const sep = document.createElement('div');
+    sep.className = 'sep';
+    bar.appendChild(sep);
+
+    const gridLabel = document.createElement('span');
+    gridLabel.textContent = 'Grid:';
+    bar.appendChild(gridLabel);
+
+    for (const size of [16, 32, 64]) {
+        const btn = document.createElement('button');
+        btn.className = 'layer-btn' + (gridSize === size ? ' active' : '');
+        btn.textContent = size + 'px';
+        btn.style.fontSize = '10px';
+        btn.onclick = () => { gridSize = size; updateLayerBar(); if(showGrid) render(); if(snapToGrid) document.getElementById('btnSnap').textContent = `Snap: ${gridSize}px`; };
+        bar.appendChild(btn);
+    }
+}
+
+function centerView() {
+    const area = document.getElementById('canvasArea');
+    const cw = area.clientWidth, ch = area.clientHeight;
+    // Fit scene in view
+    zoom = Math.min(cw / SCENE_W, ch / SCENE_H) * 0.9;
+    panX = (cw - SCENE_W * zoom) / 2;
+    panY = (ch - SCENE_H * zoom) / 2;
+}
+
+// ─── MAP GENERATOR ───
+function showMapGenerator() {
+    // Built-in Assets müssen geladen sein
+    const builtinCount = assets.filter(a => a._builtin).length;
+    if (builtinCount === 0) {
+        alert('Built-in Assets werden noch geladen. Bitte kurz warten und nochmal versuchen.');
+        return;
+    }
+    document.getElementById('mapGenModal').classList.add('show');
+}
+function closeMapGenModal() { document.getElementById('mapGenModal').classList.remove('show'); }
+
+// Seeded PRNG (Mulberry32)
+function mulberry32(seed) {
+    return function() {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+function generateMap() {
+    const template = document.getElementById('genTemplate').value;
+    const biome = document.getElementById('genBiome').value;
+    const density = +document.getElementById('genDensity').value;
+    const seedInput = document.getElementById('genSeed').value;
+    const sceneCount = Math.max(1, Math.min(8, +document.getElementById('genSceneCount').value || 1));
+    const keepExisting = document.getElementById('genKeepExisting').checked;
+
+    const seed = seedInput ? +seedInput : Math.floor(Math.random() * 999999);
+    const rng = mulberry32(seed);
+    const pick = arr => arr[Math.floor(rng() * arr.length)];
+    const range = (min, max) => min + rng() * (max - min);
+    const irange = (min, max) => Math.round(range(min, max));
+
+    snapshot();
+
+    // Biome setzen
+    scene.background = { ...BIOME_PRESETS[biome] };
+    scene.biome = biome;
+    scene.name = `Generated-${template}-${seed}`;
+
+    // Canvas für Multi-Szene erweitern
+    const totalW = SCENE_W * sceneCount;
+
+    if (!keepExisting) {
+        instances = [];
+    }
+
+    // Built-in Assets nach Name finden
+    const findAsset = name => assets.find(a => a.name === name && a._builtin);
+    const findCategory = cat => assets.filter(a => a.category === cat && a._builtin);
+
+    // ─── ASSET GRUPPEN ───
+    const wandLinks = ['Wandlinksgross', 'Wandlinksgrosszwei', 'Wandlinksgrossdrei', 'Wandlinksmittel'].map(findAsset).filter(Boolean);
+    const wandOben = ['Wandobenklein', 'Wandobenmittel'].map(findAsset).filter(Boolean);
+    const wandUnten = ['Wanduntenklein', 'Wanduntenmittel'].map(findAsset).filter(Boolean);
+    const kristalle = ['Kristallunten', 'Kristalluntenzwei'].map(findAsset).filter(Boolean);
+    const obenUnten = ['Obenundunteneins', 'Obenunduntenzwei'].map(findAsset).filter(Boolean);
+    const pflanzen = ['Pflanzewagrecht', 'Pflanzensenkrecht'].map(findAsset).filter(Boolean);
+    const szenenOeffnung = ['SzeneMitOeffnungUnten', 'SzeneMitOeffnungUntenZwei'].map(findAsset).filter(Boolean);
+    const mission3 = ['Mission3-Szene1', 'Mission3-Szene2', 'Mission3-Szene3', 'Mission3-Szene4'].map(findAsset).filter(Boolean);
+    const allBgs = findCategory('background');
+
+    // ─── HELPER: Instanz platzieren ───
+    function place(asset, x, y, layer, opts = {}) {
+        if (!asset) return;
+        const inst = {
+            id: uid(),
+            assetId: asset.id,
+            name: opts.name || asset.name,
+            x: Math.round(x),
+            y: Math.round(y),
+            scaleX: opts.scaleX ?? 1,
+            scaleY: opts.scaleY ?? 1,
+            rotation: opts.rotation ?? 0,
+            layer: layer,
+            flipX: opts.flipX ?? false,
+            opacity: opts.opacity ?? 1,
+            tint: opts.tint ?? null,
+            zIndex: opts.zIndex ?? 0,
+            collision: opts.collision ?? false,
+            hitWidth: opts.hitWidth ?? Math.round(asset.width * 0.45),
+            hitHeight: opts.hitHeight ?? Math.round(asset.height * 0.4)
+        };
+        instances.push(inst);
+        return inst;
+    }
+
+    // Szene-Breite/Höhe als Referenz (Assets sind 1536x1024, Scene ist 1200x675)
+    const scaleToFit = SCENE_W / 1536; // ~0.78
+
+    // ─── TEMPLATES ───
+    for (let s = 0; s < sceneCount; s++) {
+        const offsetX = s * SCENE_W;
+        const cx = offsetX + SCENE_W / 2;  // Mitte der Szene
+        const cy = SCENE_H / 2;
+
+        const effectiveTemplate = template === 'zufall'
+            ? pick(['hoehle', 'passage', 'grotte', 'dschungel', 'offen', 'szene'])
+            : template;
+
+        switch (effectiveTemplate) {
+
+            case 'hoehle': {
+                // Großer Hintergrund: Wandlinksgross als Basis (skaliert auf Szene)
+                const bg = pick(wandLinks);
+                if (bg) place(bg, cx, cy, 0, { scaleX: scaleToFit, scaleY: scaleToFit * (SCENE_H / 1024 * 1536 / SCENE_W), opacity: 0.7 });
+
+                // Obere Wand-Elemente
+                if (density >= 2 && wandOben.length) {
+                    const count = irange(1, Math.min(3, density));
+                    for (let i = 0; i < count; i++) {
+                        const w = pick(wandOben);
+                        const sc = range(0.25, 0.45);
+                        const wx = offsetX + range(100, SCENE_W - 100);
+                        place(w, wx, range(20, 80), 1, { scaleX: sc, scaleY: sc, flipX: rng() > 0.5 });
+                    }
+                }
+
+                // Untere Wand-Elemente
+                if (density >= 2 && wandUnten.length) {
+                    const count = irange(1, Math.min(3, density));
+                    for (let i = 0; i < count; i++) {
+                        const w = pick(wandUnten);
+                        const sc = range(0.25, 0.45);
+                        const wx = offsetX + range(100, SCENE_W - 100);
+                        place(w, wx, SCENE_H - range(20, 80), 4, { scaleX: sc, scaleY: sc, flipX: rng() > 0.5 });
+                    }
+                }
+
+                // Seitliche große Wände
+                if (density >= 3 && wandLinks.length) {
+                    const wl = pick(wandLinks);
+                    const sc = range(0.35, 0.55);
+                    place(wl, offsetX + range(30, 120), cy + range(-50, 50), 2, { scaleX: sc, scaleY: sc, opacity: 0.8 });
+                    if (density >= 4) {
+                        const wr = pick(wandLinks);
+                        place(wr, offsetX + SCENE_W - range(30, 120), cy + range(-50, 50), 2, { scaleX: sc, scaleY: sc, flipX: true, opacity: 0.8 });
+                    }
+                }
+
+                // Kristall-Deko am Boden
+                if (density >= 2 && kristalle.length) {
+                    const count = irange(1, density);
+                    for (let i = 0; i < count; i++) {
+                        const k = pick(kristalle);
+                        const sc = range(0.15, 0.35);
+                        place(k, offsetX + range(150, SCENE_W - 150), SCENE_H - range(40, 120), 4, { scaleX: sc, scaleY: sc });
+                    }
+                }
+                break;
+            }
+
+            case 'passage': {
+                // Oben-und-Unten Begrenzung als Hauptelement
+                const bg = pick(obenUnten);
+                if (bg) place(bg, cx, cy, 0, { scaleX: scaleToFit, scaleY: scaleToFit * (SCENE_H / 1024 * 1536 / SCENE_W), opacity: 0.8 });
+
+                // Zusätzliche Wand-Elemente oben
+                if (density >= 2 && wandOben.length) {
+                    for (let i = 0; i < irange(1, density - 1); i++) {
+                        const w = pick(wandOben);
+                        const sc = range(0.2, 0.4);
+                        place(w, offsetX + range(80, SCENE_W - 80), range(30, 100), 1, { scaleX: sc, scaleY: sc, flipX: rng() > 0.5 });
+                    }
+                }
+
+                // Wand-Elemente unten
+                if (density >= 2 && wandUnten.length) {
+                    for (let i = 0; i < irange(1, density - 1); i++) {
+                        const w = pick(wandUnten);
+                        const sc = range(0.2, 0.4);
+                        place(w, offsetX + range(80, SCENE_W - 80), SCENE_H - range(30, 100), 4, { scaleX: sc, scaleY: sc, flipX: rng() > 0.5 });
+                    }
+                }
+
+                // Pflanzen-Deko
+                if (density >= 3 && pflanzen.length) {
+                    for (let i = 0; i < irange(1, 3); i++) {
+                        const p = pick(pflanzen);
+                        const sc = range(0.15, 0.3);
+                        place(p, offsetX + range(100, SCENE_W - 100), range(SCENE_H * 0.3, SCENE_H * 0.7), 2, { scaleX: sc, scaleY: sc, opacity: 0.6 });
+                    }
+                }
+                break;
+            }
+
+            case 'grotte': {
+                // Kristall-Szene als Basis
+                const bg = pick(szenenOeffnung.length ? szenenOeffnung : kristalle);
+                if (bg) place(bg, cx, cy, 0, { scaleX: scaleToFit, scaleY: scaleToFit * (SCENE_H / 1024 * 1536 / SCENE_W), opacity: 0.75 });
+
+                // Viele Kristalle verteilt
+                if (kristalle.length) {
+                    const count = irange(2, 2 + density);
+                    for (let i = 0; i < count; i++) {
+                        const k = pick(kristalle);
+                        const sc = range(0.12, 0.35);
+                        const kx = offsetX + range(60, SCENE_W - 60);
+                        const ky = range(SCENE_H * 0.4, SCENE_H - 30);
+                        place(k, kx, ky, rng() > 0.5 ? 2 : 4, { scaleX: sc, scaleY: sc, flipX: rng() > 0.5, opacity: range(0.6, 1) });
+                    }
+                }
+
+                // Obere Wände für Decke
+                if (density >= 3 && wandOben.length) {
+                    const w = pick(wandOben);
+                    const sc = range(0.3, 0.5);
+                    place(w, cx + range(-100, 100), range(20, 70), 1, { scaleX: sc, scaleY: sc });
+                }
+
+                // Seitliche Wand links
+                if (density >= 4 && wandLinks.length) {
+                    const wl = pick(wandLinks);
+                    place(wl, offsetX + range(30, 80), cy, 2, { scaleX: 0.35, scaleY: 0.45, opacity: 0.5 });
+                }
+                break;
+            }
+
+            case 'dschungel': {
+                // Pflanzen überall
+                const bg = pick(obenUnten.length ? obenUnten : allBgs);
+                if (bg) place(bg, cx, cy, 0, { scaleX: scaleToFit, scaleY: scaleToFit * (SCENE_H / 1024 * 1536 / SCENE_W), opacity: 0.5 });
+
+                if (pflanzen.length) {
+                    // Vorder- und Hintergrund-Pflanzen
+                    const count = irange(3, 3 + density * 2);
+                    for (let i = 0; i < count; i++) {
+                        const p = pick(pflanzen);
+                        const sc = range(0.1, 0.4);
+                        const layer = pick([1, 2, 2, 4, 5]);
+                        const px = offsetX + range(30, SCENE_W - 30);
+                        const py = range(50, SCENE_H - 50);
+                        place(p, px, py, layer, {
+                            scaleX: sc, scaleY: sc,
+                            flipX: rng() > 0.5,
+                            rotation: irange(-15, 15),
+                            opacity: layer <= 1 ? range(0.3, 0.6) : range(0.6, 1)
+                        });
+                    }
+                }
+
+                // Ein paar Kristalle als Akzent
+                if (density >= 3 && kristalle.length) {
+                    for (let i = 0; i < irange(1, 2); i++) {
+                        const k = pick(kristalle);
+                        place(k, offsetX + range(100, SCENE_W - 100), SCENE_H - range(50, 150), 4, { scaleX: 0.2, scaleY: 0.2 });
+                    }
+                }
+                break;
+            }
+
+            case 'offen': {
+                // Minimal: Nur Rand-Deko, viel offener Spielbereich
+                // Leichte Boden-Elemente
+                if (density >= 2 && wandUnten.length) {
+                    for (let i = 0; i < irange(1, 2); i++) {
+                        const w = pick(wandUnten);
+                        const sc = range(0.15, 0.3);
+                        place(w, offsetX + range(50, SCENE_W - 50), SCENE_H - range(10, 40), 4, { scaleX: sc, scaleY: sc, opacity: 0.5 });
+                    }
+                }
+
+                // Ferne Hintergrund-Pflanzen
+                if (density >= 3 && pflanzen.length) {
+                    for (let i = 0; i < irange(1, density); i++) {
+                        const p = pick(pflanzen);
+                        const sc = range(0.08, 0.2);
+                        place(p, offsetX + range(50, SCENE_W - 50), range(SCENE_H * 0.5, SCENE_H - 30), 1, { scaleX: sc, scaleY: sc, opacity: range(0.2, 0.4) });
+                    }
+                }
+
+                // Ganz leichter Kristall-Akzent
+                if (density >= 4 && kristalle.length) {
+                    const k = pick(kristalle);
+                    place(k, offsetX + range(200, SCENE_W - 200), SCENE_H - range(20, 80), 4, { scaleX: 0.15, scaleY: 0.15, opacity: 0.4 });
+                }
+                break;
+            }
+
+            case 'szene': {
+                // Komplette Mission-3 Szene als Fullscreen-BG
+                if (mission3.length) {
+                    const m = pick(mission3);
+                    place(m, cx, cy, 0, { scaleX: scaleToFit, scaleY: scaleToFit * (SCENE_H / 1024 * 1536 / SCENE_W), name: 'Szene-BG' });
+                } else if (szenenOeffnung.length) {
+                    const sz = pick(szenenOeffnung);
+                    place(sz, cx, cy, 0, { scaleX: scaleToFit, scaleY: scaleToFit * (SCENE_H / 1024 * 1536 / SCENE_W) });
+                }
+
+                // Overlay-Deko: Wände, Kristalle, Pflanzen
+                if (density >= 2) {
+                    // Rand-Wände
+                    if (wandLinks.length) {
+                        const sc = range(0.25, 0.4);
+                        place(pick(wandLinks), offsetX + range(20, 80), cy + range(-80, 80), 2, { scaleX: sc, scaleY: sc, opacity: 0.5 });
+                    }
+                    if (density >= 3 && wandLinks.length) {
+                        const sc = range(0.25, 0.4);
+                        place(pick(wandLinks), offsetX + SCENE_W - range(20, 80), cy + range(-80, 80), 2, { scaleX: sc, scaleY: sc, flipX: true, opacity: 0.5 });
+                    }
+                }
+
+                if (density >= 3 && kristalle.length) {
+                    const k = pick(kristalle);
+                    place(k, offsetX + range(150, SCENE_W - 150), SCENE_H - range(30, 100), 4, { scaleX: 0.2, scaleY: 0.2, opacity: 0.7 });
+                }
+
+                if (density >= 4 && pflanzen.length) {
+                    const p = pick(pflanzen);
+                    place(p, offsetX + range(80, SCENE_W - 80), range(SCENE_H * 0.6, SCENE_H - 30), 5, { scaleX: 0.2, scaleY: 0.2, opacity: 0.5 });
+                }
+                break;
+            }
+        }
+    }
+
+    // UI aktualisieren
+    scene.chunkIndex = 0;
+    selectedInstanceId = null;
+    selectedAssetId = null;
+    updateBgInputs();
+    updateSceneInputs();
+    updateAssetList();
+    updateInstanceList();
+    updateProps();
+    centerView();
+    render();
+
+    closeMapGenModal();
+    console.log(`Map generiert: Template=${template}, Biome=${biome}, Seed=${seed}, Szenen=${sceneCount}, Dichte=${density}, Instanzen=${instances.length}`);
+}
+
+// ─── BUILT-IN ASSETS ───
+// Backgrounds aus neubackgrounds/ + Mission-3-Scenen (Bwl PNGs)
+const BUILTIN_ASSETS = [
+    // --- neubackgrounds: Wände, Kristalle, Pflanzen, Szenen-Teile ---
+    { name: 'Wandlinksgross',       category: 'background', path: '../../src/neubackgrounds/Wandlinksgross.png' },
+    { name: 'Wandlinksgrosszwei',   category: 'background', path: '../../src/neubackgrounds/Wandlinksgrosszwei.png' },
+    { name: 'Wandlinksgrossdrei',   category: 'background', path: '../../src/neubackgrounds/Wandlinksgrossdrei.png' },
+    { name: 'Wandlinksmittel',      category: 'background', path: '../../src/neubackgrounds/Wandlinksmittel.png' },
+    { name: 'Wandobenklein',        category: 'background', path: '../../src/neubackgrounds/Wandobenklein.png' },
+    { name: 'Wandobenmittel',       category: 'background', path: '../../src/neubackgrounds/Wandobenmittel.png' },
+    { name: 'Wanduntenklein',       category: 'background', path: '../../src/neubackgrounds/Wanduntenklein.png' },
+    { name: 'Wanduntenmittel',      category: 'background', path: '../../src/neubackgrounds/Wanduntenmittel.png' },
+    { name: 'Kristallunten',        category: 'background', path: '../../src/neubackgrounds/Kristallunten.png' },
+    { name: 'Kristalluntenzwei',    category: 'background', path: '../../src/neubackgrounds/Kristalluntenzwei.png' },
+    { name: 'Obenundunteneins',     category: 'background', path: '../../src/neubackgrounds/Obenundunteneins.png' },
+    { name: 'Obenunduntenzwei',     category: 'background', path: '../../src/neubackgrounds/Obenunduntenzwei.png' },
+    { name: 'Pflanzewagrecht',      category: 'background', path: '../../src/neubackgrounds/Pflanzewagrecht.png' },
+    { name: 'Pflanzensenkrecht',    category: 'background', path: '../../src/neubackgrounds/Pflanzensenkrecht.png' },
+    { name: 'SzeneMitOeffnungUnten',     category: 'background', path: '../../src/neubackgrounds/SzeneMitOeffnungUnten.png' },
+    { name: 'SzeneMitOeffnungUntenZwei', category: 'background', path: '../../src/neubackgrounds/SzeneMitOeffnungUntenZwei.png' },
+    // --- Mission-3-Szenen (komplette Level-Backgrounds) ---
+    { name: 'Mission3-Szene1',  category: 'scene', path: '../../src/Bwlone.png' },
+    { name: 'Mission3-Szene2',  category: 'scene', path: '../../src/bwltwo.png' },
+    { name: 'Mission3-Szene3',  category: 'scene', path: '../../src/Bwltre.png' },
+    { name: 'Mission3-Szene4',  category: 'scene', path: '../../src/Bwlfour.png' },
+];
+
+function loadBuiltinAssets() {
+    let loaded = 0;
+    const total = BUILTIN_ASSETS.length;
+
+    for (const def of BUILTIN_ASSETS) {
+        // Nicht doppelt laden (z.B. nach Autosave-Restore)
+        if (assets.find(a => a.name === def.name && a._builtin)) continue;
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            // Bild als dataUrl cachen für Autosave-Kompatibilität
+            let dataUrl;
+            try {
+                const c = document.createElement('canvas');
+                c.width = img.naturalWidth;
+                c.height = img.naturalHeight;
+                c.getContext('2d').drawImage(img, 0, 0);
+                dataUrl = c.toDataURL('image/png');
+            } catch(e) {
+                // Falls CORS-Problem: Path direkt als src nutzen
+                dataUrl = def.path;
+            }
+
+            const asset = {
+                id: uid(),
+                name: def.name,
+                category: def.category,
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+                dataUrl: dataUrl,
+                img: img,
+                _builtin: true
+            };
+            assets.push(asset);
+            loaded++;
+            if (loaded >= total) {
+                updateAssetList();
+                render();
+            }
+        };
+        img.onerror = () => {
+            console.warn('Built-in Asset konnte nicht geladen werden:', def.name, def.path);
+            loaded++;
+            if (loaded >= total) {
+                updateAssetList();
+                render();
+            }
+        };
+        img.src = def.path;
+    }
+}
+
+// ─── INIT ───
+function init() {
+    updateLayerBar();
+    loadAutosave();
+    loadBuiltinAssets();
+    updateAssetList();
+    updateInstanceList();
+
+    // Center view after a frame
+    requestAnimationFrame(() => {
+        centerView();
+        render();
+    });
+
+    // Re-render on resize
+    window.addEventListener('resize', () => { render(); });
+}
+
+init();
+</script>
+</body>
+</html>

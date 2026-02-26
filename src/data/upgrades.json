@@ -87,5 +87,25 @@
         "description": "+15% auf alle Werte"
       }
     }
+  ],
+  "companionUpgrades": [
+    {
+      "id": "companion_fireRate",
+      "label": "Offensiv-Begleiter",
+      "description": "Korallenbegleiter feuern 30% schneller",
+      "cost": 8000,
+      "effect": {
+        "coralFireRateBonus": 0.3
+      }
+    },
+    {
+      "id": "companion_extra",
+      "label": "Schwarm-Upgrade",
+      "description": "+1 Korallenbegleiter gleichzeitig (max. 4)",
+      "cost": 12000,
+      "effect": {
+        "coralMaxCount": 1
+      }
+    }
   ]
 }

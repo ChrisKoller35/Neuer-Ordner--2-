@@ -130,6 +130,20 @@ export function createBackgroundRenderSystem(ctx) {
 	 * Get background sprite for a specific scene (cycles through available sprites)
 	 */
 	function getSceneBackgroundSprite(sceneIndex) {
+		const state = getState();
+		
+		// World Mode (Mission 3): Scene 0→bwlOne, 1→bwlTwo, 2→bwlThree, 3→bwlFour, dann 3/4 abwechselnd
+		if (state.worldMode && SPRITES.bwlOne) {
+			if (sceneIndex === 0) return SPRITES.bwlOne;
+			if (sceneIndex === 1) return SPRITES.bwlTwo || SPRITES.bwlOne;
+			// Ab Scene 2: gerade (2,4,6,...) → bwlThree, ungerade (3,5,7,...) → bwlFour
+			if (sceneIndex % 2 === 0) {
+				return SPRITES.bwlThree || SPRITES.bwlOne;
+			} else {
+				return SPRITES.bwlFour || SPRITES.bwlOne;
+			}
+		}
+		
 		// Cycle through available background sprites
 		const bgSprites = [
 			SPRITES.backgroundLevelOne,

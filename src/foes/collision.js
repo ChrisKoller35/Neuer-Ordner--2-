@@ -42,6 +42,7 @@ export function createFoeCollisionSystem(deps) {
         if (state.shots.length === 0) return;
         for (const shot of state.shots) {
             if (shot.life <= 0) continue;
+            const shotDamage = Math.max(0.1, Number.isFinite(shot.damage) ? shot.damage : 1);
             for (const foe of state.foes) {
                 if (foe.dead) continue;
                 const dx = foe.x - shot.x;
@@ -50,9 +51,23 @@ export function createFoeCollisionSystem(deps) {
                 const nx = dx / hitWidth;
                 const ny = dy / hitHeight;
                 if (nx * nx + ny * ny < 1) {
-                    foe.dead = true;
+                    if (Number.isFinite(foe.hp)) {
+                        foe.hp = Math.max(0, foe.hp - shotDamage);
+                        if (foe.hp <= 0) foe.dead = true;
+                    } else {
+                        foe.dead = true;
+                    }
+					const leech = state.leechAura;
+					if (leech?.unlocked && Number.isFinite(leech.percent) && leech.percent > 0 && Number.isFinite(state.maxHearts)) {
+						const healAmount = Math.max(0, shotDamage * leech.percent);
+						if (healAmount > 0 && Number.isFinite(state.hearts)) {
+							const current = state.hearts;
+							state.hearts = Math.min(state.maxHearts, current + healAmount);
+							if (state.hearts > current) updateHUD();
+						}
+					}
                     shot.life = 0;
-                    awardFoeDefeat(foe);
+                    if (foe.dead) awardFoeDefeat(foe);
                     break;
                 }
             }

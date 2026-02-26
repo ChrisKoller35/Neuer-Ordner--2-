@@ -53,6 +53,7 @@ export function createUpgradeUI(ctx) {
         
         const currentLevel = upgradeSystem.getCurrentLevel();
         const upgrades = upgradeSystem.getUpgradeLevels();
+        const companionUpgrades = upgradeSystem.getCompanionUpgrades ? upgradeSystem.getCompanionUpgrades() : [];
         const coins = state.coins || 0;
         
         let html = `
@@ -181,6 +182,79 @@ export function createUpgradeUI(ctx) {
         }
         
         html += '</div>';
+
+        if (companionUpgrades.length) {
+            html += `
+                <div style="margin-top: 18px; margin-bottom: 10px; color: #7ad7ff; font-weight: bold; font-size: 15px;">
+                    🪸 Begleiter-Upgrades
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+            `;
+
+            for (const upgrade of companionUpgrades) {
+                const purchased = upgradeSystem.isCompanionUpgradePurchased
+                    ? upgradeSystem.isCompanionUpgradePurchased(upgrade.id)
+                    : false;
+                const canBuy = upgradeSystem.canPurchaseCompanionUpgrade
+                    ? upgradeSystem.canPurchaseCompanionUpgrade(upgrade.id)
+                    : false;
+
+                let statusText = '';
+                let buttonHTML = '';
+                let borderColor = '#2a4860';
+                let bgColor = 'rgba(40, 90, 120, 0.2)';
+
+                if (purchased) {
+                    borderColor = '#4ade80';
+                    bgColor = 'rgba(74, 222, 128, 0.12)';
+                    statusText = '<span style="color: #4ade80;">✓ Aktiv</span>';
+                } else if (canBuy) {
+                    borderColor = '#7ad7ff';
+                    bgColor = 'rgba(122, 215, 255, 0.12)';
+                    buttonHTML = `<button class="upgrade-buy-companion-btn" data-upgrade-id="${upgrade.id}" style="
+                        background: linear-gradient(135deg, #7ad7ff 0%, #3ea7d8 100%);
+                        border: none;
+                        color: #061827;
+                        padding: 8px 14px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-size: 13px;
+                    ">Kaufen</button>`;
+                } else {
+                    statusText = '<span style="color: #e94560;">Zu wenig Münzen</span>';
+                }
+
+                html += `
+                    <div style="
+                        background: ${bgColor};
+                        border: 2px solid ${borderColor};
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                            <div>
+                                <div style="font-weight:bold;font-size:15px;">${upgrade.label || upgrade.id}</div>
+                                <div style="color:#aaa;font-size:12px;">${upgrade.description || ''}</div>
+                            </div>
+                            <div style="text-align:right; min-width: 110px;">
+                                ${statusText}
+                                ${buttonHTML}
+                            </div>
+                        </div>
+                        <div style="
+                            display:flex;
+                            justify-content:flex-end;
+                            color:#7ad7ff;
+                            font-size:13px;
+                            margin-top:8px;
+                        ">💰 ${(upgrade.cost || 0).toLocaleString('de-DE')}</div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+        }
         container.innerHTML = html;
         
         // Event Listener
@@ -195,6 +269,16 @@ export function createUpgradeUI(ctx) {
                 const level = parseInt(e.target.dataset.level);
                 if (upgradeSystem.purchaseUpgrade(level)) {
                     render(); // UI aktualisieren
+                }
+            });
+        });
+
+        const companionButtons = container.querySelectorAll('.upgrade-buy-companion-btn');
+        companionButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.target.dataset.upgradeId;
+                if (upgradeSystem.purchaseCompanionUpgrade && upgradeSystem.purchaseCompanionUpgrade(id)) {
+                    render();
                 }
             });
         });

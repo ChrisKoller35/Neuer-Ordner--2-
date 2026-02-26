@@ -72,7 +72,7 @@
       "background": "./building-backgrounds/Kaserne.webp",
       "mapPosition": { "x": 0.8, "y": 0.35 },
       "mapIcon": "./buildings/barracks-icon.png",
-      "unlocked": false,
+      "unlocked": true,
       "unlockRequirement": { "level": 3, "coins": 500 },
       "npc": {
         "id": "captain",
@@ -81,7 +81,7 @@
         "position": { "x": 0.5, "y": 0.6 },
         "dialogues": {
           "greeting": "Soldat! Bereit für das Training?",
-          "menu": ["Armee verwalten", "Training", "Einheiten-Upgrades"]
+          "menu": ["Dungeon betreten", "Helferkarten"]
         }
       },
       "features": ["army", "training", "unit_upgrades"]

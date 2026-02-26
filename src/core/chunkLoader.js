@@ -108,7 +108,7 @@ export function createChunkLoader(ctx) {
 				state: ChunkState.UNLOADED,
 				x: i * sceneWidth,
 				width: sceneWidth,
-				biome: biome,
+				biome,
 				palette: palettes[biome],
 				backgroundKey: template.key,
 				// Runtime data (populated when loaded)

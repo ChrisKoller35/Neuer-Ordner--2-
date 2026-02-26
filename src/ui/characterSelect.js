@@ -30,6 +30,15 @@ document.addEventListener('DOMContentLoaded', function() {
   const startButton = document.getElementById('btnStartGame');
   const confirmButton = document.getElementById('btnConfirmCharacter');
   const cards = document.querySelectorAll('.character-card');
+
+  // Charakter-Bilder über Vite-aufgelöste URLs setzen
+  cards.forEach(card => {
+    const charKey = card.dataset.character;
+    const img = card.querySelector('.character-img');
+    if (img && CHARACTER_SPRITE_URLS[charKey]) {
+      img.src = CHARACTER_SPRITE_URLS[charKey];
+    }
+  });
   
   // Start-Button: Zeigt Charakterauswahl
   if (startButton) {

@@ -1,0 +1,181 @@
+{
+  "_comment": "Akademie-Daten: Modularer Skill-Builder mit Basis-Zaubern + Modifikatoren",
+  "buildingLevels": {
+    "1": { "modSlots": 1, "label": "Kleine Akademie", "upgradeCost": 0 },
+    "2": { "modSlots": 2, "label": "Mittlere Akademie", "upgradeCost": 600 },
+    "3": { "modSlots": 3, "label": "Große Akademie", "upgradeCost": 1800 }
+  },
+  "baseSpells": {
+    "feuerball": {
+      "id": "feuerball",
+      "name": "Feuerball",
+      "icon": "🔥",
+      "element": "fire",
+      "description": "Schleudert einen brennenden Ball auf Gegner.",
+      "baseDamage": 25,
+      "cooldown": 2000,
+      "projectileSpeed": 6,
+      "projectileSize": 12,
+      "cost": 0,
+      "unlocked": true,
+      "unlockLevel": 1
+    },
+    "eislanze": {
+      "id": "eislanze",
+      "name": "Eislanze",
+      "icon": "🧊",
+      "element": "ice",
+      "description": "Verschießt einen spitzen Eiskristall der verlangsamt.",
+      "baseDamage": 18,
+      "cooldown": 1500,
+      "projectileSpeed": 8,
+      "projectileSize": 8,
+      "cost": 200,
+      "unlocked": false,
+      "unlockLevel": 1
+    },
+    "blitzschlag": {
+      "id": "blitzschlag",
+      "name": "Blitzschlag",
+      "icon": "⚡",
+      "element": "lightning",
+      "description": "Ein Blitz springt zwischen nahen Gegnern.",
+      "baseDamage": 15,
+      "cooldown": 2500,
+      "projectileSpeed": 12,
+      "projectileSize": 6,
+      "cost": 350,
+      "unlocked": false,
+      "unlockLevel": 2
+    },
+    "schattenklinge": {
+      "id": "schattenklinge",
+      "name": "Schattenklinge",
+      "icon": "🗡️",
+      "element": "shadow",
+      "description": "Unsichtbare Klinge die durch Gegner schneidet.",
+      "baseDamage": 30,
+      "cooldown": 3000,
+      "projectileSpeed": 10,
+      "projectileSize": 10,
+      "cost": 500,
+      "unlocked": false,
+      "unlockLevel": 2
+    },
+    "giftnova": {
+      "id": "giftnova",
+      "name": "Giftnova",
+      "icon": "☠️",
+      "element": "poison",
+      "description": "Giftexplosion die Gegner im Umfeld vergiftet.",
+      "baseDamage": 12,
+      "cooldown": 4000,
+      "projectileSpeed": 0,
+      "projectileSize": 40,
+      "cost": 400,
+      "unlocked": false,
+      "unlockLevel": 2
+    },
+    "heiliger_strahl": {
+      "id": "heiliger_strahl",
+      "name": "Heiliger Strahl",
+      "icon": "✨",
+      "element": "holy",
+      "description": "Ein Lichtstrahl der schadet und leicht heilt.",
+      "baseDamage": 20,
+      "cooldown": 3500,
+      "projectileSpeed": 14,
+      "projectileSize": 6,
+      "cost": 600,
+      "unlocked": false,
+      "unlockLevel": 3
+    }
+  },
+  "modifiers": {
+    "mehrfachschuss": {
+      "id": "mehrfachschuss",
+      "name": "Mehrfachschuss",
+      "icon": "🔱",
+      "description": "Feuert 3 Projektile gleichzeitig (Fächer).",
+      "effect": { "type": "multishot", "count": 3, "spreadAngle": 15 },
+      "cost": 150,
+      "unlocked": false,
+      "unlockLevel": 1
+    },
+    "verlangsamung": {
+      "id": "verlangsamung",
+      "name": "Verlangsamung",
+      "icon": "🐌",
+      "description": "Getroffene Gegner werden 1s verlangsamt.",
+      "effect": { "type": "slow", "duration": 1000, "factor": 0.5 },
+      "cost": 100,
+      "unlocked": false,
+      "unlockLevel": 1
+    },
+    "durchschlag": {
+      "id": "durchschlag",
+      "name": "Durchschlag",
+      "icon": "💥",
+      "description": "Projektil durchbohrt bis zu 3 Gegner.",
+      "effect": { "type": "pierce", "maxTargets": 3 },
+      "cost": 200,
+      "unlocked": false,
+      "unlockLevel": 1
+    },
+    "kettenschlag": {
+      "id": "kettenschlag",
+      "name": "Kettenschlag",
+      "icon": "⛓️",
+      "description": "Springt nach Treffer zu 2 weiteren Gegnern.",
+      "effect": { "type": "chain", "bounces": 2, "rangeLoss": 0.3 },
+      "cost": 300,
+      "unlocked": false,
+      "unlockLevel": 2
+    },
+    "groessenwahn": {
+      "id": "groessenwahn",
+      "name": "Größenwahn",
+      "icon": "🫧",
+      "description": "Projektil +80% größer, +30% Schaden.",
+      "effect": { "type": "enlarge", "sizeMult": 1.8, "damageMult": 1.3 },
+      "cost": 250,
+      "unlocked": false,
+      "unlockLevel": 2
+    },
+    "schnellfeuer": {
+      "id": "schnellfeuer",
+      "name": "Schnellfeuer",
+      "icon": "⚡",
+      "description": "Cooldown -40%, Schaden -20%.",
+      "effect": { "type": "rapidfire", "cooldownMult": 0.6, "damageMult": 0.8 },
+      "cost": 200,
+      "unlocked": false,
+      "unlockLevel": 2
+    },
+    "homing": {
+      "id": "homing",
+      "name": "Zielsuchend",
+      "icon": "🎯",
+      "description": "Projektile verfolgen den nächsten Gegner.",
+      "effect": { "type": "homing", "turnSpeed": 0.05 },
+      "cost": 400,
+      "unlocked": false,
+      "unlockLevel": 3
+    },
+    "explosionstod": {
+      "id": "explosionstod",
+      "name": "Explosionstod",
+      "icon": "💣",
+      "description": "Getötete Gegner explodieren (AoE-Schaden).",
+      "effect": { "type": "explodeOnKill", "radius": 60, "damagePct": 0.5 },
+      "cost": 500,
+      "unlocked": false,
+      "unlockLevel": 3
+    }
+  },
+  "communitySubmit": {
+    "enabled": true,
+    "maxChars": 280,
+    "webhookPlaceholder": "DISCORD_WEBHOOK_URL"
+  }
+}

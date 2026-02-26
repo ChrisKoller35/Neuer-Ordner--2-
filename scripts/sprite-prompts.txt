@@ -1,0 +1,4 @@
+# One prompt per line. Empty lines and # comments are ignored.
+small golden fish knight with tiny trident
+coral drone helper robot with blue glow
+ancient sea key icon symbol

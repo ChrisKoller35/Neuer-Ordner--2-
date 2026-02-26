@@ -1,5 +1,5 @@
 // ============================================================
-// SHARED STATE – Zentraler Zustand für Cross-Modul-Kommunikation
+// SHARED STATE – Central state for cross-module communication
 // ============================================================
 // Ersetzt window.* Globals durch ein importierbares Modul.
 // Alle Module importieren dieses Objekt statt window.* zu lesen/setzen.
@@ -36,6 +36,10 @@ const sharedState = {
 	CITY_BUILDING_X_DEBUG: 100,
 	CITY_BUILDING_Y_DEBUG: -765,
 	CITY_PLAYER_DEBUG: null,
+	CITY_HINT_HITBOXES: [],
+	nearTeleporter: false,
+	hubOpen: false,
+	dungeonDepth: 0,
 
 	// --- Grid Editor State ---
 	CITY_PLAYER_DRAG_MODE: false,
@@ -46,8 +50,7 @@ const sharedState = {
 	// --- Building Walkable Grids (game → buildingScene) ---
 	buildingWalkableGrids: {},
 
-	// --- Animation Test (inline script → city/render) ---
-	ANIM_TEST: { enabled: false, animation: null, player: null },
+	// --- Animation (jetzt immer aktiv über playerAnimation.js) ---
 
 	// --- Floor Debug (Konsolen-Variablen → city/render) ---
 	SHOW_FLOOR_DEBUG_LINES: false,

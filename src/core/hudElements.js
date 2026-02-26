@@ -1,13 +1,34 @@
 // ============================================================
-// HUD Elements - DOM-Elemente für das Game-HUD
+// HUD Elements - DOM elements for the game HUD
 // ============================================================
 "use strict";
+
+function ensureAbilityElement(id, icon, title) {
+	const existing = document.getElementById(id);
+	if (existing) return existing;
+	const container = document.querySelector(".abilities");
+	if (!container) return null;
+	const el = document.createElement("span");
+	el.id = id;
+	el.className = "ab locked";
+	el.textContent = icon;
+	el.title = title;
+	container.appendChild(el);
+	return el;
+}
 
 /**
  * Holt alle HUD DOM-Elemente
  * @returns {Object} HUD-Element-Referenzen
  */
 export function getHUDElements() {
+	const coralAbility = ensureAbilityElement("ab-coral", "🪸", "Korallenverbündete (R)");
+	const tsunamiAbility = ensureAbilityElement("ab-tsunami", "🌊", "Tsunami (T)");
+	const dashAbility = ensureAbilityElement("ab-dash", "⚡", "Strömungs-Dash (Q)");
+	const mineAbility = ensureAbilityElement("ab-mine", "💣", "Tiefsee-Mine (X)");
+	const leechAbility = ensureAbilityElement("ab-leech", "💚", "Lebensraub-Aura (passiv)");
+	const bubbleAbility = ensureAbilityElement("ab-timebubble", "🫧", "Zeit-Blase (C)");
+
 	return {
 		score: document.getElementById("score"),
 		coins: document.getElementById("coins"),
@@ -15,6 +36,12 @@ export function getHUDElements() {
 		time: document.getElementById("time"),
 		hearts: document.getElementById("hearts"),
 		shield: document.getElementById("ab-shield"),
+		coral: coralAbility,
+		tsunami: tsunamiAbility,
+		dash: dashAbility,
+		mine: mineAbility,
+		leech: leechAbility,
+		timeBubble: bubbleAbility,
 		armor: document.getElementById("hudArmor"),
 		playerLevel: document.getElementById("playerLevel"),
 		xpBarFill: document.getElementById("xpBarFill"),

@@ -30,7 +30,7 @@ function normalizeAssetPath(path) {
 		.replace(/^src\//, '');
 }
 
-function resolveBundledAssetUrl(path) {
+export function resolveBundledAssetUrl(path) {
 	const normalized = normalizeAssetPath(path).toLowerCase();
 	return BUNDLED_ASSET_LOOKUP.get(normalized) || null;
 }

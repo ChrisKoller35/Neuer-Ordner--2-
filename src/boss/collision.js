@@ -28,20 +28,21 @@ export function createBossCollisionSystem(deps) {
 		const scorePerHit = 10;
 		for (const shot of state.shots) {
 			if (shot.life <= 0) continue;
+			const shotDamage = Math.max(0.1, Number.isFinite(shot.damage) ? shot.damage : 1);
 			const dx = shot.x - boss.x;
 			const dy = (shot.y - boss.y) * 0.7;
 			const dist = Math.hypot(dx, dy);
 			const hitRadius = 64;
 			if (dist < hitRadius) {
 				shot.life = 0;
-				boss.hp = Math.max(0, boss.hp - 1);
+				boss.hp = Math.max(0, boss.hp - shotDamage);
 				state.score += scorePerHit;
 				state.levelScore += scorePerHit;
 				if (boss.hp <= 0) {
 					winGame();
 					break;
 				} else {
-					updateBannerEl(`Bosskampf – HP ${boss.hp}/${boss.maxHp}`);
+					updateBannerEl(`Bosskampf – HP ${Math.ceil(boss.hp)}/${boss.maxHp}`);
 				}
 			}
 		}

@@ -1,8 +1,8 @@
 // ============================================================
-// STATE MACHINE - Zustandsautomaten für Game-Modes
+// STATE MACHINE - State machines for game modes
 // ============================================================
 // Ersetzt String-basierte Mode-Checks durch typisierte Zustände
-// mit definierten Übergängen und Lifecycle-Hooks
+// with defined transitions and lifecycle hooks
 
 /**
  * @typedef {Object} StateDefinition
@@ -47,7 +47,7 @@ export class StateMachine {
 	}
 	
 	/**
-	 * Aktueller Zustandsname
+	 * Current state name
 	 */
 	get current() {
 		return this._currentState;
@@ -61,14 +61,14 @@ export class StateMachine {
 	}
 	
 	/**
-	 * Zeit im aktuellen Zustand (ms)
+	 * Time in current state (ms)
 	 */
 	get stateTime() {
 		return this._stateTime;
 	}
 	
 	/**
-	 * Prüft ob ein Zustand aktiv ist
+	 * Checks if a state is active
 	 * @param {string} stateName
 	 * @returns {boolean}
 	 */
@@ -77,7 +77,7 @@ export class StateMachine {
 	}
 	
 	/**
-	 * Prüft ob einer von mehreren Zuständen aktiv ist
+	 * Checks if any of multiple states is active
 	 * @param {...string} stateNames
 	 * @returns {boolean}
 	 */
@@ -88,7 +88,7 @@ export class StateMachine {
 	/**
 	 * Wechselt in einen neuen Zustand
 	 * @param {string} newState - Name des neuen Zustands
-	 * @param {Object} [data] - Optionale Daten für den Übergang
+	 * @param {Object} [data] - Optional data for the transition
 	 * @returns {boolean} - Ob der Übergang erfolgreich war
 	 */
 	transition(newState, data = null) {
@@ -102,7 +102,7 @@ export class StateMachine {
 			return false;
 		}
 		
-		// Prüfe ob Übergang erlaubt
+		// Check if transition is allowed
 		if (currentDef && currentDef.allowedTransitions) {
 			if (!currentDef.allowedTransitions.includes(newState)) {
 				console.warn(`StateMachine: Transition from "${this._currentState}" to "${newState}" not allowed`);
@@ -197,7 +197,7 @@ export const GameMode = {
 };
 
 /**
- * Erstellt die Game Mode State Machine
+ * Creates the Game Mode State Machine
  * @param {Object} ctx - Spiel-Kontext mit Callbacks
  * @returns {StateMachine}
  */
@@ -314,7 +314,7 @@ export function createGameModeStateMachine(ctx = {}) {
 }
 
 // ============================================================
-// BOSS STATE MACHINE - Zustände für Boss-Kämpfe
+// BOSS STATE MACHINE - States for boss fights
 // ============================================================
 
 /**
@@ -332,7 +332,7 @@ export const BossState = {
 };
 
 /**
- * Erstellt die Boss State Machine
+ * Creates the Boss State Machine
  * @param {Object} ctx - Boss-Kontext
  * @returns {StateMachine}
  */
@@ -396,11 +396,11 @@ export function createBossStateMachine(ctx = {}) {
 }
 
 // ============================================================
-// PLAYER STATE MACHINE - Spieler-Zustände
+// PLAYER STATE MACHINE - Player states
 // ============================================================
 
 /**
- * Spieler-Zustände
+ * Player states
  */
 export const PlayerState = {
 	NORMAL: 'normal',
@@ -411,7 +411,7 @@ export const PlayerState = {
 };
 
 /**
- * Erstellt die Player State Machine
+ * Creates the Player State Machine
  * @param {Object} ctx - Player-Kontext
  * @returns {StateMachine}
  */

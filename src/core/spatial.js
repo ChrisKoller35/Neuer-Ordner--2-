@@ -1,12 +1,12 @@
 // ============================================================
-// SPATIAL GRID - Räumliche Partitionierung für Kollisionen
+// SPATIAL GRID - Spatial partitioning for collision detection
 // ============================================================
 // Beschleunigt Kollisionserkennung bei vielen Objekten durch
 // Aufteilung des Spielfelds in Zellen
 
 /**
- * Spatial Hash Grid für effiziente Kollisionsabfragen
- * Objekte werden in Zellen eingeteilt basierend auf Position
+ * Spatial Hash Grid for efficient collision queries
+ * Objects are grouped into cells based on position
  */
 export class SpatialGrid {
 	/**

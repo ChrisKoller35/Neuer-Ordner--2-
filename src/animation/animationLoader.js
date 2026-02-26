@@ -32,7 +32,7 @@ export async function loadAnimation(url) {
         canvasWidth: data.canvasWidth || 800,
         canvasHeight: data.canvasHeight || 600,
         parts: data.parts || [],
-        image: image
+        image
     };
 }
 
@@ -59,6 +59,11 @@ export class AnimationPlayer {
         this.isPlaying = false;
         this.loop = true;
         this.onComplete = null;
+        
+        // Cycle tracking für Abspiel-Häufigkeit (playbackMode)
+        this.cycleCount = 0;
+        this.partCycleActive = {};  // partId -> ob aktiv in diesem Zyklus
+        this._initPartCycleActive();
     }
     
     /**
@@ -81,6 +86,8 @@ export class AnimationPlayer {
     reset() {
         this.currentFrame = 0;
         this.elapsedTime = 0;
+        this.cycleCount = 0;
+        this._initPartCycleActive();
     }
     
     /**
@@ -106,6 +113,8 @@ export class AnimationPlayer {
             if (this.currentFrame >= this.data.totalFrames) {
                 if (this.loop) {
                     this.currentFrame = 0;
+                    this.cycleCount++;
+                    this._initPartCycleActive();
                 } else {
                     this.currentFrame = this.data.totalFrames - 1;
                     this.isPlaying = false;
@@ -113,6 +122,37 @@ export class AnimationPlayer {
                 }
             }
         }
+    }
+    
+    /**
+     * Entscheidet pro Part ob es in diesem Zyklus aktiv sein soll
+     */
+    _initPartCycleActive() {
+        this.partCycleActive = {};
+        for (const part of this.data.parts) {
+            const mode = part.playbackMode || 'every';
+            if (mode === 'every') {
+                this.partCycleActive[part.id] = true;
+            } else if (mode === 'every2') {
+                this.partCycleActive[part.id] = (this.cycleCount % 2 === 0);
+            } else if (mode === 'every3') {
+                this.partCycleActive[part.id] = (this.cycleCount % 3 === 0);
+            } else if (mode === 'random') {
+                // ~30% Chance: natürliches Blinzeln
+                this.partCycleActive[part.id] = (Math.random() < 0.3);
+            }
+        }
+    }
+    
+    /**
+     * Gibt den effektiven Frame für ein Part zurück.
+     * Inaktive Parts bleiben auf Frame 0 (Ruhepose).
+     */
+    getEffectiveFrame(part) {
+        const mode = part.playbackMode || 'every';
+        if (mode === 'every') return this.currentFrame;
+        if (!this.partCycleActive[part.id]) return 0;
+        return this.currentFrame;
     }
     
     /**
@@ -153,7 +193,21 @@ export class AnimationPlayer {
             scaleX: this.lerp(prev.scaleX || 1, next.scaleX || 1, t),
             scaleY: this.lerp(prev.scaleY || 1, next.scaleY || 1, t),
             skewX: this.lerp(prev.skewX || 0, next.skewX || 0, t),
-            skewY: this.lerp(prev.skewY || 0, next.skewY || 0, t)
+            skewY: this.lerp(prev.skewY || 0, next.skewY || 0, t),
+            // Ecken-Offsets
+            c0x: this.lerp(prev.c0x || 0, next.c0x || 0, t),
+            c0y: this.lerp(prev.c0y || 0, next.c0y || 0, t),
+            c1x: this.lerp(prev.c1x || 0, next.c1x || 0, t),
+            c1y: this.lerp(prev.c1y || 0, next.c1y || 0, t),
+            c2x: this.lerp(prev.c2x || 0, next.c2x || 0, t),
+            c2y: this.lerp(prev.c2y || 0, next.c2y || 0, t),
+            c3x: this.lerp(prev.c3x || 0, next.c3x || 0, t),
+            c3y: this.lerp(prev.c3y || 0, next.c3y || 0, t),
+            // Eye fillAmount
+            fillAmount: this.lerp(
+                prev.fillAmount != null ? prev.fillAmount : 1,
+                next.fillAmount != null ? next.fillAmount : 1, t
+            )
         };
     }
     
@@ -169,7 +223,11 @@ export class AnimationPlayer {
     }
     
     defaultTransform() {
-        return { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0 };
+        return {
+            x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0,
+            c0x: 0, c0y: 0, c1x: 0, c1y: 0, c2x: 0, c2y: 0, c3x: 0, c3y: 0,
+            fillAmount: 1
+        };
     }
     
     /**
@@ -184,8 +242,237 @@ export class AnimationPlayer {
     render(ctx, x, y, scale = 1, flipX = false, drawBase = true) {
         if (!this.data.image) return;
         
-        const frame = this.currentFrame;
+        // Offscreen-Canvas für isoliertes Compositing
+        if (!this._compCanvas) {
+            this._compCanvas = document.createElement('canvas');
+            this._compCanvas.width = this.data.canvasWidth;
+            this._compCanvas.height = this.data.canvasHeight;
+        }
+        const offCtx = this._compCanvas.getContext('2d');
+        offCtx.clearRect(0, 0, this._compCanvas.width, this._compCanvas.height);
         
+        // === SCHRITT 1: Alle animierten Parts auf Offscreen zeichnen ===
+        for (const part of this.data.parts) {
+            const effectiveFrame = this.getEffectiveFrame(part);
+            const transform = this.getInterpolatedTransform(part, effectiveFrame);
+            
+            if (part.type === 'eye') {
+                this._renderEyePart(offCtx, part, transform);
+                continue;
+            }
+            
+            offCtx.save();
+            
+            const zScale = 1 + (transform.z || 0) / 200;
+            const zOffsetY = (transform.z || 0) * 0.3;
+            
+            offCtx.translate(
+                part.pivotX + (transform.x || 0), 
+                part.pivotY + (transform.y || 0) + zOffsetY
+            );
+            offCtx.rotate(transform.rotation || 0);
+            offCtx.transform(1, transform.skewY || 0, transform.skewX || 0, 1, 0, 0);
+            offCtx.scale(
+                (transform.scaleX || 1) * zScale, 
+                (transform.scaleY || 1) * zScale
+            );
+            offCtx.translate(-part.pivotX, -part.pivotY);
+            
+            const imgScale = this.data.image.width / this.data.canvasWidth;
+            
+            if (part.polygon) {
+                this._renderPolygonPart(offCtx, part, transform, imgScale);
+            } else {
+                // Prüfen ob Corner-Deformation aktiv ist (V-Modus im Animator)
+                const hasCornerDeformation = (transform.c0x || 0) !== 0 || (transform.c0y || 0) !== 0 ||
+                                             (transform.c1x || 0) !== 0 || (transform.c1y || 0) !== 0 ||
+                                             (transform.c2x || 0) !== 0 || (transform.c2y || 0) !== 0 ||
+                                             (transform.c3x || 0) !== 0 || (transform.c3y || 0) !== 0;
+                
+                if (hasCornerDeformation) {
+                    // Quad-Warp: Quell-Rechteck auf verzerrtes Ziel-Quad zeichnen
+                    const srcCorners = [
+                        { x: part.x, y: part.y },
+                        { x: part.x + part.width, y: part.y },
+                        { x: part.x + part.width, y: part.y + part.height },
+                        { x: part.x, y: part.y + part.height }
+                    ];
+                    const dstCorners = [
+                        { x: part.x + (transform.c0x || 0), y: part.y + (transform.c0y || 0) },
+                        { x: part.x + part.width + (transform.c1x || 0), y: part.y + (transform.c1y || 0) },
+                        { x: part.x + part.width + (transform.c2x || 0), y: part.y + part.height + (transform.c2y || 0) },
+                        { x: part.x + (transform.c3x || 0), y: part.y + part.height + (transform.c3y || 0) }
+                    ];
+                    this._drawQuadToQuad(offCtx, this.data.image, srcCorners, dstCorners, imgScale);
+                } else {
+                    // Standard: Einfaches Rechteck ohne Verzerrung
+                    const srcX = part.x * imgScale;
+                    const srcY = part.y * imgScale;
+                    const srcW = part.width * imgScale;
+                    const srcH = part.height * imgScale;
+                    
+                    offCtx.drawImage(
+                        this.data.image,
+                        srcX, srcY, srcW, srcH,
+                        part.x, part.y, part.width, part.height
+                    );
+                }
+            }
+            
+            offCtx.restore();
+        }
+        
+        // === SCHRITT 2: Basisbild HINTER die Parts (mit ausgestanzten Originalformen) ===
+        if (drawBase) {
+            // Basisbild mit Cutouts einmalig cachen
+            if (!this._baseCanvas) {
+                this._baseCanvas = document.createElement('canvas');
+                this._baseCanvas.width = this.data.canvasWidth;
+                this._baseCanvas.height = this.data.canvasHeight;
+                const baseCtx = this._baseCanvas.getContext('2d');
+                
+                baseCtx.drawImage(
+                    this.data.image,
+                    0, 0,
+                    this.data.canvasWidth,
+                    this.data.canvasHeight
+                );
+                
+                // Original-Part-Bereiche ausstanzen (mit 2px Padding gegen Subpixel-Lücken)
+                baseCtx.globalCompositeOperation = 'destination-out';
+                const cutoutPad = 2; // Pixel Rand-Erweiterung um Geisterbilder zu vermeiden
+                for (const part of this.data.parts) {
+                    if (part.type === 'eye') continue;
+                    // Nur ausschneiden bei 'cutout' oder 'fill' Modus
+                    const mode = part.cutout === false ? 'none' : (part.cutout || 'cutout');
+                    if (mode === 'none') continue;
+                    
+                    // Fill-Parts brauchen größeren Cutout (Outline mit entfernen)
+                    const pad = mode === 'fill' ? 12 : cutoutPad;
+                    
+                    if (part.polygon) {
+                        // Polygon-Cutout mit leichtem Expand
+                        const cx = part.polygon.reduce((s, p) => s + p.x, 0) / part.polygon.length;
+                        const cy = part.polygon.reduce((s, p) => s + p.y, 0) / part.polygon.length;
+                        baseCtx.beginPath();
+                        for (let i = 0; i < part.polygon.length; i++) {
+                            const p = part.polygon[i];
+                            // Punkt leicht nach außen verschieben (vom Zentroid weg)
+                            const dx = p.x - cx;
+                            const dy = p.y - cy;
+                            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                            const ex = p.x + (dx / len) * pad;
+                            const ey = p.y + (dy / len) * pad;
+                            if (i === 0) baseCtx.moveTo(ex, ey);
+                            else baseCtx.lineTo(ex, ey);
+                        }
+                        baseCtx.closePath();
+                        baseCtx.fill();
+                    } else {
+                        // Rechteck-Cutout mit gleichmäßigem Padding auf allen Seiten
+                        baseCtx.fillRect(
+                            part.x - pad,
+                            part.y - pad,
+                            part.width + pad * 2,
+                            part.height + pad * 2
+                        );
+                    }
+                }
+                
+                // === FILL-MODUS: Löcher mit Rand-Pixeln füllen (echte Dilation) ===
+                // Bild OHNE die Fill-Parts erstellen, dann Rand-Pixel nach innen wachsen lassen
+                const fillParts = this.data.parts.filter(p => {
+                    if (p.type === 'eye') return false;
+                    const mode = p.cutout === false ? 'none' : (p.cutout || 'cutout');
+                    return mode === 'fill';
+                });
+                
+                if (fillParts.length > 0) {
+                    const fillCanvas = document.createElement('canvas');
+                    fillCanvas.width = this.data.canvasWidth;
+                    fillCanvas.height = this.data.canvasHeight;
+                    const fillCtx = fillCanvas.getContext('2d');
+                    
+                    // Schritt 1: Originalbild zeichnen
+                    fillCtx.drawImage(
+                        this.data.image, 0, 0,
+                        this.data.canvasWidth, this.data.canvasHeight
+                    );
+                    
+                    // Schritt 2: Fill-Parts ausschneiden (transparent machen)
+                    fillCtx.globalCompositeOperation = 'destination-out';
+                    for (const part of fillParts) {
+                        fillCtx.beginPath();
+                        if (part.polygon && part.polygon.length >= 3) {
+                            const cx = part.polygon.reduce((s, p) => s + p.x, 0) / part.polygon.length;
+                            const cy = part.polygon.reduce((s, p) => s + p.y, 0) / part.polygon.length;
+                            for (let i = 0; i < part.polygon.length; i++) {
+                                const p = part.polygon[i];
+                                const dx = p.x - cx, dy = p.y - cy;
+                                const len = Math.sqrt(dx*dx + dy*dy) || 1;
+                                const ex = p.x + (dx/len) * 10;
+                                const ey = p.y + (dy/len) * 10;
+                                if (i === 0) fillCtx.moveTo(ex, ey);
+                                else fillCtx.lineTo(ex, ey);
+                            }
+                            fillCtx.closePath();
+                        } else {
+                            fillCtx.rect(part.x - 10, part.y - 10, part.width + 20, part.height + 20);
+                        }
+                        fillCtx.fill();
+                    }
+                    
+                    // Schritt 3: Rand-Pixel nach innen wachsen lassen (Dilation)
+                    fillCtx.globalCompositeOperation = 'destination-over';
+                    const maxDilate = 60;
+                    for (let d = 0; d < maxDilate; d++) {
+                        fillCtx.drawImage(fillCanvas, -1,  0);
+                        fillCtx.drawImage(fillCanvas,  1,  0);
+                        fillCtx.drawImage(fillCanvas,  0, -1);
+                        fillCtx.drawImage(fillCanvas,  0,  1);
+                        fillCtx.drawImage(fillCanvas, -1, -1);
+                        fillCtx.drawImage(fillCanvas,  1, -1);
+                        fillCtx.drawImage(fillCanvas, -1,  1);
+                        fillCtx.drawImage(fillCanvas,  1,  1);
+                    }
+                    fillCtx.globalCompositeOperation = 'source-over';
+                    
+                    // Schritt 4: Gefüllte Bereiche in baseCanvas einfügen
+                    // Clip mit 12px-expandiertem Polygon (gleich wie Hintergrund-Cutout)
+                    baseCtx.globalCompositeOperation = 'destination-over';
+                    for (const part of fillParts) {
+                        baseCtx.save();
+                        baseCtx.beginPath();
+                        if (part.polygon && part.polygon.length >= 3) {
+                            const cx = part.polygon.reduce((s, p) => s + p.x, 0) / part.polygon.length;
+                            const cy = part.polygon.reduce((s, p) => s + p.y, 0) / part.polygon.length;
+                            for (let i = 0; i < part.polygon.length; i++) {
+                                const p = part.polygon[i];
+                                const dx = p.x - cx, dy = p.y - cy;
+                                const len = Math.sqrt(dx*dx + dy*dy) || 1;
+                                const ex = p.x + (dx/len) * 12;
+                                const ey = p.y + (dy/len) * 12;
+                                if (i === 0) baseCtx.moveTo(ex, ey);
+                                else baseCtx.lineTo(ex, ey);
+                            }
+                            baseCtx.closePath();
+                        } else {
+                            baseCtx.rect(part.x - 12, part.y - 12, part.width + 24, part.height + 24);
+                        }
+                        baseCtx.clip();
+                        baseCtx.drawImage(fillCanvas, 0, 0);
+                        baseCtx.restore();
+                    }
+                }
+                baseCtx.globalCompositeOperation = 'source-over';
+            }
+            
+            offCtx.globalCompositeOperation = 'destination-over';
+            offCtx.drawImage(this._baseCanvas, 0, 0);
+            offCtx.globalCompositeOperation = 'source-over';
+        }
+        
+        // === SCHRITT 3: Offscreen-Ergebnis auf den Haupt-Canvas zeichnen ===
         ctx.save();
         ctx.translate(x, y);
         if (flipX) {
@@ -193,79 +480,185 @@ export class AnimationPlayer {
         } else {
             ctx.scale(scale, scale);
         }
+        ctx.drawImage(this._compCanvas, 0, 0);
+        ctx.restore();
+    }
+    
+    /**
+     * Rendert ein Eye-Part (Blinzel-Kreis)
+     */
+    _renderEyePart(ctx, part, transform) {
+        const fillAmount = transform.fillAmount != null ? transform.fillAmount : 1.0;
+        const cx = part.eyeCenterX + (transform.x || 0);
+        const cy = part.eyeCenterY + (transform.y || 0);
+        const radius = part.eyeRadius * (transform.scaleX || 1);
+        const color = part.eyeColor || '#000000';
         
-        // Basisbild zeichnen mit ausgestanzten Part-Bereichen
-        if (drawBase) {
-            // OffscreenCanvas für korrektes Ausstanzen
-            const offCanvas = document.createElement('canvas');
-            offCanvas.width = this.data.canvasWidth;
-            offCanvas.height = this.data.canvasHeight;
-            const offCtx = offCanvas.getContext('2d');
-            
-            // Erst das ganze Bild zeichnen
-            offCtx.drawImage(
-                this.data.image,
-                0, 0,
-                this.data.canvasWidth,
-                this.data.canvasHeight
-            );
-            
-            // Part-Bereiche ausstanzen (transparent machen)
-            // Nur oben extra Padding für Flossenspitze
-            offCtx.globalCompositeOperation = 'destination-out';
-            for (const part of this.data.parts) {
-                const topPad = 8; // Extra oben für Flossenspitze
-                offCtx.fillRect(part.x, part.y - topPad, part.width, part.height + topPad);
-            }
-            
-            // Fertiges Basisbild auf Ziel-Canvas zeichnen
-            ctx.drawImage(offCanvas, 0, 0);
+        if (fillAmount < 0.001) return; // Auge komplett offen = nichts zeichnen
+        
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(transform.rotation || 0);
+        ctx.translate(-cx, -cy);
+        
+        // Kreis-Clip
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.clip();
+        
+        // Füllung von oben (Lid)
+        const diameter = radius * 2;
+        const fillHeight = fillAmount * diameter;
+        ctx.fillStyle = color;
+        ctx.fillRect(cx - radius, cy - radius, diameter, fillHeight);
+        
+        // Weiche Unterkante
+        if (fillAmount > 0.05 && fillAmount < 0.95) {
+            const edgeY = cy - radius + fillHeight;
+            ctx.beginPath();
+            ctx.ellipse(cx, edgeY, radius * 0.9, radius * 0.15, 0, 0, Math.PI);
+            ctx.fill();
         }
         
-        // Alle animierten Parts zeichnen
-        for (const part of this.data.parts) {
-            const transform = this.getInterpolatedTransform(part, frame);
+        ctx.restore();
+        ctx.restore();
+    }
+    
+    /**
+     * Rendert ein Polygon-Part mit Clipping und Quad-Warping
+     * (Matches the animator tool's drawPolygonPart approach)
+     */
+    _renderPolygonPart(ctx, part, transform, imgScale) {
+        const points = part.polygon;
+        if (!points || points.length < 3) return;
+        
+        const bx = part.x, by = part.y;
+        const bw = part.width, bh = part.height;
+        
+        // Transformierte Polygon-Punkte berechnen (bilineare Interpolation)
+        const c0 = { x: bx + (transform.c0x||0), y: by + (transform.c0y||0) };
+        const c1 = { x: bx + bw + (transform.c1x||0), y: by + (transform.c1y||0) };
+        const c2 = { x: bx + bw + (transform.c2x||0), y: by + bh + (transform.c2y||0) };
+        const c3 = { x: bx + (transform.c3x||0), y: by + bh + (transform.c3y||0) };
+        
+        const transformedPoly = points.map(p => {
+            const u = bw > 0 ? (p.x - bx) / bw : 0;
+            const v = bh > 0 ? (p.y - by) / bh : 0;
+            return {
+                x: (1-u)*(1-v)*c0.x + u*(1-v)*c1.x + u*v*c2.x + (1-u)*v*c3.x,
+                y: (1-u)*(1-v)*c0.y + u*(1-v)*c1.y + u*v*c2.y + (1-u)*v*c3.y
+            };
+        });
+        
+        ctx.save();
+        
+        // Polygon-Clip-Path
+        ctx.beginPath();
+        ctx.moveTo(transformedPoly[0].x, transformedPoly[0].y);
+        for (let i = 1; i < transformedPoly.length; i++) {
+            ctx.lineTo(transformedPoly[i].x, transformedPoly[i].y);
+        }
+        ctx.closePath();
+        ctx.clip();
+        
+        // Prüfen ob Verzerrung aktiv ist
+        const hasDeformation = (transform.c0x||0) !== 0 || (transform.c0y||0) !== 0 ||
+                               (transform.c1x||0) !== 0 || (transform.c1y||0) !== 0 ||
+                               (transform.c2x||0) !== 0 || (transform.c2y||0) !== 0 ||
+                               (transform.c3x||0) !== 0 || (transform.c3y||0) !== 0;
+        
+        if (hasDeformation) {
+            // Quad-to-Quad Warping (wie im Animator)
+            const srcCorners = [
+                { x: bx, y: by },
+                { x: bx + bw, y: by },
+                { x: bx + bw, y: by + bh },
+                { x: bx, y: by + bh }
+            ];
+            const dstCorners = [c0, c1, c2, c3];
+            this._drawQuadToQuad(ctx, this.data.image, srcCorners, dstCorners, imgScale);
+        } else {
+            // Keine Verzerrung: Bild normal zeichnen
+            ctx.drawImage(
+                this.data.image,
+                bx * imgScale, by * imgScale,
+                bw * imgScale, bh * imgScale,
+                bx, by, bw, bh
+            );
+        }
+        
+        ctx.restore();
+    }
+    
+    /**
+     * Zeichnet Bildinhalt von Quell-Quad auf Ziel-Quad (Strip-Technik)
+     * Approximiert perspektivische Transformation mit 20 Streifen
+     */
+    _drawQuadToQuad(ctx, img, srcCorners, dstCorners, imgScale) {
+        const strips = 20;
+        
+        const lerp = (p1, p2, t) => ({
+            x: p1.x + (p2.x - p1.x) * t,
+            y: p1.y + (p2.y - p1.y) * t
+        });
+        
+        for (let i = 0; i < strips; i++) {
+            const t0 = i / strips;
+            const t1 = (i + 1) / strips;
+            
+            // Source-Streifen (in Canvas-Koordinaten)
+            const srcLeft0  = lerp(srcCorners[0], srcCorners[3], t0);
+            const srcRight0 = lerp(srcCorners[1], srcCorners[2], t0);
+            const srcLeft1  = lerp(srcCorners[0], srcCorners[3], t1);
+            const srcRight1 = lerp(srcCorners[1], srcCorners[2], t1);
+            
+            // Ziel-Streifen
+            const dstLeft0  = lerp(dstCorners[0], dstCorners[3], t0);
+            const dstRight0 = lerp(dstCorners[1], dstCorners[2], t0);
+            const dstLeft1  = lerp(dstCorners[0], dstCorners[3], t1);
+            const dstRight1 = lerp(dstCorners[1], dstCorners[2], t1);
+            
+            // Source-Bereich im Bild (Pixel-Koordinaten)
+            const srcX = Math.min(srcLeft0.x, srcRight0.x, srcLeft1.x, srcRight1.x) * imgScale;
+            const srcY = Math.min(srcLeft0.y, srcRight0.y) * imgScale;
+            const srcW = (Math.max(srcLeft0.x, srcRight0.x, srcLeft1.x, srcRight1.x) - 
+                         Math.min(srcLeft0.x, srcRight0.x, srcLeft1.x, srcRight1.x)) * imgScale;
+            const srcH = (Math.max(srcLeft1.y, srcRight1.y) - Math.min(srcLeft0.y, srcRight0.y)) * imgScale;
+            
+            if (srcW <= 0 || srcH <= 0) continue;
             
             ctx.save();
             
-            // Z-Achse: Tiefe simulieren
-            const zScale = 1 + (transform.z || 0) / 200;
-            const zOffsetY = (transform.z || 0) * 0.3;
+            // Clip auf Ziel-Trapez
+            ctx.beginPath();
+            ctx.moveTo(dstLeft0.x, dstLeft0.y);
+            ctx.lineTo(dstRight0.x, dstRight0.y);
+            ctx.lineTo(dstRight1.x, dstRight1.y);
+            ctx.lineTo(dstLeft1.x, dstLeft1.y);
+            ctx.closePath();
+            ctx.clip();
             
-            // Transform um Pivot-Punkt
-            ctx.translate(
-                part.pivotX + (transform.x || 0), 
-                part.pivotY + (transform.y || 0) + zOffsetY
-            );
-            ctx.rotate(transform.rotation || 0);
+            // Affine Transformation berechnen
+            const dstWidth = Math.sqrt((dstRight0.x - dstLeft0.x) ** 2 + (dstRight0.y - dstLeft0.y) ** 2);
+            const dstHeight = Math.sqrt((dstLeft1.x - dstLeft0.x) ** 2 + (dstLeft1.y - dstLeft0.y) ** 2);
             
-            // Skew
-            ctx.transform(1, transform.skewY || 0, transform.skewX || 0, 1, 0, 0);
+            const angle = Math.atan2(dstRight0.y - dstLeft0.y, dstRight0.x - dstLeft0.x);
+            const scaleX = dstWidth / (srcW / imgScale);
+            const scaleY = dstHeight / (srcH / imgScale) || scaleX;
             
-            // Skalierung
-            ctx.scale(
-                (transform.scaleX || 1) * zScale, 
-                (transform.scaleY || 1) * zScale
-            );
-            ctx.translate(-part.pivotX, -part.pivotY);
+            ctx.translate(dstLeft0.x, dstLeft0.y);
+            ctx.rotate(angle);
+            ctx.scale(scaleX, scaleY);
             
-            // Part aus Originalbild zeichnen
-            const imgScale = this.data.image.width / this.data.canvasWidth;
-            const srcX = part.x * imgScale;
-            const srcY = part.y * imgScale;
-            const srcW = part.width * imgScale;
-            const srcH = part.height * imgScale;
-            
-            ctx.drawImage(
-                this.data.image,
-                srcX, srcY, srcW, srcH,
-                part.x, part.y, part.width, part.height
+            // Quellfragment zeichnen (1.1x Höhe um Streifenlücken zu vermeiden)
+            ctx.drawImage(img,
+                srcX, srcY, srcW, srcH * 1.1,
+                0, 0, srcW / imgScale, (srcH / imgScale) * 1.1
             );
             
             ctx.restore();
         }
-        
-        ctx.restore();
     }
     
     /**

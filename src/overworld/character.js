@@ -663,7 +663,7 @@ function drawFoot(ctx, x, y, dir) {
 // ============================================================
 
 const MAX_BUBBLES = 6;
-let characterBubbles = [];
+const characterBubbles = [];
 
 /**
  * Aktualisiert Blasen die vom Charakter aufsteigen

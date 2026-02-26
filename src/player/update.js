@@ -49,6 +49,7 @@ export function createPlayerUpdateSystem(ctx) {
 		shot.spriteScale = 0.1;
 		shot.spriteOffsetX = 6;
 		shot.spriteOffsetY = 0;
+		shot.damage = 1;
 		state.shots.push(shot);
 
 		player.energy = Math.max(0, (player.energy == null ? energyMax : player.energy) - energyCost);
@@ -121,6 +122,8 @@ export function createPlayerUpdateSystem(ctx) {
 
 		if (moveX || moveY) {
 			const len = Math.hypot(moveX, moveY) || 1;
+			player.lastMoveX = moveX / len;
+			player.lastMoveY = moveY / len;
 			const dx = (moveX / len) * effectiveSpeed * dt;
 			const dy = (moveY / len) * effectiveSpeed * dt;
 			

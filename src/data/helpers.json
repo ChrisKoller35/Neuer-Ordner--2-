@@ -1,0 +1,334 @@
+{
+  "_comment": "NPC-Helfer-System: Tank/Heiler/DPS Begleiter-Karten für den Dungeon",
+  "maxCards": 15,
+  "activeSlots": 3,
+  "roles": {
+    "tank": {
+      "label": "Tank",
+      "icon": "🛡️",
+      "color": "#3b82f6",
+      "description": "Zieht Feind-Aggro und absorbiert Schaden."
+    },
+    "healer": {
+      "label": "Heiler",
+      "icon": "💚",
+      "color": "#22c55e",
+      "description": "Heilt den Spieler und bleibt in sicherer Distanz."
+    },
+    "dps": {
+      "label": "DPS",
+      "icon": "⚔️",
+      "color": "#ef4444",
+      "description": "Greift das Ziel des Spielers mit hohem Schaden an."
+    },
+    "support": {
+      "label": "Support",
+      "icon": "✨",
+      "color": "#a855f7",
+      "description": "Unterstützt mit Buffs, Debuffs und Crowd Control."
+    }
+  },
+  "cards": {
+    "ritter_korall": {
+      "id": "ritter_korall",
+      "name": "Ritter Korall",
+      "role": "tank",
+      "icon": "🛡️",
+      "rarity": "common",
+      "description": "Ein standhafter Korallen-Ritter mit Taunt-Aura.",
+      "stats": {
+        "1": { "hp": 80, "damage": 5, "speed": 2.0, "specialValue": 60, "specialLabel": "Taunt-Radius 60px" },
+        "2": { "hp": 120, "damage": 8, "speed": 2.2, "specialValue": 80, "specialLabel": "Taunt-Radius 80px" },
+        "3": { "hp": 180, "damage": 12, "speed": 2.5, "specialValue": 100, "specialLabel": "Taunt-Radius 100px" }
+      },
+      "ai": "tank",
+      "special": "taunt_aura"
+    },
+    "schildkroete_magnus": {
+      "id": "schildkroete_magnus",
+      "name": "Schildkröte Magnus",
+      "role": "tank",
+      "icon": "🐢",
+      "rarity": "rare",
+      "description": "Eine massive Schildkröte die Schaden für den Spieler abfängt.",
+      "stats": {
+        "1": { "hp": 120, "damage": 3, "speed": 1.5, "specialValue": 0.15, "specialLabel": "Absorbiert 15% Schaden" },
+        "2": { "hp": 180, "damage": 5, "speed": 1.7, "specialValue": 0.25, "specialLabel": "Absorbiert 25% Schaden" },
+        "3": { "hp": 260, "damage": 8, "speed": 2.0, "specialValue": 0.35, "specialLabel": "Absorbiert 35% Schaden" }
+      },
+      "ai": "tank",
+      "special": "damage_absorb"
+    },
+    "qualle_luna": {
+      "id": "qualle_luna",
+      "name": "Qualle Luna",
+      "role": "healer",
+      "icon": "🪼",
+      "rarity": "common",
+      "description": "Eine leuchtende Qualle die das niedrigste HP-Ziel heilt.",
+      "stats": {
+        "1": { "hp": 40, "damage": 2, "speed": 2.5, "specialValue": 3, "specialLabel": "Heilt 3 HP/s" },
+        "2": { "hp": 60, "damage": 3, "speed": 2.8, "specialValue": 5, "specialLabel": "Heilt 5 HP/s" },
+        "3": { "hp": 90, "damage": 5, "speed": 3.0, "specialValue": 8, "specialLabel": "Heilt 8 HP/s" }
+      },
+      "ai": "healer",
+      "special": "heal_lowest"
+    },
+    "seepferdchen_vita": {
+      "id": "seepferdchen_vita",
+      "name": "Seepferdchen Vita",
+      "role": "healer",
+      "icon": "🐡",
+      "rarity": "rare",
+      "description": "Ein magisches Seepferdchen mit Gruppen-Heilung.",
+      "stats": {
+        "1": { "hp": 50, "damage": 2, "speed": 3.0, "specialValue": 2, "specialLabel": "AoE-Heal 2 HP/s" },
+        "2": { "hp": 75, "damage": 3, "speed": 3.2, "specialValue": 4, "specialLabel": "AoE-Heal 4 HP/s" },
+        "3": { "hp": 110, "damage": 5, "speed": 3.5, "specialValue": 6, "specialLabel": "AoE-Heal 6 HP/s" }
+      },
+      "ai": "healer",
+      "special": "aoe_heal"
+    },
+    "schwertfisch_razor": {
+      "id": "schwertfisch_razor",
+      "name": "Schwertfisch Razor",
+      "role": "dps",
+      "icon": "🐟",
+      "rarity": "common",
+      "description": "Ein schneller Schwertfisch der das Spieler-Ziel angreift.",
+      "stats": {
+        "1": { "hp": 35, "damage": 12, "speed": 4.0, "specialValue": 1.5, "specialLabel": "Angriff alle 1.5s" },
+        "2": { "hp": 50, "damage": 18, "speed": 4.5, "specialValue": 1.2, "specialLabel": "Angriff alle 1.2s" },
+        "3": { "hp": 70, "damage": 25, "speed": 5.0, "specialValue": 1.0, "specialLabel": "Angriff alle 1.0s" }
+      },
+      "ai": "dps",
+      "special": "attack_target"
+    },
+    "kugelfisch_boom": {
+      "id": "kugelfisch_boom",
+      "name": "Kugelfisch Boom",
+      "role": "dps",
+      "icon": "🐡",
+      "rarity": "rare",
+      "description": "Explodiert bei Kontakt und richtet AoE-Schaden an (regeneriert).",
+      "stats": {
+        "1": { "hp": 25, "damage": 30, "speed": 3.0, "specialValue": 50, "specialLabel": "Explosion 50px AoE" },
+        "2": { "hp": 35, "damage": 45, "speed": 3.5, "specialValue": 65, "specialLabel": "Explosion 65px AoE" },
+        "3": { "hp": 50, "damage": 65, "speed": 4.0, "specialValue": 80, "specialLabel": "Explosion 80px AoE" }
+      },
+      "ai": "dps",
+      "special": "explode_contact"
+    },
+    "hai_shadow": {
+      "id": "hai_shadow",
+      "name": "Hai Shadow",
+      "role": "dps",
+      "icon": "🦈",
+      "rarity": "epic",
+      "description": "Ein Schattenhai der kritische Treffer landen kann.",
+      "stats": {
+        "1": { "hp": 45, "damage": 20, "speed": 5.0, "specialValue": 0.2, "specialLabel": "20% Krit-Chance (2x DMG)" },
+        "2": { "hp": 65, "damage": 30, "speed": 5.5, "specialValue": 0.3, "specialLabel": "30% Krit-Chance (2x DMG)" },
+        "3": { "hp": 90, "damage": 42, "speed": 6.0, "specialValue": 0.4, "specialLabel": "40% Krit-Chance (2x DMG)" }
+      },
+      "ai": "dps",
+      "special": "crit_attack"
+    },
+    "wal_guardian": {
+      "id": "wal_guardian",
+      "name": "Wal Guardian",
+      "role": "tank",
+      "icon": "🐋",
+      "rarity": "epic",
+      "description": "Ein gewaltiger Wal der Feinde zurückstoßt und Schild gibt.",
+      "stats": {
+        "1": { "hp": 200, "damage": 8, "speed": 1.2, "specialValue": 20, "specialLabel": "Schild +20 HP alle 10s" },
+        "2": { "hp": 300, "damage": 12, "speed": 1.4, "specialValue": 35, "specialLabel": "Schild +35 HP alle 10s" },
+        "3": { "hp": 420, "damage": 18, "speed": 1.6, "specialValue": 50, "specialLabel": "Schild +50 HP alle 10s" }
+      },
+      "ai": "tank",
+      "special": "shield_aura"
+    },
+    "elektroaal_voltis": {
+      "id": "elektroaal_voltis",
+      "name": "Elektroaal Voltis",
+      "role": "dps",
+      "icon": "⚡",
+      "rarity": "rare",
+      "description": "Ein elektrischer Aal dessen Blitze auf nahe Gegner überspringen.",
+      "stats": {
+        "1": { "hp": 40, "damage": 15, "speed": 4.0, "specialValue": 2, "specialLabel": "Kette auf 2 Ziele, 8 DMG" },
+        "2": { "hp": 55, "damage": 22, "speed": 4.5, "specialValue": 3, "specialLabel": "Kette auf 3 Ziele, 12 DMG" },
+        "3": { "hp": 75, "damage": 30, "speed": 5.0, "specialValue": 4, "specialLabel": "Kette auf 4 Ziele, 16 DMG" }
+      },
+      "ai": "dps",
+      "special": "chain_lightning"
+    },
+    "nebelgeist_hazeara": {
+      "id": "nebelgeist_hazeara",
+      "name": "Nebelgeist Hazeara",
+      "role": "support",
+      "icon": "🌫️",
+      "rarity": "rare",
+      "description": "Ein geisterhafter Nebelwesen — Gegner im Nebel greifen langsamer an.",
+      "stats": {
+        "1": { "hp": 35, "damage": 3, "speed": 3.5, "specialValue": 120, "specialLabel": "Nebelfeld 120px, -50% Angriffsspeed" },
+        "2": { "hp": 50, "damage": 5, "speed": 3.8, "specialValue": 150, "specialLabel": "Nebelfeld 150px, -50% Angriffsspeed" },
+        "3": { "hp": 70, "damage": 8, "speed": 4.0, "specialValue": 180, "specialLabel": "Nebelfeld 180px, -50% Angriffsspeed" }
+      },
+      "ai": "support",
+      "special": "fog_field"
+    },
+    "korallengolem_basalt": {
+      "id": "korallengolem_basalt",
+      "name": "Korallengolem Basalt",
+      "role": "tank",
+      "icon": "🪨",
+      "rarity": "epic",
+      "description": "Ein massiver Golem der Korallenwände als Deckung errichtet.",
+      "stats": {
+        "1": { "hp": 150, "damage": 6, "speed": 1.5, "specialValue": 120, "specialLabel": "Korallenwall 120px, 2s" },
+        "2": { "hp": 220, "damage": 9, "speed": 1.7, "specialValue": 150, "specialLabel": "Korallenwall 150px, 3s" },
+        "3": { "hp": 300, "damage": 13, "speed": 2.0, "specialValue": 180, "specialLabel": "Korallenwall 180px, 4s" }
+      },
+      "ai": "tank",
+      "special": "coral_wall"
+    },
+    "klapperfisch_claxon": {
+      "id": "klapperfisch_claxon",
+      "name": "Klapperfisch Claxon",
+      "role": "support",
+      "icon": "📢",
+      "rarity": "common",
+      "description": "Betäubt Gegner mit Schallattacken. Panikschrei bei niedrigem Spieler-HP.",
+      "stats": {
+        "1": { "hp": 30, "damage": 4, "speed": 3.0, "specialValue": 0.8, "specialLabel": "Stun 0.8s alle 5s" },
+        "2": { "hp": 45, "damage": 6, "speed": 3.3, "specialValue": 1.0, "specialLabel": "Stun 1.0s alle 4s" },
+        "3": { "hp": 65, "damage": 9, "speed": 3.5, "specialValue": 1.2, "specialLabel": "Stun 1.2s alle 3s" }
+      },
+      "ai": "support",
+      "special": "sonic_stun"
+    },
+    "eisdrache_frosterling": {
+      "id": "eisdrache_frosterling",
+      "name": "Eisdrache Frosterling",
+      "role": "dps",
+      "icon": "🐉",
+      "rarity": "legendary",
+      "description": "Ein Mini-Eisdrache mit Frosthauch und Blizzard-Burst.",
+      "stats": {
+        "1": { "hp": 50, "damage": 12, "speed": 3.5, "specialValue": 60, "specialLabel": "Frosthauch 60px, 1s Slow 40%" },
+        "2": { "hp": 70, "damage": 18, "speed": 4.0, "specialValue": 80, "specialLabel": "Frosthauch 80px, 1.5s Slow 50%" },
+        "3": { "hp": 95, "damage": 25, "speed": 4.5, "specialValue": 100, "specialLabel": "Frosthauch 100px, 2s Slow 60%" }
+      },
+      "ai": "dps",
+      "special": "frost_breath"
+    },
+    "lavarobbe_emboar": {
+      "id": "lavarobbe_emboar",
+      "name": "Lavarobbe Emboar",
+      "role": "tank",
+      "icon": "🔥",
+      "rarity": "rare",
+      "description": "Eine Robbe mit Lava-Rüstungsplatten und permanenter Feueraura.",
+      "stats": {
+        "1": { "hp": 120, "damage": 8, "speed": 2.0, "specialValue": 40, "specialLabel": "Feueraura 40px, 0.3 DMG/s" },
+        "2": { "hp": 180, "damage": 12, "speed": 2.2, "specialValue": 50, "specialLabel": "Feueraura 50px, 0.5 DMG/s" },
+        "3": { "hp": 250, "damage": 16, "speed": 2.5, "specialValue": 60, "specialLabel": "Feueraura 60px, 0.8 DMG/s" }
+      },
+      "ai": "tank",
+      "special": "fire_aura"
+    },
+    "nautilus_spirex": {
+      "id": "nautilus_spirex",
+      "name": "Nautilus Spirex",
+      "role": "dps",
+      "icon": "🐚",
+      "rarity": "epic",
+      "description": "Schießt Spiralprojektile die sich auf Gegner zukurven.",
+      "stats": {
+        "1": { "hp": 35, "damage": 18, "speed": 3.5, "specialValue": 2, "specialLabel": "Spiral-Pierce: teilt in 2 (je 8 DMG)" },
+        "2": { "hp": 50, "damage": 26, "speed": 4.0, "specialValue": 3, "specialLabel": "Spiral-Pierce: teilt in 3 (je 10 DMG)" },
+        "3": { "hp": 70, "damage": 35, "speed": 4.5, "specialValue": 4, "specialLabel": "Spiral-Pierce: teilt in 4 (je 12 DMG)" }
+      },
+      "ai": "dps",
+      "special": "spiral_shot"
+    },
+    "schimmerfisch_prisma": {
+      "id": "schimmerfisch_prisma",
+      "name": "Schimmerfisch Prisma",
+      "role": "support",
+      "icon": "🌈",
+      "rarity": "rare",
+      "description": "Transparenter Regenbogenfisch — gibt Schadensbuff und blockt Projektile.",
+      "stats": {
+        "1": { "hp": 30, "damage": 3, "speed": 4.0, "specialValue": 0.25, "specialLabel": "+25% Spieler-DMG für 3s alle 8s" },
+        "2": { "hp": 45, "damage": 5, "speed": 4.5, "specialValue": 0.35, "specialLabel": "+35% Spieler-DMG für 3s alle 7s" },
+        "3": { "hp": 60, "damage": 7, "speed": 5.0, "specialValue": 0.50, "specialLabel": "+50% Spieler-DMG für 4s alle 6s" }
+      },
+      "ai": "support",
+      "special": "prism_buff"
+    },
+    "geisterfisch_revenant": {
+      "id": "geisterfisch_revenant",
+      "name": "Geisterfisch Revenant",
+      "role": "dps",
+      "icon": "👻",
+      "rarity": "epic",
+      "description": "Geisterhafte Projektile durchdringen Wände und Gegner.",
+      "stats": {
+        "1": { "hp": 30, "damage": 10, "speed": 3.5, "specialValue": 0.5, "specialLabel": "+50% ATK-Speed wenn Ally stirbt (5s)" },
+        "2": { "hp": 45, "damage": 15, "speed": 4.0, "specialValue": 0.5, "specialLabel": "+50% ATK-Speed + 20% Lifesteal (5s)" },
+        "3": { "hp": 60, "damage": 22, "speed": 4.5, "specialValue": 0.5, "specialLabel": "+50% ATK-Speed + 30% Lifesteal (5s)" }
+      },
+      "ai": "dps",
+      "special": "ghost_pierce"
+    },
+    "giftschlange_venenara": {
+      "id": "giftschlange_venenara",
+      "name": "Giftschlange Venenara",
+      "role": "dps",
+      "icon": "🐍",
+      "rarity": "rare",
+      "description": "Vergiftet Gegner bei jedem Biss. Doppelgift explodiert beim Tod.",
+      "stats": {
+        "1": { "hp": 35, "damage": 8, "speed": 4.0, "specialValue": 0.4, "specialLabel": "Gift 3s (0.4/s), Stacks 2x" },
+        "2": { "hp": 50, "damage": 12, "speed": 4.5, "specialValue": 0.6, "specialLabel": "Gift 3s (0.6/s), Stacks 2x" },
+        "3": { "hp": 70, "damage": 18, "speed": 5.0, "specialValue": 0.8, "specialLabel": "Gift 4s (0.8/s), Stacks 3x" }
+      },
+      "ai": "dps",
+      "special": "poison_bite"
+    },
+    "orakelkrabbe_sibyl": {
+      "id": "orakelkrabbe_sibyl",
+      "name": "Orakelkrabbe Sibyl",
+      "role": "support",
+      "icon": "🔮",
+      "rarity": "epic",
+      "description": "Markiert Gegner die bald angreifen. Kristallorakel enthüllt Fallen.",
+      "stats": {
+        "1": { "hp": 40, "damage": 3, "speed": 2.5, "specialValue": 2, "specialLabel": "Markiert 2 Angreifer (3s Warnung)" },
+        "2": { "hp": 60, "damage": 5, "speed": 2.8, "specialValue": 3, "specialLabel": "Markiert 3 Angreifer (4s Warnung)" },
+        "3": { "hp": 85, "damage": 7, "speed": 3.0, "specialValue": 4, "specialLabel": "Markiert 4 Angreifer (5s Warnung)" }
+      },
+      "ai": "support",
+      "special": "prophecy"
+    }
+  },
+  "rarityColors": {
+    "common": "#8fbc8f",
+    "rare": "#6495ed",
+    "epic": "#da70d6",
+    "legendary": "#ffd700"
+  },
+  "rarityLabels": {
+    "common": "Gewöhnlich",
+    "rare": "Selten",
+    "epic": "Episch",
+    "legendary": "Legendär"
+  },
+  "duplicatesNeeded": {
+    "1to2": 2,
+    "2to3": 3
+  }
+}

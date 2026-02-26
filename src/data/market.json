@@ -1,0 +1,170 @@
+{
+  "_comment": "Marktplatz-Daten: Erweitertes Sortiment + Daily Deals",
+  "shopName": "Marktplatz",
+  "categories": {
+    "consumables": {
+      "label": "Verbrauchsgüter",
+      "icon": "🧪",
+      "items": [
+        {
+          "id": "heiltrank-klein",
+          "label": "Kleiner Heiltrank",
+          "description": "Stellt 1 Herz wieder her.",
+          "price": 30,
+          "effect": { "type": "heal", "value": 1 },
+          "stackable": true,
+          "maxStack": 5
+        },
+        {
+          "id": "heiltrank-gross",
+          "label": "Großer Heiltrank",
+          "description": "Stellt 3 Herzen wieder her.",
+          "price": 100,
+          "effect": { "type": "heal", "value": 3 },
+          "stackable": true,
+          "maxStack": 3
+        },
+        {
+          "id": "powertrank-schaden",
+          "label": "Krafttrank",
+          "description": "+25% Schaden für 1 Run.",
+          "price": 150,
+          "effect": { "type": "buff", "stat": "damage", "value": 0.25, "duration": "run" },
+          "stackable": true,
+          "maxStack": 3
+        },
+        {
+          "id": "powertrank-speed",
+          "label": "Geschwindigkeitstrank",
+          "description": "+20% Geschwindigkeit für 1 Run.",
+          "price": 120,
+          "effect": { "type": "buff", "stat": "speed", "value": 0.2, "duration": "run" },
+          "stackable": true,
+          "maxStack": 3
+        },
+        {
+          "id": "schutztrank",
+          "label": "Schutztrank",
+          "description": "Nächster Treffer wird ignoriert (1x).",
+          "price": 200,
+          "effect": { "type": "shield", "charges": 1 },
+          "stackable": true,
+          "maxStack": 2
+        }
+      ]
+    },
+    "traps": {
+      "label": "Fallen",
+      "icon": "⚡",
+      "items": [
+        {
+          "id": "falle-explosion",
+          "label": "Explosionsfalle",
+          "description": "Platziere eine Falle, die bei Kontakt explodiert.",
+          "price": 80,
+          "effect": { "type": "trap", "damage": 5, "radius": 60 },
+          "stackable": true,
+          "maxStack": 5
+        },
+        {
+          "id": "falle-verlangsamung",
+          "label": "Verlangsamungsfalle",
+          "description": "Verlangsamt Gegner im Bereich für 3 Sekunden.",
+          "price": 60,
+          "effect": { "type": "trap", "slowAmount": 0.5, "duration": 3000, "radius": 80 },
+          "stackable": true,
+          "maxStack": 5
+        },
+        {
+          "id": "falle-gift",
+          "label": "Giftfalle",
+          "description": "Vergiftet Gegner — 2 Schaden über 4 Sekunden.",
+          "price": 100,
+          "effect": { "type": "trap", "dotDamage": 0.5, "dotDuration": 4000, "radius": 50 },
+          "stackable": true,
+          "maxStack": 3
+        }
+      ]
+    },
+    "dungeonTools": {
+      "label": "Dungeon-Tools",
+      "icon": "🔧",
+      "items": [
+        {
+          "id": "fackel",
+          "label": "Tiefsee-Fackel",
+          "description": "Erhöht die Sichtweite im Dungeon.",
+          "price": 45,
+          "effect": { "type": "vision", "radius": 80 },
+          "stackable": true,
+          "maxStack": 3
+        },
+        {
+          "id": "seil",
+          "label": "Seil",
+          "description": "Überspringe 1 Ebene im Dungeon (kein Loot).",
+          "price": 300,
+          "effect": { "type": "skipFloor", "count": 1 },
+          "stackable": true,
+          "maxStack": 2
+        },
+        {
+          "id": "kompass",
+          "label": "Kompass",
+          "description": "Zeigt den Ausgang der aktuellen Ebene.",
+          "price": 75,
+          "effect": { "type": "revealExit" },
+          "stackable": true,
+          "maxStack": 3
+        },
+        {
+          "id": "koeder",
+          "label": "Goldener Köder",
+          "description": "+30% seltene Drops für 1 Run.",
+          "price": 250,
+          "effect": { "type": "buff", "stat": "rareDropRate", "value": 0.3, "duration": "run" },
+          "stackable": true,
+          "maxStack": 2
+        }
+      ]
+    },
+    "special": {
+      "label": "Spezialitäten",
+      "icon": "✨",
+      "items": [
+        {
+          "id": "angelrute",
+          "label": "Angelrute",
+          "description": "Bonus-Loot bei Hafen-Expeditionen.",
+          "price": 180,
+          "effect": { "type": "expeditionBonus", "value": 0.2 },
+          "stackable": false
+        },
+        {
+          "id": "gluecksbringer",
+          "label": "Glücksbringer",
+          "description": "+10% Münzausbeute für 1 Run.",
+          "price": 120,
+          "effect": { "type": "buff", "stat": "coinBonus", "value": 0.1, "duration": "run" },
+          "stackable": true,
+          "maxStack": 3
+        }
+      ]
+    }
+  },
+  "dailyDeal": {
+    "_comment": "Pro Tag wird 1 Item aus dem Pool stark reduziert angeboten",
+    "discountPercent": 50,
+    "rotationPool": [
+      "heiltrank-gross",
+      "powertrank-schaden",
+      "powertrank-speed",
+      "schutztrank",
+      "falle-explosion",
+      "falle-gift",
+      "koeder",
+      "seil",
+      "gluecksbringer"
+    ]
+  }
+}

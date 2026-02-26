@@ -5,6 +5,7 @@
 "use strict";
 
 import { TAU } from '../core/constants.js';
+import { updatePlayerAnimation, renderPlayerAnimation } from '../animation/playerAnimation.js';
 
 /**
  * Fallback-Zeichenfunktion für Spieler wenn kein Sprite geladen
@@ -160,13 +161,24 @@ export function createModels(SPRITES, spriteReady) {
 		player(ctx, x, y, opts = {}) {
 			const scale = opts.scale == null ? 1 : opts.scale;
 			const dir = opts.dir == null ? 1 : opts.dir;
+			
+			// Animation updaten und rendern
+			updatePlayerAnimation();
+			const baseScale = opts.spriteScale == null ? 0.16 : opts.spriteScale;
+			const offsetX = opts.spriteOffsetX == null ? 0 : opts.spriteOffsetX;
+			const offsetY = opts.spriteOffsetY == null ? 0 : opts.spriteOffsetY;
+			const rendered = renderPlayerAnimation(ctx, x, y, baseScale * scale, dir, {
+				offsetX,
+				offsetY,
+				anchorBottom: false
+			});
+			if (rendered) return;
+			
+			// Fallback: Statisches Sprite oder prozedural
 			const image = SPRITES.player;
 			if (spriteReady(image)) {
-				const baseScale = opts.spriteScale == null ? 0.16 : opts.spriteScale;
 				const drawW = image.naturalWidth * baseScale;
 				const drawH = image.naturalHeight * baseScale;
-				const offsetX = opts.spriteOffsetX == null ? 0 : opts.spriteOffsetX;
-				const offsetY = opts.spriteOffsetY == null ? 0 : opts.spriteOffsetY;
 				ctx.save();
 				ctx.translate(x, y);
 				ctx.scale((dir >= 0 ? 1 : -1) * scale, scale);

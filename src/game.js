@@ -5,31 +5,21 @@
 
 // === Core Imports ===
 import { 
-	TAU, 
-	DEFAULT_BOSS_STATS,
 	KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
-	KEY_SHOOT, CODE_SHOOT,
-	CITY_SCALE, CITY_VIEW_ZOOM, CITY_SPEED, CITY_PLAYER_RADIUS,
 	SHIELD_DURATION, SHIELD_COOLDOWN,
-	LEVEL2_FLOOR_OFFSET, LEVEL3_FLOOR_OFFSET, LEVEL4_FLOOR_OFFSET,
-	LEVEL3_FLOOR_MIN_VISIBLE, LEVEL3_FLOOR_COLLISION_RATIO, LEVEL3_FLOOR_COLLISION_PAD,
-	MAX_DELTA_TIME, MIN_DELTA_TIME, LONG_FRAME_THRESHOLD
+	LEVEL2_FLOOR_OFFSET,
 } from './core/constants.js';
 
-import { clamp, clamp01, easeOutCubic, lerp, distance, randomRange } from './core/utils.js';
+import { clamp, clamp01 } from './core/utils.js';
 
 import { 
-	loadSprite, 
 	spriteReady, 
 	configureAssetLoader,
 	ManifestAssets,
 	createLazySpriteProxy,
-	getLazySprite,
 	AssetManager,
 	updateLazySpriteSource
 } from './core/assets.js';
-
-import { updateAllGrids } from './core/spatial.js';
 
 // === Chunk Loading System ===
 import { createChunkLoader } from './core/chunkLoader.js';
@@ -45,55 +35,22 @@ import cityData from './data/city.json';
 import symbolsData from './data/symbols.json';
 import walkableGridsData from './data/walkableGrids.json';
 import spritesData from './data/sprites.json';
+import marketJsonData from './data/market.json';
 
 // === City Module Imports ===
 import { 
-	CITY_SPRITE_CACHE, 
-	getCitySpriteCropShift, 
-	updateCitySpriteCropShift,
-	setCitySpriteCropShift,
-	getCitySpriteCropShiftArray,
 	buildCitySpriteCache as buildCitySpriteCacheModule
 } from './city/spriteCache.js';
 
 import {
-	USE_CITY_SPRITE,
-	CITY_ANIM_SOURCE,
-	CITY_SPRITE_FRAME_SIZE,
-	CITY_SPRITE_SCALE,
-	CITY_SPRITE_OFFSET_X_SIDE,
-	CITY_SPRITE_OFFSET_X_VERTICAL,
-	CITY_SPRITE_OFFSET_Y,
-	CITY_SPRITE_PADDING,
-	CITY_SPRITE_CROP_INSET,
-	CITY_SPRITE_ALPHA_THRESHOLD,
-	CITY_SPRITE_CROP_OUTSET_X,
-	CITY_SPRITE_CROP_OUTSET_Y,
-	CITY_SPRITE_DEBUG,
-	CITY_ANIM_FRAME_TIME,
-	CITY_PERSPECTIVE_ENABLED,
-	CITY_PERSPECTIVE_SKEW_X,
-	CITY_PERSPECTIVE_SCALE_Y,
-	CITY_PERSPECTIVE_ORIGIN_Y,
-	CITY_SPRITE_PERSPECTIVE_STRETCH,
-	CITY_SPRITE_FRAME_OUTSET,
-	CITY_FLOOR_COUNT,
 	CITY_FLOOR_HEIGHT,
-	CITY_BUILDING_WIDTH,
-	CITY_BUILDING_HEIGHT,
-	CITY_HATCH_WIDTH,
-	CITY_WALL_THICKNESS,
-	CITY_FLOOR_THICKNESS,
 	CITY_GRID_CELL_SIZE,
 	CITY_GRID_COLS,
 	CITY_GRID_ROWS,
-	CITY_SPRITE_DEBUG_LABEL
 } from './city/constants.js';
 
 import { createCityUI } from './city/ui.js';
 import { createCityUIElements } from './city/templates.js';
-import { updateCity as updateCityModule } from './city/update.js';
-import { renderCity as renderCityModule } from './city/render.js';
 import { createCitySpriteDebug } from './city/spriteDebug.js';
 
 // === Game Module Imports ===
@@ -111,10 +68,11 @@ import { createPickupsSystem } from './game/pickups.js';
 import { createModels } from './game/models.js';
 import { createFloorHelpers, getLevelFloorSprite } from './game/floor.js';
 import { getHUDElements, getCitySpriteDebugElements } from './core/hudElements.js';
-import { createInputHelpers, isShieldActivationKey, isCoralActivationKey, isTsunamiActivationKey, isCityShortcut, isCityShortcutCandidate } from './game/inputHelpers.js';
+import { createInputHelpers } from './game/inputHelpers.js';
 import { createHUDSystem } from './game/hudUpdate.js';
 import { createSpawningSystem } from './game/spawning.js';
 import { createGameActions } from './game/gameActions.js';
+import { createHubMenu } from './ui/hubMenu.js';
 
 // === Boss Module Imports ===
 import { createBossRenderSystem } from './boss/render.js';
@@ -126,13 +84,32 @@ import { createBossUISystem } from './boss/ui.js';
 // === Player Systems ===
 import { createProgressionState, createProgressionSystem } from './player/progression.js';
 import { createTalentTreeUI } from './player/talentUI.js';
-import { KEY_TALENT_TREE, CODE_TALENT_TREE } from './core/constants.js';
 import { createInitialState, clearAllStateArrays } from './core/initialState.js';
 import { createUpgradeSystem } from './player/upgrades.js';
 import { createUpgradeUI } from './player/upgradeUI.js';
 
 // === Buildings System ===
 import { createBuildingsManager } from './buildings/buildingsManager.js';
+import { createWorkshopSystem } from './buildings/workshop.js';
+import { createWorkshopUI } from './buildings/workshopUI.js';
+import { createMarketSystem } from './buildings/market.js';
+import { createMarketUI } from './buildings/marketUI.js';
+import { createGardenSystem } from './buildings/garden.js';
+import { createGardenUI } from './buildings/gardenUI.js';
+import { createHarborSystem } from './buildings/harbor.js';
+import { createHarborUI } from './buildings/harborUI.js';
+import { createAcademySystem } from './buildings/academy.js';
+import { createAcademyUI } from './buildings/academyUI.js';
+import { createHelpersSystem } from './buildings/helpers.js';
+import { createHelpersUI } from './buildings/helpersUI.js';
+
+// === Dungeon System ===
+import { createDungeonSystem } from './dungeon/dungeonSystem.js';
+
+// === Extrahierte Module (aus bootGame) ===
+import { setupDebugShortcuts } from './game/debugShortcuts.js';
+import { setupEventBindings } from './game/eventBindings.js';
+import { createGameLoop } from './game/gameLoop.js';
 
 // === Shared State (ersetzt window.* Globals) ===
 import S from './core/sharedState.js';
@@ -380,8 +357,8 @@ function bootGame() {
 	const { inventoryEl: cityInventoryEl, merchantEl: cityMerchantEl, missionEl: cityMissionEl } = createCityUIElements();
 
 	// State-Variablen f�r Debug-Modi (werden vom Modul gelesen)
-	let cityAlignMode = false;
-	let cityCropMode = false;
+	const cityAlignMode = false;
+	const cityCropMode = false;
 	let currentCityFrame = { row: 0, col: 0, flip: false };
 	let cityAlignSelectedFrame = null;
 
@@ -406,27 +383,73 @@ function bootGame() {
 	const keys = new Set();
 	const pointer = { down: false, shoot: false };
 	let controlsArmed = false;
-	const DEBUG_SHORTCUTS = true;
+	const DEBUG_SHORTCUTS = import.meta.env.DEV;
 
 	// Input-Helpers (aus game/inputHelpers.js)
 	const { hasKey } = createInputHelpers(keys);
 
 	const cityInventory = {
 		equipment: { weapon: null, armor: null, armor2: null },
-		items: Array.from({ length: 9 }, () => null)
+		items: Array.from({ length: 36 }, () => null)
 	};
 
-	// Item Definitions (aus JSON)
-	const CITY_ITEM_DATA = itemsData.items;
+	// Item Definitions (aus JSON) + Market Items für vollständige Lookup
+	const CITY_ITEM_DATA = { ...itemsData.items };
+
+	// Market-Items in die Lookup-Tabelle einfügen (nach Label)
+	const MARKET_CATEGORY_MAP = {
+		consumables: { category: "dungeon", itemType: "consumable", type: "consumable", rarity: "Gewöhnlich" },
+		traps: { category: "dungeon", itemType: "consumable", type: "consumable", rarity: "Selten" },
+		dungeonTools: { category: "dungeon", itemType: "permanent", type: "misc", rarity: "Selten" },
+		special: { category: "utility", itemType: "permanent", type: "misc", rarity: "Episch" }
+	};
+	for (const [catKey, catObj] of Object.entries(marketJsonData.categories || {})) {
+		const mapped = MARKET_CATEGORY_MAP[catKey] || {
+			category: "utility",
+			itemType: "permanent",
+			type: "misc",
+			rarity: "Gewöhnlich"
+		};
+		for (const item of catObj.items || []) {
+			if (!CITY_ITEM_DATA[item.label]) {
+				CITY_ITEM_DATA[item.label] = {
+					id: item.id,
+					label: item.label,
+					type: mapped.type,
+					category: mapped.category,
+					itemType: mapped.itemType,
+					rarity: item.rarity || mapped.rarity,
+					icon: item.icon || null,
+					effect: item.description || "",
+					price: item.price || 0,
+					stats: {}
+				};
+			}
+		}
+	}
 
 	// Konstanten f�r spezielle Items (R�ckw�rtskompatibilit�t)
-	const ARMOR_ITEM_NAME = "R�stung der Meeresbewohner";
+	const ARMOR_ITEM_NAME = Object.keys(CITY_ITEM_DATA).find(
+		(name) => CITY_ITEM_DATA[name]?.id === "ruestung-meeresbewohner"
+	) || "Rüstung der Meeresbewohner";
 	const ARMOR_ITEM_EFFECT = CITY_ITEM_DATA[ARMOR_ITEM_NAME]?.effect || "";
 	const ARMOR_ITEM_ICON = CITY_ITEM_DATA[ARMOR_ITEM_NAME]?.icon || null;
 
 	const getCityItemData = name => {
 		if (!name) return null;
-		return CITY_ITEM_DATA[name] || { label: name, type: "misc", icon: null, effect: "", price: 0, stats: {} };
+		const data = CITY_ITEM_DATA[name];
+		if (data) return data;
+		return {
+			label: name,
+			type: "misc",
+			category: "utility",
+			itemType: "permanent",
+			rarity: "Gewöhnlich",
+			icon: null,
+			effect: "",
+			price: 0,
+			stats: {}
+		};
 	};
 
 	// Shop-Inventar aus JSON laden
@@ -465,7 +488,20 @@ function bootGame() {
 		shopItems: cityShopItems,
 		missions: cityMissions,
 		onResetGame: () => resetGame(),
-		onStartMission: (missionId) => startMission(missionId),
+		onStartMission: (missionId) => {
+			if (missionId === 'mission-dungeon') {
+				// Dungeon direkt über Missions-NPC starten
+				if (dungeonSystem) {
+					dungeonSystem.showStartMenu();
+					state.mode = 'dungeon_menu';
+					syncCityInventoryVisibility();
+					syncCityShopVisibility();
+					syncCityMissionVisibility();
+				}
+				return;
+			}
+			startMission(missionId);
+		},
 		onUpdateHUD: () => updateHUD(),
 		armorItemName: ARMOR_ITEM_NAME
 	});
@@ -480,6 +516,12 @@ function bootGame() {
 	// Event-Listener �ber das Modul einrichten
 	cityUI.setupEventListeners();
 	cityUI.updateAllUI();
+
+	const hubMenu = createHubMenu({
+		getState: () => state,
+		getCityUI: () => cityUI,
+		getBuildingsManager: () => buildingsManager
+	});
 
 	// Progression System
 	let talentTreeUI = null; // Forward declaration
@@ -509,57 +551,92 @@ function bootGame() {
 	const upgradeUI = createUpgradeUI({ canvas, state, upgradeSystem });
 	upgradeSystem.applyUpgradeEffects();
 
-	function handleTalentTreeKeyDown(e) {
-		const key = e.key;
-		const code = e.code;
-		if (KEY_TALENT_TREE.has(key) || CODE_TALENT_TREE.has(code)) {
-			// Im Game- oder City-Modus, oder wenn Talentbaum offen ist
-			if (state.mode === 'game' || state.mode === 'city' || state.progression.talentTreeOpen) {
-				e.preventDefault();
-				talentTreeUI.toggle();
-				state.progression.talentTreeOpen = talentTreeUI.isVisible();
+	// Workshop System (Werkstatt - Ausrüstung verstärken)
+	const workshopSystem = createWorkshopSystem({
+		state,
+		getInventory: () => cityInventory,
+		getItemData: getCityItemData
+	});
+	const workshopUI = createWorkshopUI({ canvas, state, workshopSystem });
+
+	// Market System (Marktplatz - Erweiterter Shop + Daily Deals)
+	const marketSystem = createMarketSystem({
+		state,
+		getInventory: () => cityInventory
+	});
+	const marketUI = createMarketUI({ canvas, state, marketSystem });
+
+	// Garden System (Gärtnerei - Pflanz-Slots + Buffs)
+	const gardenSystem = createGardenSystem({
+		state,
+		getInventory: () => cityInventory
+	});
+	const gardenUI = createGardenUI({ canvas, state, gardenSystem });
+
+	// Harbor System (Hafen - Expeditionen)
+	const harborSystem = createHarborSystem({
+		state,
+		getInventory: () => cityInventory
+	});
+	const harborUI = createHarborUI({ canvas, state, harborSystem });
+
+	// Academy System (Akademie - Skill-Builder)
+	const academySystem = createAcademySystem({ state });
+	const academyUI = createAcademyUI({ canvas, state, academySystem });
+
+	// Helpers System (NPC-Helfer - Karten-Sammlung)
+	const helpersSystem = createHelpersSystem({ state });
+	const helpersUI = createHelpersUI({ canvas, state, helpersSystem });
+
+	// Dungeon System (Prozedural generierte Dungeons — Seitenansicht)
+	const dungeonSystem = createDungeonSystem({
+		canvas,
+		ctx,
+		getState: () => state,
+		helpersSystem,
+		getKeys: () => ({
+			ArrowLeft: keys.has('ArrowLeft') || keys.has('a') || keys.has('A'),
+			ArrowRight: keys.has('ArrowRight') || keys.has('d') || keys.has('D'),
+			ArrowUp: keys.has('ArrowUp') || keys.has('w') || keys.has('W'),
+			ArrowDown: keys.has('ArrowDown') || keys.has('s') || keys.has('S'),
+			Space: keys.has(' '),
+			Escape: keys.has('Escape'),
+			Enter: keys.has('Enter'),
+			KeyA: keys.has('a') || keys.has('A'),
+			KeyD: keys.has('d') || keys.has('D'),
+			KeyW: keys.has('w') || keys.has('W'),
+			KeyS: keys.has('s') || keys.has('S'),
+			attack: keys.has(' ')
+		}),
+		// Spieler-Sprite & Modelle für Seitenansicht
+		MODELS,
+		SPRITES,
+		spriteReady,
+		onReturnToCity: (reason) => {
+			state.mode = "city";
+			if (reason === "complete") {
+				state.eventFlash = { text: "Dungeon abgeschlossen! +5000 Gold", timer: 3000, color: "#4ade80" };
+			} else if (reason === "death") {
+				state.hearts = state.maxHearts;
+				state.eventFlash = { text: "Im Dungeon gefallen...", timer: 2000, color: "#ff6b6b" };
+			} else {
+				state.eventFlash = { text: "Aus dem Dungeon zurückgekehrt", timer: 2000, color: "#cfe4ff" };
 			}
-		}
-	}
-	window.addEventListener('keydown', handleTalentTreeKeyDown);
-
-	// DEBUG: Taste 9 = Level 4 + 3 Skillpunkte (zum Testen)
-	function handleDebugCheat(e) {
-		if (e.key === '9' && (state.mode === 'game' || state.mode === 'city')) {
-			state.progression.level = 4;
-			state.progression.skillPoints = (state.progression.skillPoints || 0) + 3;
-			state.progression.xp = progressionSystem.getXPForLevel(4);
-			// XP-Display manuell aktualisieren
-			const levelEl = document.getElementById('player-level');
-			const xpFillEl = document.getElementById('xp-fill');
-			const skillpointsEl = document.getElementById('skillpoints-display');
-			if (levelEl) levelEl.textContent = state.progression.level;
-			if (xpFillEl) xpFillEl.style.width = '0%';
-			if (skillpointsEl) skillpointsEl.textContent = state.progression.skillPoints;
-			talentTreeUI.update();
-			console.log('[DEBUG] Cheat aktiviert: Level 4, Skillpunkte:', state.progression.skillPoints);
-		}
-	}
-	window.addEventListener('keydown', handleDebugCheat);
-
-	// ANIM_TEST: T-Taste togglet Animations-Test in der Stadt
-	window.addEventListener('keydown', (e) => {
-		if (e.key === 't' || e.key === 'T') {
-			S.ANIM_TEST.enabled = !S.ANIM_TEST.enabled;
-			console.log('[AnimTest]', S.ANIM_TEST.enabled ? 'AN' : 'AUS');
 		}
 	});
 
-	// Click-Handler für XP-Anzeige
-	const xpDisplayEl = document.querySelector('.xp-display');
-	if (xpDisplayEl) {
-		xpDisplayEl.addEventListener('click', () => {
-			if (state.mode === 'game') {
-				talentTreeUI.toggle();
-				state.progression.talentTreeOpen = talentTreeUI.isVisible();
-			}
-		});
-	}
+	// Debug-Shortcuts und Talent-Tree-Toggle (extrahiert → game/debugShortcuts.js)
+	setupDebugShortcuts({
+		getState: () => state,
+		getTalentTreeUI: () => talentTreeUI,
+		getProgressionSystem: () => progressionSystem,
+		getCityUI: () => cityUI,
+		getDungeonSystem: () => dungeonSystem,
+		syncCityInventoryVisibility,
+		syncCityShopVisibility,
+		syncCityMissionVisibility,
+		getUpdateHUD: () => updateHUD
+	});
 
 	// Spawning-System (aus game/spawning.js)
 	const spawning = createSpawningSystem({
@@ -619,6 +696,7 @@ function bootGame() {
 		enterCity, startMission, resetGame, showGameOver, winGame,
 		activateBoss, damagePlayer, awardFoeDefeat } = gameActions;
 
+	// City Update Context (für gameLoop)
 	const cityUpdateCtx = {
 		getState: () => state,
 		hasKey,
@@ -629,113 +707,6 @@ function bootGame() {
 			down: KEY_DOWN
 		}
 	};
-
-	function updateCity(dt) {
-		updateCityModule(cityUpdateCtx, dt);
-	}
-
-	/**
-	 * Update camera to follow player in world mode
-	 */
-	function updateCamera(dt) {
-		if (!state.worldMode || !state.camera || !state.camera.enabled) return;
-		
-		const camera = state.camera;
-		const player = state.player;
-		
-		// Calculate where camera should look (centered on player with dead zone)
-		const playerScreenX = player.x - camera.x;
-		const playerScreenY = player.y - camera.y;
-		
-		// Horizontal following with dead zone
-		const centerX = canvas.width / 2;
-		const leftBound = centerX - camera.deadZoneX / 2;
-		const rightBound = centerX + camera.deadZoneX / 2;
-		
-		if (playerScreenX < leftBound) {
-			camera.targetX = player.x - leftBound;
-		} else if (playerScreenX > rightBound) {
-			camera.targetX = player.x - rightBound;
-		}
-		
-		// Vertical following with dead zone
-		const centerY = canvas.height / 2;
-		const topBound = centerY - camera.deadZoneY / 2;
-		const bottomBound = centerY + camera.deadZoneY / 2;
-		
-		if (playerScreenY < topBound) {
-			camera.targetY = player.y - topBound;
-		} else if (playerScreenY > bottomBound) {
-			camera.targetY = player.y - bottomBound;
-		}
-		
-		// Clamp target to world bounds
-		camera.targetX = Math.max(0, Math.min(camera.targetX, camera.worldWidth - camera.viewWidth));
-		camera.targetY = Math.max(0, Math.min(camera.targetY, camera.worldHeight - camera.viewHeight));
-		
-		// Smooth interpolation towards target
-		const lerpFactor = 1 - Math.pow(1 - camera.followSpeed, dt / 16);
-		camera.x += (camera.targetX - camera.x) * lerpFactor;
-		camera.y += (camera.targetY - camera.y) * lerpFactor;
-		
-		// Snap if very close
-		if (Math.abs(camera.x - camera.targetX) < 0.5) camera.x = camera.targetX;
-		if (Math.abs(camera.y - camera.targetY) < 0.5) camera.y = camera.targetY;
-		
-		// Update chunk loading based on camera position
-		if (state.chunkLoader && state.useChunkLoading) {
-			state.chunkLoader.updateLoadedChunks();
-		}
-	}
-
-	function update(dt) {
-		state.frameDt = dt;
-		
-		// Spatial Grid: Alle Grids aktualisieren für effiziente Kollisionserkennung
-		updateAllGrids(state);
-		
-		playerUpdater.updatePlayer(dt);
-		updateCamera(dt);  // Camera follows player after movement
-		abilities.updateCoralAllies(dt);
-		pickups.updateCoralEffects(dt);
-		pickups.updateBubbles(dt);
-		coverRocks.updateCoverRocks(dt);
-		foeUpdater.updateFoes(dt);
-		playerUpdater.updateShots(dt);
-		foeArrows.updateFoeArrows(dt);
-		pickups.updateHealPickups(dt);
-		pickups.updateSymbolDrops(dt);
-		pickups.updateCoinDrops(dt);
-		abilities.updateTsunamiWave(dt);
-		bossUpdater.updateBoss(dt);
-		bossUpdater.updateBossAttacks(dt);
-		foeCollision.handleShotFoeHits();
-		foeCollision.handleShotFoeArrowHits();
-		foeCollision.handleShotTorpedoHits();
-		bossCollision.handleShotBossHits();
-		foeCollision.handlePlayerFoeCollisions();
-		foeCollision.handlePlayerFoeArrowCollisions();
-		bossCollision.handlePlayerTorpedoCollisions();
-		bossCollision.handlePlayerFinSweepCollisions();
-		bossCollision.handlePlayerWakeWaveCollisions();
-		bossCollision.handlePlayerWhirlpoolEffects();
-		bossCollision.handlePlayerCoinExplosions();
-		bossCollision.handlePlayerDiamondBeams();
-		bossCollision.handlePlayerTreasureWaves();
-		bossCollision.handlePlayerCardBoomerangs();
-		bossCollision.handlePlayerCrownColumns();
-		bossCollision.handlePlayerKatapultCollisions();
-		bossCollision.handlePlayerShockwaveCollisions();
-		bossCollision.handlePlayerSpeedboatCollisions();
-		bossCollision.handlePlayerPerfumeOrbCollisions();
-		bossCollision.handlePlayerFragranceCloudCollisions();
-		foeCollision.handlePlayerHealPickups();
-		foeCollision.handlePlayerCoinDrops();
-		foeCollision.handlePlayerSymbolDrops();
-		bossCollision.handlePlayerBossCollision();
-		maybeSpawnLevelThreeCoverRock();
-		state.elapsed += dt;
-	}
 
 	// Update-Funktionen: src/boss/update.js, src/foes/update.js, src/player/update.js, src/game/pickups.js
 	// damagePlayer, awardFoeDefeat: siehe game/gameActions.js
@@ -967,10 +938,6 @@ function bootGame() {
 	};
 	const levels = createLevelSystem(levelCtx);
 
-	function renderCity() {
-		renderCityModule(cityRenderCtx);
-	}
-
 	// === OVERWORLD (Top-Down Open-World Stadt) ===
 	function enterOverworld() {
 		state.mode = "overworld";
@@ -985,7 +952,6 @@ function bootGame() {
 		cityUI.reset();
 		if (bannerEl) bannerEl.textContent = "Unterwasser-Oberwelt";
 		if (endOverlay) endOverlay.style.display = "none";
-		// HTML UI Elemente verstecken
 		if (cityInventoryEl) cityInventoryEl.style.display = "none";
 		if (cityMerchantEl) cityMerchantEl.style.display = "none";
 		if (cityMissionEl) cityMissionEl.style.display = "none";
@@ -1036,453 +1002,89 @@ function bootGame() {
 		triggerEventFlash: (type, opts) => triggerEventFlash(type, opts),
 		onModeChange: (newMode) => {
 			state.mode = newMode;
-			if (newMode === 'city') {
-				// Stadt-UI wieder einblenden
-				syncCityInventoryVisibility();
-				syncCityShopVisibility();
-				syncCityMissionVisibility();
-			}
-		}
+			syncCityInventoryVisibility();
+			syncCityShopVisibility();
+			syncCityMissionVisibility();
+		},
+		workshopUI,
+		upgradeUI,
+		marketUI,
+		gardenUI,
+		harborUI,
+		academyUI,
+		helpersUI,
+		helpersSystem,
+		dungeonSystem
 	});
 	buildingsManager.init();
 
-	function render() {
-		// Overworld-Modus (Top-Down Open-World)
-		if (state.mode === "overworld") {
-			renderOverworldMode();
-			return;
-		}
+	// Game-Loop erstellen (extrahiert → game/gameLoop.js)
+	const gameLoop = createGameLoop({
+		getState: () => state,
+		getCanvas: () => canvas,
+		getCtx: () => ctx,
+		getKeys: () => keys,
+		hasKey,
+		getPlayerUpdater: () => playerUpdater,
+		getAbilities: () => abilities,
+		getPickups: () => pickups,
+		getCoverRocks: () => coverRocks,
+		getFoeUpdater: () => foeUpdater,
+		getFoeArrows: () => foeArrows,
+		getFoeCollision: () => foeCollision,
+		getFoeRenderer: () => foeRenderer,
+		getBossUpdater: () => bossUpdater,
+		getBossCollision: () => bossCollision,
+		getBossRenderer: () => bossRenderer,
+		getBossUI: () => bossUI,
+		getGameRenderer: () => gameRenderer,
+		getBackgroundRenderer: () => backgroundRenderer,
+		getDungeonSystem: () => dungeonSystem,
+		getBuildingsManager: () => buildingsManager,
+		getUpdateHUD: () => updateHUD,
+		maybeSpawnLevelThreeCoverRock,
+		updateOverworldMode,
+		renderOverworldMode,
+		getCityRenderCtx: () => cityRenderCtx,
+		getCityUpdateCtx: () => cityUpdateCtx,
+		getCityInventoryEl: () => cityInventoryEl,
+		getCityMerchantEl: () => cityMerchantEl,
+		getCityMissionEl: () => cityMissionEl,
+		getCitySpriteDebugPanel: () => citySpriteDebugPanel
+	});
+	const { tick, update, render, updateCity } = gameLoop;
 
-		// Building-Modus (Gebäude-Szene)
-		if (state.mode === "building") {
-			buildingsManager.render(ctx);
-			gameRenderer.renderDebugLabel();
-			return;
-		}
-		
-		if (state.mode === "city") {
-			renderCity();
-			// Teleporter und Map-Overlay rendern
-			buildingsManager.render(ctx);
-			gameRenderer.renderDebugLabel();
-			return;
-		}
-		// CSS 3D-Perspektive entfernen wenn nicht im Stadt-Modus
-		if (canvas && canvas.classList.contains("city-perspective")) {
-			canvas.classList.remove("city-perspective");
-		}
-		if (cityInventoryEl) cityInventoryEl.style.display = "none";
-		if (cityMerchantEl) cityMerchantEl.style.display = "none";
-		if (cityMissionEl) cityMissionEl.style.display = "none";
-		if (citySpriteDebugPanel) citySpriteDebugPanel.style.display = "none";
-		
-		// Background (handles its own camera transform for world mode)
-		backgroundRenderer.renderBackground();
-		backgroundRenderer.renderBubbles();
-		
-		// Apply camera transform for world objects
-		const useCamera = state.worldMode && state.camera && state.camera.enabled;
-		if (useCamera) {
-			ctx.save();
-			ctx.translate(-Math.round(state.camera.x), -Math.round(state.camera.y));
-		}
-		
-		// World objects (transformed by camera)
-		foeRenderer.renderFoes();
-		backgroundRenderer.renderCoverRocks();
-		backgroundRenderer.renderTsunamiWave();
-		gameRenderer.renderHeals();
-		gameRenderer.renderCoralEffects();
-		gameRenderer.renderCoralAllies();
-		gameRenderer.renderCoinDrops();
-		gameRenderer.renderSymbolDrops();
-		bossRenderer.renderBossDiamondBeams();
-		bossRenderer.renderBossFinSweeps();
-		bossRenderer.renderBossWakeWaves();
-		bossRenderer.renderBossWhirlpools();
-		bossRenderer.renderBossCoinBursts();
-		bossRenderer.renderBossCoinExplosions();
-		bossRenderer.renderBossShockwaves();
-		bossRenderer.renderBossSpeedboats();
-		bossRenderer.renderBossCardBoomerangs();
-		bossRenderer.renderBossKatapultShots();
-		bossRenderer.renderBossPerfumeOrbs();
-		bossRenderer.renderBossTorpedoes();
-		bossRenderer.renderBossFragranceClouds();
-		foeRenderer.renderFoeArrows();
-		gameRenderer.renderShots();
-		bossUI.renderBoss();
-		gameRenderer.renderHealBursts();
-		gameRenderer.renderPlayer();
-		backgroundRenderer.renderFloorOverlay();
-		
-		// Restore camera transform
-		if (useCamera) {
-			ctx.restore();
-		}
-		
-		// UI elements (not affected by camera)
-		bossUI.renderBossHpBar();
-		gameRenderer.renderEventFlash();
-		gameRenderer.renderDebugLabel();
-	}
-
-	function tick(now) {
-		// Delta-Time Capping: Verhindert Physik-Sprünge bei Tab-Wechsel oder Lag
-		const rawDt = now - state.lastTick;
-		const dt = clamp(rawDt, MIN_DELTA_TIME, MAX_DELTA_TIME);
-		
-		// Tab-Wechsel Erkennung: Wenn rawDt sehr groß war, Reset-Logik
-		if (rawDt > LONG_FRAME_THRESHOLD) {
-			// Optional: Logging für Debug-Zwecke
-			// console.log(`Long frame detected: ${rawDt.toFixed(0)}ms (capped to ${dt}ms)`);
-		}
-		
-		state.lastTick = now;
-		if (state.started && !state.over && !state.paused) {
-			const buildingKeys = {
-				left: keys.has('a') || keys.has('A') || keys.has('ArrowLeft'),
-				right: keys.has('d') || keys.has('D') || keys.has('ArrowRight'),
-				up: keys.has('w') || keys.has('W') || keys.has('ArrowUp'),
-				down: keys.has('s') || keys.has('S') || keys.has('ArrowDown')
-			};
-			if (state.mode === "overworld") {
-				updateOverworldMode(dt);
-			} else if (state.mode === "building") {
-				buildingsManager.update(dt, buildingKeys);
-			} else if (state.mode === "city") {
-				updateCity(dt);
-				buildingsManager.update(dt, buildingKeys);
-			} else {
-				update(dt);
-			}
-			updateHUD();
-		}
-		render();
-		requestAnimationFrame(tick);
-	}
-
-	document.addEventListener("keydown", event => {
-		// Buildings-Manager Keyboard-Handler (Map, Teleporter, Gebäude)
-		if (state.mode === "city" || state.mode === "building") {
-			if (buildingsManager.handleKeyDown(event.key, event.code)) {
-				event.preventDefault();
-				return;
-			}
-		}
-		
-		if (state.mode === "city") {
-			// Inventar öffnen/schließen
-			if (event.key === "i" || event.key === "I") {
-				cityUI.setInventoryOpen(!cityUI.isInventoryOpen());
-				if (bannerEl) bannerEl.textContent = cityUI.isInventoryOpen() ? "Inventar geöffnet (I)" : "Inventar geschlossen";
-				event.preventDefault();
-				return;
-			}
-			// Overworld betreten mit "O"
-			if (event.key === "o" || event.key === "O") {
-				event.preventDefault();
-				enterOverworld();
-				return;
-			}
-		}
-		if (isCityShortcutCandidate(event)) {
-			const modeLabel = state.started ? (state.mode === "city" ? "city" : "game") : "title";
-			const keyInfo = `${event.key || "?"}/${event.code || "?"}`;
-			if (bannerEl) bannerEl.textContent = `Shortcut erkannt (${keyInfo}) – Modus: ${modeLabel}`;
-			const bootToast = document.getElementById("bootToast");
-			if (bootToast) bootToast.textContent = `Taste erkannt: ${keyInfo} – Modus: ${modeLabel}`;
-			console.log("City shortcut keydown", { key: event.key, code: event.code, alt: event.altKey, shift: event.shiftKey, mode: modeLabel });
-		}
-		if (isCityShortcut(event, state.mode)) {
-			event.preventDefault();
-			enterCity();
-			return;
-		}
-		if (DEBUG_SHORTCUTS && event.altKey && event.shiftKey) {
-			// Alt+Shift+1-4: Zum Anfang des Levels springen (ohne Boss)
-			if (event.code === "Digit1") {
-				event.preventDefault();
-				debugJumpToLevel(0, { skipToBoss: false });
-				return;
-			}
-			if (event.code === "Digit2") {
-				event.preventDefault();
-				debugJumpToLevel(1, { skipToBoss: false });
-				return;
-			}
-			if (event.code === "Digit3") {
-				event.preventDefault();
-				debugJumpToLevel(2, { skipToBoss: false });
-				return;
-			}
-			if (event.code === "Digit4") {
-				event.preventDefault();
-				debugJumpToLevel(3, { skipToBoss: false });
-				return;
-			}
-			// Alt+Shift+Ctrl+1-4: Direkt zum Boss des Levels springen
-			if (event.code === "Digit5") {
-				event.preventDefault();
-				enterCity();
-				return;
-			}
-			// Alt+Shift+9: Level 9 (Mission 3 - World Mode Multi-Scene)
-			if (event.code === "Digit9") {
-				event.preventDefault();
-				debugJumpToLevel(8, { skipToBoss: false }); // Level 9 - Korallenexpedition (World Mode)
-				return;
-			}
-			// Alt+Shift+0: Overworld (Top-Down Open-World Stadt)
-			if (event.code === "Digit0") {
-				event.preventDefault();
-				enterOverworld();
-				return;
-			}
-		}
-		// Ctrl+Shift+6-9: Direkt zum Boss von Level 5-8 springen
-		if (DEBUG_SHORTCUTS && event.ctrlKey && event.shiftKey) {
-			if (event.code === "Digit6") {
-				event.preventDefault();
-				debugJumpToLevel(4, { skipToBoss: true }); // Level 5 Boss (Leviathan)
-				return;
-			}
-			if (event.code === "Digit7") {
-				event.preventDefault();
-				debugJumpToLevel(5, { skipToBoss: true }); // Level 6 Boss (Hydra)
-				return;
-			}
-			if (event.code === "Digit8") {
-				event.preventDefault();
-				debugJumpToLevel(6, { skipToBoss: true }); // Level 7 Boss (Deepsea-Kraken)
-				return;
-			}
-			if (event.code === "Digit9") {
-				event.preventDefault();
-				debugJumpToLevel(7, { skipToBoss: true }); // Level 8 Boss (Titan)
-				return;
-			}
-		}
-		// ESC in Overworld → zurück zur Stadt
-		if (state.mode === "overworld" && (event.key === "Escape" || event.code === "Escape")) {
-			event.preventDefault();
-			exitOverworld();
-			return;
-		}
-		keys.add(event.key);
-		if (state.started && !state.over && !state.paused && state.mode === "game" && isShieldActivationKey(event)) {
-			event.preventDefault();
-			abilities.tryActivateShield();
-		}
-		if (state.started && !state.over && !state.paused && state.mode === "game" && isCoralActivationKey(event)) {
-			if (abilities.tryActivateCoralAllies()) event.preventDefault();
-		}
-		if (state.started && !state.over && !state.paused && state.mode === "game" && isTsunamiActivationKey(event)) {
-			if (abilities.tryActivateTsunamiAbility()) event.preventDefault();
-		}
-		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
-			event.preventDefault();
-			if (state.mode === "city" || state.mode === "overworld") return;
-			pointer.shoot = true;
-			if (!state.started) {
-				if (!controlsArmed) return;
-				resetGame();
-			} else {
-				playerUpdater.playerShoot();
-			}
-			return;
-		}
-		if (!state.started) {
-			if (!controlsArmed) return;
-			resetGame();
-		}
+	// Event-Bindings registrieren (extrahiert → game/eventBindings.js)
+	setupEventBindings({
+		getState: () => state,
+		getCanvas: () => canvas,
+		getKeys: () => keys,
+		getPointer: () => pointer,
+		isControlsArmed: () => controlsArmed,
+		getBannerEl: () => bannerEl,
+		getBtnRestart: () => btnRestart,
+		getBtnQuit: () => btnQuit,
+		getHudShield: () => hudShield,
+		getDungeonSystem: () => dungeonSystem,
+		getBuildingsManager: () => buildingsManager,
+		getHubMenu: () => hubMenu,
+		getCityUI: () => cityUI,
+		getAbilities: () => abilities,
+		getPlayerUpdater: () => playerUpdater,
+		getUpgradeUI: () => upgradeUI,
+		resetGame,
+		enterCity,
+		enterOverworld,
+		exitOverworld,
+		showGameOver,
+		debugJumpToLevel,
+		syncCityInventoryVisibility,
+		syncCityShopVisibility,
+		syncCityMissionVisibility,
+		updateCityShopUI,
+		updateCityMissionUI,
+		DEBUG_SHORTCUTS
 	});
-
-	document.addEventListener("keyup", event => {
-		keys.delete(event.key);
-		if (KEY_SHOOT.has(event.key) || CODE_SHOOT.has(event.code)) {
-			pointer.shoot = false;
-		}
-	});
-
-	canvas.addEventListener("pointerdown", event => {
-		// Building-Modus: Grid-Editor und Debug-Drag haben Priorität
-		if (state.mode === "building") {
-			const rect = canvas.getBoundingClientRect();
-			const scaleX = canvas.width / rect.width;
-			const scaleY = canvas.height / rect.height;
-			const x = (event.clientX - rect.left) * scaleX;
-			const y = (event.clientY - rect.top) * scaleY;
-			if (buildingsManager.handleMouseDown(x, y, event.button)) {
-				// Pointer-Capture für kontinuierliches Malen
-				canvas.setPointerCapture(event.pointerId);
-				event.preventDefault();
-				event.stopPropagation();
-				return;
-			}
-		}
-		
-		if (state.mode === "city") {
-			if (event.pointerType === "mouse" && event.button !== 0) return;
-			const rect = canvas.getBoundingClientRect();
-			const localX = (event.clientX - rect.left) * (canvas.width / rect.width);
-			const localY = (event.clientY - rect.top) * (canvas.height / rect.height);
-			
-			const city = state.city;
-			if (!city) return;
-			
-			// Kamera-Offset berücksichtigen für Welt-Koordinaten
-			const cameraX = city.camera ? city.camera.x : 0;
-			const cameraY = city.camera ? city.camera.y : 0;
-			const worldX = localX + cameraX;
-			const worldY = localY + cameraY;
-			
-			// Klick auf NPCs prüfen (Seitenansicht - keine Perspektiv-Korrektur nötig)
-			const npcClickRadius = 100;
-			
-			const merchant = city.npcs && city.npcs.find(npc => npc.id === "merchant");
-			if (merchant) {
-				const dist = Math.hypot(worldX - merchant.x, worldY - merchant.y);
-				if (dist <= npcClickRadius) {
-					cityUI.setShopOpen(true);
-					updateCityShopUI();
-					if (bannerEl) bannerEl.textContent = "Händler geöffnet";
-					return;
-				}
-			}
-			const questGiver = city.npcs && city.npcs.find(npc => npc.id === "quest");
-			if (questGiver) {
-				const dist = Math.hypot(worldX - questGiver.x, worldY - questGiver.y);
-				if (dist <= npcClickRadius) {
-					cityUI.setMissionOpen(true);
-					updateCityMissionUI();
-					if (bannerEl) bannerEl.textContent = "Missionen geöffnet";
-					return;
-				}
-			}
-			// Upgrade-NPC
-			const upgradeNpc = city.npcs && city.npcs.find(npc => npc.id === "upgrade");
-			if (upgradeNpc) {
-				const dist = Math.hypot(worldX - upgradeNpc.x, worldY - upgradeNpc.y);
-				if (dist <= npcClickRadius) {
-					upgradeUI.show();
-					if (bannerEl) bannerEl.textContent = "Upgrade-Schmiede geöffnet";
-					return;
-				}
-			}
-			return;
-		}
-		if (event.pointerType === "mouse") {
-			if (event.button === 2) {
-				event.preventDefault();
-				if (!state.started) {
-					if (!controlsArmed) return;
-					resetGame();
-					return;
-				}
-				if (!state.over && !state.paused && state.player.shieldUnlocked) abilities.tryActivateShield();
-				return;
-			}
-			if (event.button !== 0) return;
-			pointer.shoot = true;
-			if (!state.started) {
-				if (!controlsArmed) return;
-				resetGame();
-			}
-			else playerUpdater.playerShoot();
-			return;
-		}
-		if (!state.started) {
-			if (!controlsArmed) return;
-			resetGame();
-		}
-		pointer.down = true;
-	});
-
-	canvas.addEventListener("contextmenu", event => event.preventDefault());
-	
-	// Mouse-Events für Buildings-Manager (Karte) und Grid-Editor
-	canvas.addEventListener("pointermove", event => {
-		const rect = canvas.getBoundingClientRect();
-		// Skalierung berücksichtigen wenn Canvas anders skaliert ist
-		const scaleX = canvas.width / rect.width;
-		const scaleY = canvas.height / rect.height;
-		const x = (event.clientX - rect.left) * scaleX;
-		const y = (event.clientY - rect.top) * scaleY;
-		buildingsManager.handleMouseMove(x, y);
-	});
-	
-	canvas.addEventListener("click", event => {
-		if (state.mode === "city" || state.mode === "building") {
-			const rect = canvas.getBoundingClientRect();
-			const scaleX = canvas.width / rect.width;
-			const scaleY = canvas.height / rect.height;
-			const x = (event.clientX - rect.left) * scaleX;
-			const y = (event.clientY - rect.top) * scaleY;
-			if (buildingsManager.handleClick(x, y)) {
-				event.preventDefault();
-				return;
-			}
-		}
-	});
-	
-	// Mouse-Events für Building Debug-Drag-Mode und Grid-Editor
-	canvas.addEventListener("mousedown", event => {
-		if (state.mode === "building" || state.mode === "city") {
-			const rect = canvas.getBoundingClientRect();
-			const scaleX = canvas.width / rect.width;
-			const scaleY = canvas.height / rect.height;
-			const x = (event.clientX - rect.left) * scaleX;
-			const y = (event.clientY - rect.top) * scaleY;
-			if (buildingsManager.handleMouseDown(x, y, event.button)) {
-				event.preventDefault();
-				event.stopPropagation();
-			}
-		}
-	});
-	
-	canvas.addEventListener("mouseup", event => {
-		if (state.mode === "building" || state.mode === "city") {
-			const rect = canvas.getBoundingClientRect();
-			const scaleX = canvas.width / rect.width;
-			const scaleY = canvas.height / rect.height;
-			const x = (event.clientX - rect.left) * scaleX;
-			const y = (event.clientY - rect.top) * scaleY;
-			buildingsManager.handleMouseUp(x, y, event.button);
-		}
-	});
-	
-	// Rechtsklick-Menü verhindern im Building-Modus (für Grid-Editor)
-	canvas.addEventListener("contextmenu", event => {
-		if (state.mode === "building" || state.mode === "city") {
-			event.preventDefault();
-		}
-	});
-	
-	document.addEventListener("pointerup", (event) => {
-		pointer.down = false;
-		pointer.shoot = false;
-		// Building Grid-Editor beenden (auch wenn Maus außerhalb des Canvas)
-		if (state.mode === "building" || state.mode === "city") {
-			buildingsManager.handleMouseUp(0, 0, event.button);
-			// Pointer-Capture freigeben
-			if (canvas.hasPointerCapture && canvas.hasPointerCapture(event.pointerId)) {
-				canvas.releasePointerCapture(event.pointerId);
-			}
-		}
-	});
-
-	if (btnRestart) btnRestart.addEventListener("click", () => resetGame());
-	if (btnQuit)
-		btnQuit.addEventListener("click", () => {
-			showGameOver("Spiel beendet");
-		});
-	if (hudShield)
-		hudShield.addEventListener("click", () => {
-			if (!state.started || state.over || state.paused) return;
-			if (!state.player.shieldUnlocked) return;
-			abilities.tryActivateShield();
-		});
 
 	// Spiel-Funktionen über sharedState bereitstellen
 	S.cashBeginGame = () => {
@@ -1529,7 +1131,7 @@ function bootGame() {
 			},
 			floorHeight: CITY_FLOOR_HEIGHT,
 			floorThickness: city.floorThickness,
-			floors: floors,
+			floors,
 			player: {
 				x: city.player.x,
 				y: city.player.y,

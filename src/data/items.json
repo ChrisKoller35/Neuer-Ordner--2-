@@ -1,10 +1,13 @@
 {
-  "_comment": "Item-Definitionen für Cashfisch - Alle verfügbaren Items im Spiel",
+  "_comment": "Item-Definitionen für Cashfisch - Phase 5.1 Schema (rarity, itemType, category)",
   "items": {
     "Schwert": {
       "id": "schwert",
       "label": "Schwert",
       "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Erhöht den Schaden deiner Angriffe.",
       "price": 50,
@@ -16,6 +19,9 @@
       "id": "schild",
       "label": "Schild",
       "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Blockiert gelegentlich eingehende Angriffe.",
       "price": 40,
@@ -27,6 +33,9 @@
       "id": "orb-zerstoerung",
       "label": "Orb der Zerstörung",
       "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Selten",
       "icon": null,
       "effect": "Deine Projektile explodieren bei Kontakt.",
       "price": 120,
@@ -38,6 +47,9 @@
       "id": "duesenantrieb",
       "label": "Düsenantrieb",
       "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Erhöht deine Bewegungsgeschwindigkeit.",
       "price": 80,
@@ -49,6 +61,9 @@
       "id": "schwanzflosse",
       "label": "Schwanzflosse",
       "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Verbessert deine Manövrierfähigkeit.",
       "price": 60,
@@ -60,6 +75,9 @@
       "id": "ruestung-meeresbewohner",
       "label": "Rüstung der Meeresbewohner",
       "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Selten",
       "icon": "./src/city/Ruestungmeer.png",
       "effect": "Ein Treffer wird neutralisiert (pro Level 1x). In der Stadt wird der Effekt wieder aufgeladen.",
       "price": 150,
@@ -71,6 +89,9 @@
       "id": "tiefsee-laterne",
       "label": "Tiefsee-Laterne",
       "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Erhellt dunkle Bereiche und zeigt versteckte Schätze.",
       "price": 45,
@@ -82,6 +103,9 @@
       "id": "perlenring",
       "label": "Perlenring",
       "type": "misc",
+      "category": "economy",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Erhöht die Münzausbeute um 10%.",
       "price": 70,
@@ -93,6 +117,9 @@
       "id": "harpunen-klinge",
       "label": "Harpunen-Klinge",
       "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Selten",
       "icon": null,
       "effect": "Erhöhte Reichweite und Durchschlagskraft.",
       "price": 100,
@@ -105,6 +132,9 @@
       "id": "stahlhelm",
       "label": "Stahlhelm",
       "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
       "icon": null,
       "effect": "Reduziert erlittenen Schaden um 15%.",
       "price": 90,
@@ -116,6 +146,9 @@
       "id": "algenmantel",
       "label": "Algenmantel",
       "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Selten",
       "icon": null,
       "effect": "Regeneriert langsam Gesundheit über Zeit.",
       "price": 110,
@@ -127,11 +160,297 @@
       "id": "seestern-amulett",
       "label": "Seestern-Amulett",
       "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Selten",
       "icon": null,
       "effect": "Erhöht die maximale Energie um 25.",
       "price": 85,
       "stats": {
         "energyBonus": 25
+      }
+    },
+    "Schnelle Kieme": {
+      "id": "rapid_gill",
+      "label": "Schnelle Kieme",
+      "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "+20% Feuerrate.",
+      "price": 1200,
+      "stats": {
+        "fireRateBonus": 0.2
+      }
+    },
+    "Doppelharpune": {
+      "id": "harpoon_x2",
+      "label": "Doppelharpune",
+      "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "2 Projektile gleichzeitig.",
+      "price": 4500,
+      "stats": {
+        "projectileCount": 2
+      }
+    },
+    "Tiefseebombe": {
+      "id": "depth_charge",
+      "label": "Tiefseebombe",
+      "type": "weapon",
+      "category": "weapon",
+      "itemType": "permanent",
+      "rarity": "Episch",
+      "icon": null,
+      "effect": "Flächenschaden bei Aufprall.",
+      "price": 8000,
+      "stats": {
+        "impactAoE": true,
+        "impactRadius": 70
+      }
+    },
+    "Meeresglas-Rüstung": {
+      "id": "sea_glass",
+      "label": "Meeresglas-Rüstung",
+      "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "-15% eingehender Schaden.",
+      "price": 2000,
+      "stats": {
+        "damageReduction": 0.15
+      }
+    },
+    "Korallenweste": {
+      "id": "coral_vest",
+      "label": "Korallenweste",
+      "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "+25 Max-HP.",
+      "price": 3000,
+      "stats": {
+        "maxHpBonus": 25
+      }
+    },
+    "Titanschuppe": {
+      "id": "titan_scale",
+      "label": "Titanschuppe",
+      "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "Schadensreduktion x2 bei aktivem Schild.",
+      "price": 6000,
+      "stats": {
+        "shieldDamageReductionMultiplier": 2
+      }
+    },
+    "Strömungsstiefel": {
+      "id": "current_boots",
+      "label": "Strömungsstiefel",
+      "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "+30% Bewegung.",
+      "price": 1800,
+      "stats": {
+        "speedBonus": 0.3
+      }
+    },
+    "Blasen-Dash": {
+      "id": "bubble_dash",
+      "label": "Blasen-Dash",
+      "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "Dash auf Doppel-Richtungstaste.",
+      "price": 5500,
+      "stats": {
+        "dashUnlock": true
+      }
+    },
+    "Magnet-Muschel": {
+      "id": "magnet_shell",
+      "label": "Magnet-Muschel",
+      "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "Münzen in 120px werden automatisch eingesammelt.",
+      "price": 2500,
+      "stats": {
+        "coinMagnetRadius": 120
+      }
+    },
+    "Glücksperle": {
+      "id": "fortune_pearl",
+      "label": "Glücksperle",
+      "type": "misc",
+      "category": "economy",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "+20% Münzen aus Gegnern.",
+      "price": 1500,
+      "stats": {
+        "coinBonus": 0.2
+      }
+    },
+    "Schatzkarte": {
+      "id": "treasure_map",
+      "label": "Schatzkarte",
+      "type": "misc",
+      "category": "economy",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "Dungeon-Loot +35%.",
+      "price": 7000,
+      "stats": {
+        "dungeonLootBonus": 0.35
+      }
+    },
+    "Schwarzmarkt-Pass": {
+      "id": "black_market",
+      "label": "Schwarzmarkt-Pass",
+      "type": "misc",
+      "category": "economy",
+      "itemType": "permanent",
+      "rarity": "Episch",
+      "icon": null,
+      "effect": "Händler-Preise -20%.",
+      "price": 9500,
+      "stats": {
+        "merchantDiscount": 0.2
+      }
+    },
+    "Dungeon-Trank": {
+      "id": "dungeon_flask",
+      "label": "Dungeon-Trank",
+      "type": "consumable",
+      "category": "dungeon",
+      "itemType": "consumable",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "+50 HP sofort.",
+      "price": 800,
+      "stats": {
+        "healInstant": 50
+      }
+    },
+    "Wut-Elixier": {
+      "id": "rage_elixir",
+      "label": "Wut-Elixier",
+      "type": "consumable",
+      "category": "dungeon",
+      "itemType": "consumable",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "+50% Schaden für 15s.",
+      "price": 1200,
+      "stats": {
+        "damageBonusTimed": 0.5,
+        "durationMs": 15000
+      }
+    },
+    "Korallen-Charm": {
+      "id": "coral_charm",
+      "label": "Korallen-Charm",
+      "type": "misc",
+      "category": "companion",
+      "itemType": "permanent",
+      "rarity": "Episch",
+      "icon": null,
+      "effect": "+1 Begleiter gleichzeitig.",
+      "price": 12000,
+      "stats": {
+        "coralMaxCount": 1
+      }
+    },
+    "Schwarm-Ring": {
+      "id": "swarm_ring",
+      "label": "Schwarm-Ring",
+      "type": "misc",
+      "category": "companion",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "Begleiter-Schussgeschwindigkeit +40%.",
+      "price": 8500,
+      "stats": {
+        "coralFireRateBonus": 0.4
+      }
+    },
+    "Abgrundlaterne": {
+      "id": "abyss_lantern",
+      "label": "Abgrundlaterne",
+      "type": "misc",
+      "category": "utility",
+      "itemType": "permanent",
+      "rarity": "Gewöhnlich",
+      "icon": null,
+      "effect": "Sichtbereich im Dungeon +50%.",
+      "price": 3500,
+      "stats": {
+        "dungeonVisionBonus": 0.5
+      }
+    },
+    "Kraken-Tinte": {
+      "id": "kraken_ink",
+      "label": "Kraken-Tinte",
+      "type": "consumable",
+      "category": "utility",
+      "itemType": "consumable",
+      "rarity": "Episch",
+      "icon": null,
+      "effect": "Unsichtbarkeit 3s (Cooldown 30s).",
+      "price": 11000,
+      "stats": {
+        "invisibilityDurationMs": 3000,
+        "cooldownMs": 30000
+      }
+    },
+    "Gezeiten-Stein": {
+      "id": "tide_stone",
+      "label": "Gezeiten-Stein",
+      "type": "armor",
+      "category": "armor",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "HP-Regen +2/s.",
+      "price": 4000,
+      "stats": {
+        "hpRegenPerSecond": 2
+      }
+    },
+    "Goldene Flosse": {
+      "id": "golden_fin",
+      "label": "Goldene Flosse",
+      "type": "misc",
+      "category": "economy",
+      "itemType": "permanent",
+      "rarity": "Selten",
+      "icon": null,
+      "effect": "Jede 10. Münze ist doppelt.",
+      "price": 6500,
+      "stats": {
+        "everyNthCoinDouble": 10
       }
     }
   }

@@ -160,7 +160,7 @@ import S from '../core/sharedState.js';
       player.x = mouseX + cameraX;
       player.y = mouseY + cameraY;
       
-      console.log('%c[Drag] Spieler wird gezogen... Position: ' + player.x.toFixed(0) + ', ' + player.y.toFixed(0), 'color: yellow; font-weight: bold;');
+      console.log(`%c[Drag] Spieler wird gezogen... Position: ${  player.x.toFixed(0)  }, ${  player.y.toFixed(0)}`, 'color: yellow; font-weight: bold;');
       e.preventDefault();
       e.stopPropagation();
     }, true);
@@ -195,7 +195,7 @@ import S from '../core/sharedState.js';
         S.isDraggingPlayer = false;
         const player = S.CITY_PLAYER_DEBUG;
         if (player) {
-          console.log('%c[Drag] Spieler abgesetzt bei x=' + player.x.toFixed(1) + ', y=' + player.y.toFixed(1), 'color: yellow; font-weight: bold;');
+          console.log(`%c[Drag] Spieler abgesetzt bei x=${  player.x.toFixed(1)  }, y=${  player.y.toFixed(1)}`, 'color: yellow; font-weight: bold;');
         }
       }
     });
@@ -258,7 +258,7 @@ OFFSET: dx=${offsetX.toFixed(1)}, dy=${offsetY.toFixed(1)}
 Wenn der Offset 0,0 ist, sind beide Punkte übereinander.
 Falls nicht: Ziehe den Spieler näher zum gelben Punkt!
 =======================================`;
-        console.log('%c' + offsetInfo, 'color: cyan; font-size: 14px;');
+        console.log(`%c${  offsetInfo}`, 'color: cyan; font-size: 14px;');
         
         const copyText = `OFFSET: dx=${offsetX.toFixed(1)}, dy=${offsetY.toFixed(1)}`;
         prompt('Offset berechnet! Kopiere den Text unten:\n\n(Strg+C zum Kopieren)', copyText);
@@ -288,7 +288,7 @@ Falls nicht: Ziehe den Spieler näher zum gelben Punkt!
         console.log('%c\u{1F449} Rechtsklick/halten = Zellen entfernen', 'color: orange;');
         console.log('%c\u2190\u2191\u2192\u2193 Pfeiltasten = Kamera bewegen', 'color: cyan;');
         console.log('%cS = Speichern | R = Reset', 'color: yellow;');
-        console.log('%cZellen: ' + Object.keys(S.CITY_WALKABLE_GRID).length, 'color: white;');
+        console.log(`%cZellen: ${  Object.keys(S.CITY_WALKABLE_GRID).length}`, 'color: white;');
       } else {
         console.log('%c[Grid Editor] Deaktiviert', 'color: gray; font-weight: bold;');
       }
@@ -302,28 +302,28 @@ Falls nicht: Ziehe den Spieler näher zum gelben Punkt!
     if (e.key === 'ArrowUp') {
       gridEditorCameraY -= CAMERA_SPEED;
       S.CITY_CAMERA_Y_DEBUG = gridEditorCameraY;
-      console.log('%c[Kamera] Y=' + gridEditorCameraY, 'color: cyan;');
+      console.log(`%c[Kamera] Y=${  gridEditorCameraY}`, 'color: cyan;');
       e.preventDefault();
       return;
     }
     if (e.key === 'ArrowDown') {
       gridEditorCameraY += CAMERA_SPEED;
       S.CITY_CAMERA_Y_DEBUG = gridEditorCameraY;
-      console.log('%c[Kamera] Y=' + gridEditorCameraY, 'color: cyan;');
+      console.log(`%c[Kamera] Y=${  gridEditorCameraY}`, 'color: cyan;');
       e.preventDefault();
       return;
     }
     if (e.key === 'ArrowLeft') {
       gridEditorCameraX -= CAMERA_SPEED;
       S.CITY_CAMERA_X_DEBUG = gridEditorCameraX;
-      console.log('%c[Kamera] X=' + gridEditorCameraX, 'color: cyan;');
+      console.log(`%c[Kamera] X=${  gridEditorCameraX}`, 'color: cyan;');
       e.preventDefault();
       return;
     }
     if (e.key === 'ArrowRight') {
       gridEditorCameraX += CAMERA_SPEED;
       S.CITY_CAMERA_X_DEBUG = gridEditorCameraX;
-      console.log('%c[Kamera] X=' + gridEditorCameraX, 'color: cyan;');
+      console.log(`%c[Kamera] X=${  gridEditorCameraX}`, 'color: cyan;');
       e.preventDefault();
       return;
     }
@@ -363,7 +363,7 @@ Falls nicht: Ziehe den Spieler näher zum gelben Punkt!
         alert(`Grid: ${keys.length} begehbare Zellen.\n\nSiehe Konsole für Code.`);
       });
       e.preventDefault();
-      return;
+      
     }
   }, true);
   

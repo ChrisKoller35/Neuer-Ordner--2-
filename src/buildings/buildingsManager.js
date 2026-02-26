@@ -24,7 +24,17 @@ export function createBuildingsManager(ctx) {
 		getPlayerSprite,
 		getCameraOffset,
 		triggerEventFlash,
-		onModeChange
+		onModeChange,
+		// Gebäude-Feature-Systeme
+		workshopUI,
+		upgradeUI,
+		marketUI,
+		gardenUI,
+		harborUI,
+		academyUI,
+		helpersUI,
+		helpersSystem,
+		dungeonSystem
 	} = ctx;
 	
 	// Sub-Systeme
@@ -207,9 +217,126 @@ export function createBuildingsManager(ctx) {
 	 */
 	function handleNPCInteract(buildingId, npcId, option) {
 		console.log(`[BuildingsManager] NPC-Interaktion: ${npcId} in ${buildingId}, Option: ${option}`);
-		
-		// TODO: Hier können später spezifische NPC-Funktionen implementiert werden
-		// z.B. Shop öffnen, Quest starten, Crafting-Menü, etc.
+
+		// ===== WERKSTATT (Workshop) =====
+		if (buildingId === 'workshop') {
+			if (option === 'Crafting' || option === 'Upgrades') {
+				if (workshopUI) {
+					workshopUI.show();
+					console.log('[BuildingsManager] Werkstatt-UI geöffnet');
+				}
+				return true;
+			}
+			if (option === 'Reparaturen') {
+				// Später: Reparatur-Feature
+				console.log('[BuildingsManager] Reparaturen - kommt später');
+				return false;
+			}
+		}
+
+		// ===== MARKTPLATZ (Market) =====
+		if (buildingId === 'market') {
+			if (option === 'Kaufen') {
+				if (marketUI) {
+					marketUI.show('consumables');
+					console.log('[BuildingsManager] Marktplatz-UI geöffnet (Kaufen)');
+				}
+				return true;
+			}
+			if (option === 'Tagesangebote') {
+				if (marketUI) {
+					marketUI.show('daily');
+					console.log('[BuildingsManager] Marktplatz-UI geöffnet (Tagesangebot)');
+				}
+				return true;
+			}
+			if (option === 'Verkaufen') {
+				// Später: Verkaufs-Feature
+				console.log('[BuildingsManager] Verkaufen - kommt später');
+				return false;
+			}
+			if (option === 'Aufträge') {
+				// Später: Aufträge-Feature
+				console.log('[BuildingsManager] Aufträge - kommt später');
+				return false;
+			}
+		}
+
+		// ===== GÄRTNEREI (Garden) =====
+		if (buildingId === 'garden') {
+			if (option === 'Anbauen') {
+				if (gardenUI) {
+					gardenUI.show('garden');
+					console.log('[BuildingsManager] Gärtnerei-UI geöffnet (Garten)');
+				}
+				return true;
+			}
+			if (option === 'Ernten') {
+				if (gardenUI) {
+					gardenUI.show('garden');
+					console.log('[BuildingsManager] Gärtnerei-UI geöffnet (Ernten)');
+				}
+				return true;
+			}
+			if (option === 'Samen kaufen') {
+				if (gardenUI) {
+					gardenUI.show('seeds');
+					console.log('[BuildingsManager] Gärtnerei-UI geöffnet (Samen)');
+				}
+				return true;
+			}
+		}
+
+		// ===== HAFEN (Harbor) =====
+		if (buildingId === 'harbor') {
+			if (option === 'Handelsrouten' || option === 'Import/Export' || option === 'Schiffe ansehen') {
+				if (harborUI) {
+					harborUI.show();
+					console.log('[BuildingsManager] Hafen-UI geöffnet');
+				}
+				return true;
+			}
+		}
+
+		// ===== AKADEMIE (Academy) =====
+		if (buildingId === 'academy') {
+			if (option === 'Talente' || option === 'Forschung' || option === 'Baupläne') {
+				if (academyUI) {
+					academyUI.show();
+					console.log('[BuildingsManager] Akademie-UI geöffnet');
+				}
+				return true;
+			}
+		}
+
+		// ===== KASERNE (Barracks) → Dungeon + Helfer =====
+		if (buildingId === 'barracks') {
+			if (option === 'Helferkarten') {
+				if (helpersUI) {
+					helpersUI.show();
+					console.log('[BuildingsManager] Helfer-UI geöffnet');
+				}
+				return true;
+			}
+			if (option === 'Dungeon betreten') {
+				if (dungeonSystem) {
+					// Building-Szene verlassen
+					if (buildingSystem && buildingSystem.isActive()) {
+						buildingSystem.exitBuilding();
+					}
+					dungeonSystem.showStartMenu();
+					// Stadt-UI Panels ausblenden (verhindert Klick-Durchschläge aus Mission/Shop/Inventar)
+					if (onModeChange) {
+						onModeChange('dungeon_menu');
+					}
+					console.log('[BuildingsManager] Dungeon gestartet!');
+				}
+				return true;
+			}
+		}
+
+		// Können später weitere Gebäude-Interaktionen hier hinzugefügt werden
+		return false;
 	}
 	
 	/**
@@ -262,6 +389,60 @@ export function createBuildingsManager(ctx) {
 	function handleKeyDown(key, code) {
 		if (!initialized) return false;
 		
+		// Werkstatt-UI hat höchste Priorität wenn offen
+		if (workshopUI?.isVisible()) {
+			if (key === 'Escape' || code === 'Escape') {
+				workshopUI.hide();
+				return true;
+			}
+			return true; // Alle Tasten blockieren während Workshop offen
+		}
+
+		// Marktplatz-UI
+		if (marketUI?.isVisible()) {
+			if (key === 'Escape' || code === 'Escape') {
+				marketUI.hide();
+				return true;
+			}
+			return true; // Alle Tasten blockieren während Markt offen
+		}
+
+		// Gärtnerei-UI
+		if (gardenUI?.isVisible()) {
+			if (key === 'Escape' || code === 'Escape') {
+				gardenUI.hide();
+				return true;
+			}
+			return true; // Alle Tasten blockieren während Gärtnerei offen
+		}
+
+		// Hafen-UI
+		if (harborUI?.isVisible()) {
+			if (key === 'Escape' || code === 'Escape') {
+				harborUI.hide();
+				return true;
+			}
+			return true;
+		}
+
+		// Akademie-UI
+		if (academyUI?.isVisible()) {
+			if (key === 'Escape' || code === 'Escape') {
+				academyUI.hide();
+				return true;
+			}
+			return true;
+		}
+
+		// Helfer-UI
+		if (helpersUI?.isVisible()) {
+			if (key === 'Escape' || code === 'Escape') {
+				helpersUI.hide();
+				return true;
+			}
+			return true;
+		}
+		
 		// Map hat höchste Priorität
 		if (mapSystem.isOpen) {
 			return mapSystem.handleKeyDown(key, code);
@@ -309,7 +490,7 @@ export function createBuildingsManager(ctx) {
 		// Teleporter in der Stadt (Debug-Drag-Modus)
 		if (state?.mode === 'city' && teleporterSystem?.handleMouseMove) {
 			if (teleporterSystem.handleMouseMove(x, y)) {
-				return;
+				
 			}
 		}
 	}
@@ -409,6 +590,73 @@ export function createBuildingsManager(ctx) {
 	function getTeleporterData() {
 		return teleporterData;
 	}
+
+	function closeFeatureUIs() {
+		if (workshopUI?.isVisible?.()) workshopUI.hide();
+		if (upgradeUI?.isVisible?.()) upgradeUI.hide();
+		if (marketUI?.isVisible?.()) marketUI.hide();
+		if (gardenUI?.isVisible?.()) gardenUI.hide();
+		if (harborUI?.isVisible?.()) harborUI.hide();
+		if (academyUI?.isVisible?.()) academyUI.hide();
+		if (helpersUI?.isVisible?.()) helpersUI.hide();
+	}
+
+	function openHubScreen(screenId) {
+		if (!initialized) return false;
+
+		const state = getState();
+		if (!state || (state.mode !== 'city' && state.mode !== 'building')) {
+			return false;
+		}
+
+		if (screenId !== 'teleporter' && buildingSystem?.isActive()) {
+			buildingSystem.exitBuilding();
+		}
+
+		let openFn = null;
+		switch (screenId) {
+			case 'upgrade':
+				openFn = () => {
+					if (!workshopUI) return false;
+					workshopUI.show();
+					return true;
+				};
+				break;
+			case 'garden':
+				openFn = () => {
+					if (!gardenUI) return false;
+					gardenUI.show('garden');
+					return true;
+				};
+				break;
+			case 'harbor':
+				openFn = () => {
+					if (!harborUI) return false;
+					harborUI.show('ships');
+					return true;
+				};
+				break;
+			case 'academy':
+				openFn = () => {
+					if (!academyUI) return false;
+					academyUI.show('spells');
+					return true;
+				};
+				break;
+			case 'teleporter':
+				openFn = () => {
+					if (!mapSystem) return false;
+					mapSystem.open();
+					return true;
+				};
+				break;
+			default:
+				return false;
+		}
+
+		closeFeatureUIs();
+		return openFn();
+	}
 	
 	return {
 		init,
@@ -424,6 +672,7 @@ export function createBuildingsManager(ctx) {
 		isInBuilding,
 		getBuildingsData,
 		getTeleporterData,
+		openHubScreen,
 		
 		// Sub-System Zugriff (für Debugging)
 		get mapSystem() { return mapSystem; },
