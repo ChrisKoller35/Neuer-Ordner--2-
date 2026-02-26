@@ -1,19 +1,9 @@
 // src/game/render.js
-// Game Render-Funktionen: Heals, Coins, Symbols, Player, Shots, Event-Flash
+// Game render functions: Heals, Coins, Symbols, Player, Shots, Event-Flash
+
+import { clamp, clamp01, easeOutCubic } from '../core/utils.js';
 
 const TAU = Math.PI * 2;
-
-function clamp(v, min, max) {
-	return v < min ? min : v > max ? max : v;
-}
-
-function clamp01(v) {
-	return v < 0 ? 0 : v > 1 ? 1 : v;
-}
-
-function easeOutCubic(t) {
-	return 1 - Math.pow(1 - t, 3);
-}
 
 /**
  * Factory für das Game-Render-System
@@ -50,7 +40,9 @@ export function createGameRenderSystem(deps) {
 		const state = getState();
 		if (state.healPickups.length === 0) return;
 		const sprite = getHealSprite();
-		if (sprite) {
+		const isCanvasSprite = typeof HTMLCanvasElement !== "undefined" && sprite instanceof HTMLCanvasElement;
+		const canDrawSprite = !!sprite && (isCanvasSprite || spriteReady(sprite));
+		if (canDrawSprite) {
 			for (const heal of state.healPickups) {
 				if (heal.life <= 0) continue;
 				const scale = (heal.spriteScale || 0.1) * (heal.scale || 1);
@@ -131,6 +123,10 @@ export function createGameRenderSystem(deps) {
 			const usingSprite = sprite && spriteReady(sprite);
 			const baseRotation = usingSprite ? ally.spriteRotationOffset || 0 : 0;
 			ctx.rotate(baseRotation + wobble * 0.2);
+			const spawnDuration = ally.spawnZoomDuration == null ? 260 : ally.spawnZoomDuration;
+			const spawnProgress = spawnDuration > 0 ? clamp01((now - (ally.spawnedAt || 0)) / spawnDuration) : 1;
+			const spawnScale = 1 + (1 - spawnProgress) * 0.5;
+			ctx.scale(spawnScale, spawnScale);
 			if (usingSprite) {
 				const scale = ally.spriteScale == null ? 0.22 : ally.spriteScale;
 				const drawW = sprite.naturalWidth * scale;
@@ -369,6 +365,30 @@ export function createGameRenderSystem(deps) {
 		ctx.lineWidth = 1.6;
 		ctx.strokeRect(barX, barY, barWidth, barHeight);
 		ctx.restore();
+		if (state.coralAbility && state.coralAbility.active && state.coralAllies.length > 0) {
+			const badgeX = player.x;
+			const badgeY = player.y - 78;
+			const coralCount = Math.min(4, state.coralAllies.length);
+			ctx.save();
+			ctx.translate(badgeX, badgeY);
+			ctx.globalAlpha = 0.92;
+			ctx.fillStyle = "rgba(9,22,38,0.88)";
+			ctx.strokeStyle = "rgba(155,228,255,0.72)";
+			ctx.lineWidth = 1.4;
+			ctx.beginPath();
+			ctx.roundRect(-24, -10, 48, 20, 8);
+			ctx.fill();
+			ctx.stroke();
+			for (let i = 0; i < coralCount; i += 1) {
+				const dotX = -14 + i * 9.2;
+				const pulse = 0.75 + 0.25 * Math.sin(now * 0.01 + i);
+				ctx.beginPath();
+				ctx.fillStyle = `rgba(255,170,188,${pulse})`;
+				ctx.arc(dotX, 0, 2.4 + pulse * 1.2, 0, TAU);
+				ctx.fill();
+			}
+			ctx.restore();
+		}
 		ctx.save();
 		if (player.invulnFor > 0 && Math.floor(player.invulnFor / 120) % 2 === 0) ctx.globalAlpha = 0.45;
 		MODELS.simpleShadow(ctx, player.x + 12, player.y + 36, 26);

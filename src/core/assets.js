@@ -6,6 +6,35 @@
 let USE_WEBP_ASSETS = true;
 let BASE_URL = null; // Wird beim ersten Aufruf gesetzt
 
+const BUNDLED_ASSET_URLS = import.meta.glob('../**/*.{png,webp,jpg,jpeg}', {
+	eager: true,
+	import: 'default'
+});
+
+const BUNDLED_ASSET_LOOKUP = new Map();
+for (const [key, url] of Object.entries(BUNDLED_ASSET_URLS)) {
+	const normalized = key
+		.replace(/^\.\.\//, '')
+		.replace(/^src\//, '')
+		.toLowerCase();
+	if (!BUNDLED_ASSET_LOOKUP.has(normalized)) {
+		BUNDLED_ASSET_LOOKUP.set(normalized, url);
+	}
+}
+
+function normalizeAssetPath(path) {
+	return String(path || '')
+		.trim()
+		.replace(/^\.\//, '')
+		.replace(/^\//, '')
+		.replace(/^src\//, '');
+}
+
+function resolveBundledAssetUrl(path) {
+	const normalized = normalizeAssetPath(path).toLowerCase();
+	return BUNDLED_ASSET_LOOKUP.get(normalized) || null;
+}
+
 // ============================================================
 // ASSET MANAGER - Reference Counting und Caching
 // ============================================================
@@ -346,10 +375,13 @@ export function loadSprite(relativePath, callerUrl = null) {
 	const primaryPath = USE_WEBP_ASSETS 
 		? relativePath.replace(/\.png$/i, ".webp") 
 		: relativePath;
+	const bundledPrimary = resolveBundledAssetUrl(primaryPath);
 	
 	// URL basierend auf Kontext erstellen
 	let primarySrc;
-	if (callerUrl) {
+	if (bundledPrimary) {
+		primarySrc = bundledPrimary;
+	} else if (callerUrl) {
 		primarySrc = new URL(primaryPath, callerUrl).href;
 	} else if (BASE_URL) {
 		primarySrc = new URL(primaryPath, BASE_URL).href;
@@ -368,8 +400,14 @@ export function loadSprite(relativePath, callerUrl = null) {
 		const fallbackPath = USE_WEBP_ASSETS 
 			? normalized.replace(/\.webp$/i, ".png") 
 			: normalized;
+		const bundledFallback = resolveBundledAssetUrl(fallbackPath);
 		
-		// Fallback über document.baseURI
+		if (bundledFallback) {
+			img.src = bundledFallback;
+			return;
+		}
+
+		// Fallback über document.baseURI (Legacy/dev)
 		img.src = new URL(`./src/${fallbackPath}`, document.baseURI).href;
 	});
 	
@@ -459,6 +497,7 @@ export function createSpriteSheetDrawer(sheet, frameWidth, frameHeight) {
 // ============================================================
 
 import assetManifest from '../data/assets.json';
+import generatedSpritesManifest from '../data/generatedSprites.json';
 
 /** @type {Map<string, boolean>} Geladene Manifest-Gruppen */
 const loadedManifestGroups = new Set();
@@ -472,6 +511,7 @@ const lazyLoadedSprites = new Map();
 export const ManifestAssets = {
 	/** Das geladene Manifest */
 	manifest: assetManifest,
+	generatedManifest: generatedSpritesManifest,
 	
 	/**
 	 * Lädt alle Assets einer Manifest-Gruppe
@@ -531,6 +571,18 @@ export const ManifestAssets = {
 		
 		console.log(`[ManifestAssets] Szene "${sceneName}" Assets bereit`);
 	},
+
+	/**
+	 * Lädt alle generierten KI-Sprites (Gruppe: generatedSprites)
+	 * @returns {Promise<void>}
+	 */
+	async preloadGeneratedSprites() {
+		if (!assetManifest.groups?.generatedSprites) {
+			console.warn('[ManifestAssets] Keine generatedSprites-Gruppe im Manifest gefunden');
+			return;
+		}
+		await this.loadGroup('generatedSprites');
+	},
 	
 	/**
 	 * Gibt Assets einer Gruppe frei
@@ -589,6 +641,17 @@ export const ManifestAssets = {
 	 */
 	getLoadedGroups() {
 		return Array.from(loadedManifestGroups);
+	},
+
+	/**
+	 * Liefert die Einträge aus generatedSprites.json
+	 * @returns {Array}
+	 */
+	getGeneratedSprites() {
+		if (!generatedSpritesManifest || !Array.isArray(generatedSpritesManifest.sprites)) {
+			return [];
+		}
+		return generatedSpritesManifest.sprites;
 	}
 };
 
