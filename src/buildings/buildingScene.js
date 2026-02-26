@@ -251,21 +251,19 @@ export function createBuildingSystem(ctx) {
 				bState.backgroundLoaded = true;
 				console.log(`[Building] Hintergrund bereits geladen: ${bState.currentBuilding.background}`);
 			} else {
-				let bgLoadResolved = false;
 				bState.backgroundImage.addEventListener('load', () => {
-					bgLoadResolved = true;
 					bState.backgroundLoaded = true;
 					console.log(`[Building] Hintergrund geladen: ${bState.currentBuilding.background}`);
 				});
 				bState.backgroundImage.addEventListener('error', () => {
-					// Nur reagieren wenn auch loadSprite's Fallback fehlschlägt
-					setTimeout(() => {
-						if (!bgLoadResolved && bState.backgroundImage && (!bState.backgroundImage.complete || bState.backgroundImage.naturalWidth === 0)) {
-							console.warn(`[Building] Hintergrund konnte nicht geladen werden: ${bState.currentBuilding.background}`);
-							bState.backgroundImage = null;
-							bState.backgroundLoaded = true;
-						}
-					}, 200);
+					// Nur reagieren wenn loadSprite's Fallback ebenfalls fehlgeschlagen ist
+					// (_assetFallbackPending = true bedeutet: Fallback läuft noch)
+					if (bState.backgroundImage && bState.backgroundImage._assetFallbackPending) {
+						return; // loadSprite versucht noch den PNG-Fallback
+					}
+					console.warn(`[Building] Hintergrund konnte nicht geladen werden: ${bState.currentBuilding.background}`);
+					bState.backgroundImage = null;
+					bState.backgroundLoaded = true;
 				});
 			}
 		}
@@ -282,21 +280,17 @@ export function createBuildingSystem(ctx) {
 				
 				// addEventListener statt .onload/.onerror verwenden, damit
 				// loadSprite's interner WebP→PNG Fallback nicht gestört wird.
-				// Der letzte erfolgreiche Load (nach Fallback) triggert 'load'.
-				let npcLoadResolved = false;
 				bState.npcSprite.addEventListener('load', () => {
-					npcLoadResolved = true;
 					console.log(`[Building] NPC-Sprite geladen: ${npcSpritePath}, Größe: ${bState.npcSprite.naturalWidth}x${bState.npcSprite.naturalHeight}`);
 				});
 				bState.npcSprite.addEventListener('error', () => {
-					// Nur reagieren wenn loadSprite's Fallback ebenfalls fehlschlägt
-					// (d.h. beim zweiten Error, da loadSprite den ersten abfängt)
-					setTimeout(() => {
-						if (!npcLoadResolved && bState.npcSprite && (!bState.npcSprite.complete || bState.npcSprite.naturalWidth === 0)) {
-							console.warn(`[Building] NPC-Sprite nicht gefunden: ${npcSpritePath}, verwende Platzhalter`);
-							bState.npcSprite = createNPCPlaceholder(bState.currentBuilding.npc.id, bState.currentBuilding.npc.name);
-						}
-					}, 200);
+					// Nur reagieren wenn loadSprite's Fallback ebenfalls fehlgeschlagen ist
+					// (_assetFallbackPending = true bedeutet: WebP→PNG Fallback läuft noch)
+					if (bState.npcSprite && bState.npcSprite._assetFallbackPending) {
+						return; // loadSprite versucht noch den PNG-Fallback
+					}
+					console.warn(`[Building] NPC-Sprite nicht gefunden: ${npcSpritePath}, verwende Platzhalter`);
+					bState.npcSprite = createNPCPlaceholder(bState.currentBuilding.npc.id, bState.currentBuilding.npc.name);
 				});
 			} else {
 				bState.npcSprite = createNPCPlaceholder(bState.currentBuilding.npc.id, bState.currentBuilding.npc.name);

@@ -371,6 +371,11 @@ export function loadSprite(relativePath, callerUrl = null) {
 	const img = new Image();
 	let fallbackApplied = false;
 	
+	// Flag für externe Handler: true = Fallback läuft noch, nicht abbrechen!
+	// Externe error-Handler sollten auf diesen Flag prüfen bevor sie
+	// das Bild durch einen Platzhalter ersetzen.
+	img._assetFallbackPending = false;
+	
 	// Primärer Pfad: .webp wenn aktiviert, sonst original
 	const primaryPath = USE_WEBP_ASSETS 
 		? relativePath.replace(/\.png$/i, ".webp") 
@@ -391,8 +396,13 @@ export function loadSprite(relativePath, callerUrl = null) {
 	
 	// Fallback bei Fehler
 	img.addEventListener("error", () => {
-		if (fallbackApplied) return;
+		if (fallbackApplied) {
+			// Fallback ist auch fehlgeschlagen - kein weiterer Versuch
+			img._assetFallbackPending = false;
+			return;
+		}
 		fallbackApplied = true;
+		img._assetFallbackPending = true;
 		
 		const normalized = relativePath.startsWith("./") 
 			? relativePath.slice(2) 
@@ -409,6 +419,11 @@ export function loadSprite(relativePath, callerUrl = null) {
 
 		// Fallback über document.baseURI (Legacy/dev)
 		img.src = new URL(`./src/${fallbackPath}`, document.baseURI).href;
+	});
+	
+	// Bei erfolgreichem Load: Fallback-Flag zurücksetzen
+	img.addEventListener("load", () => {
+		img._assetFallbackPending = false;
 	});
 	
 	img.src = primarySrc;
@@ -445,8 +460,12 @@ export async function loadSprites(spriteMap) {
 	const promises = entries.map(([name, src]) => {
 		return new Promise((resolve, reject) => {
 			const img = loadSprite(src);
-			img.onload = () => resolve([name, img]);
-			img.onerror = () => reject(new Error(`Failed to load sprite: ${src}`));
+			img.addEventListener('load', () => resolve([name, img]));
+			img.addEventListener('error', () => {
+				// Nur rejecten wenn auch der PNG-Fallback fehlgeschlagen ist
+				if (img._assetFallbackPending) return;
+				reject(new Error(`Failed to load sprite: ${src}`));
+			});
 		});
 	});
 	
