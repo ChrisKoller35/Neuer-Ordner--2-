@@ -253,10 +253,12 @@ export function createSpawningSystem(ctx) {
 		const SPRITES = getSPRITES();
 		const sprite = SPRITES.coverRock;
 		const scale = opts.scale == null ? 0.52 : opts.scale;
-		const spriteWidth = spriteReady(sprite) ? sprite.naturalWidth : 540;
-		const spriteHeight = spriteReady(sprite) ? sprite.naturalHeight : 420;
-		const width = (opts.width == null ? spriteWidth : opts.width) * scale;
-		const height = (opts.height == null ? spriteHeight : opts.height) * scale;
+		// Use fixed reference dimensions so the rock size is consistent
+		// regardless of whether the sprite is loaded or its actual resolution.
+		const COVER_ROCK_REF_W = 540;
+		const COVER_ROCK_REF_H = 420;
+		const width = (opts.width == null ? COVER_ROCK_REF_W : opts.width) * scale;
+		const height = (opts.height == null ? COVER_ROCK_REF_H : opts.height) * scale;
 		const radiusX = (opts.radiusX == null ? width * 0.45 : opts.radiusX);
 		const radiusY = (opts.radiusY == null ? height * 0.4 : opts.radiusY);
 		const landHalfHeight = opts.landHalfHeight == null ? height * 0.5 : opts.landHalfHeight;
