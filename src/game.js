@@ -383,7 +383,7 @@ function bootGame() {
 	const keys = new Set();
 	const pointer = { down: false, shoot: false };
 	let controlsArmed = false;
-	const DEBUG_SHORTCUTS = import.meta.env.DEV;
+	const DEBUG_SHORTCUTS = true;
 
 	// Input-Helpers (aus game/inputHelpers.js)
 	const { hasKey } = createInputHelpers(keys);
